@@ -31,7 +31,6 @@
             --tape-color: rgba(230, 225, 210, 0.75);
         }
 
-        /* OTHER THEMES PRESETS */
         body.theme-pastel-sage {
             --bg-color: #eaf0ed;
             --card-pink: #c8d6af;
@@ -53,7 +52,6 @@
             --tape-color: rgba(200, 225, 235, 0.75);
         }
 
-        /* AESTHETIC SILVER GRAY THEME */
         body.theme-silver-gray {
             --bg-color: #f0f2f5;
             --card-white: #ffffff;
@@ -85,23 +83,19 @@
 
         * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             -webkit-tap-highlight-color: transparent !important;
             outline: none !important;
         }
 
         html, body {
-            width: 100%;
-            max-width: 100vw;
-            overflow-x: hidden !important;
-            position: relative;
+            width: 100%; max-width: 100vw;
+            overflow-x: hidden !important; position: relative;
         }
 
         body {
             background-color: var(--bg-color);
-            font-family: var(--font-body);
-            color: var(--text-color);
+            font-family: var(--font-body); color: var(--text-color);
             padding: 20px 10px 80px 10px;
             transition: background-color 0.3s ease, color 0.3s ease;
             background-image: radial-gradient(rgba(200, 200, 180, 0.2) 1px, transparent 0);
@@ -111,8 +105,7 @@
 
         /* LOGIN / AUTH OVERLAY SCREEN */
         .auth-container {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--bg-color);
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
@@ -124,14 +117,12 @@
             border: 1px solid var(--accent-gold);
             padding: 30px 25px; border-radius: 16px;
             box-shadow: var(--shadow-soft);
-            max-width: 380px; width: 100%;
-            text-align: center;
+            max-width: 380px; width: 100%; text-align: center;
         }
 
         .auth-card h2 {
             font-family: var(--font-main-title);
-            font-size: 3rem; color: var(--text-color);
-            margin-bottom: 5px;
+            font-size: 3rem; color: var(--text-color); margin-bottom: 5px;
         }
 
         .auth-card p {
@@ -153,36 +144,52 @@
             background: var(--accent-gold); border: none; color: #000;
             padding: 10px; border-radius: 8px; font-weight: bold;
             cursor: pointer; font-size: 0.9rem; width: 100%;
-            transition: transform 0.2s;
+            transition: transform 0.2s; margin-bottom: 8px;
         }
 
-        .auth-btn:hover { transform: scale(1.02); }
+        .auth-social-btn {
+            background: #ffffff; border: 1px solid rgba(197, 160, 89, 0.5);
+            color: #333; padding: 10px; border-radius: 8px; font-weight: 600;
+            cursor: pointer; font-size: 0.85rem; width: 100%; margin-bottom: 8px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
+        }
+
+        .auth-social-btn.apple-btn {
+            background: #000000; color: #ffffff; border: none;
+        }
+
+        .auth-btn:hover, .auth-social-btn:hover { transform: scale(1.02); }
+
+        .auth-divider {
+            margin: 12px 0; font-size: 0.75rem; color: var(--accent-gold);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .auth-divider::before, .auth-divider::after {
+            content: ""; flex: 1; height: 1px; background: rgba(197, 160, 89, 0.3);
+        }
 
         .auth-toggle {
-            font-size: 0.78rem; margin-top: 12px; cursor: pointer;
+            font-size: 0.78rem; margin-top: 14px; cursor: pointer;
             color: var(--text-color); text-decoration: underline;
         }
 
-        /* MAIN DASHBOARD WRAPPER (HIDDEN UNTIL LOGIN) */
         #mainAppContainer { display: none; }
 
         .bg-blob {
             position: absolute; border-radius: 50%;
-            filter: blur(50px); opacity: 0.35;
-            pointer-events: none; z-index: 0;
+            filter: blur(50px); opacity: 0.35; pointer-events: none; z-index: 0;
         }
 
         .blob-1 { width: 300px; height: 300px; background: #ebdccb; top: -50px; left: -80px; }
         .blob-2 { width: 320px; height: 320px; background: #fae1dd; bottom: 100px; right: -100px; }
 
-        /* TOP CONTROLS BAR */
         .top-controls {
             position: fixed; top: 15px; right: 20px;
             display: flex; align-items: center; gap: 6px;
             z-index: 100; flex-wrap: nowrap;
         }
 
-        /* SEARCH BAR STYLES */
         .search-box {
             display: flex; align-items: center;
             background: var(--card-white); border: 1px solid var(--accent-gold);
@@ -209,7 +216,6 @@
         .control-btn span.gold-icon { color: var(--accent-gold); font-weight: bold; margin-right: 3px; }
         .control-btn:hover { transform: scale(1.05); }
 
-        /* VINYL PLAYER */
         .vinyl-wrapper { display: flex; align-items: center; gap: 4px; }
 
         .vinyl-container {
@@ -253,7 +259,6 @@
             position: relative; z-index: 2;
         }
 
-        /* HEADER */
         .header { text-align: center; margin-bottom: 25px; margin-top: 25px; width: 100%; }
 
         .header h1 {
@@ -281,7 +286,6 @@
 
         .edit-btn:hover { transform: scale(1.18) rotate(12deg); background: rgba(220, 210, 195, 0.7); opacity: 1; }
 
-        /* DESKTOP 3-COLUMN GRID LAYOUT */
         .main-layout {
             display: grid; grid-template-columns: 1fr 1.2fr 1fr;
             gap: 18px; align-items: start; width: 100%;
@@ -289,7 +293,6 @@
 
         .column { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 
-        /* CARD BASE */
         .card {
             padding: 18px; border-radius: 6px; box-shadow: var(--shadow-soft);
             position: relative; border: 1px solid rgba(180, 170, 150, 0.15);
@@ -309,7 +312,6 @@
             z-index: 10; box-shadow: 0 12px 24px rgba(197, 160, 89, 0.22);
         }
 
-        /* WIGGLE ANIMATION */
         @keyframes wiggly {
             0% { transform: rotate(0deg) scale(0.98); }
             25% { transform: rotate(-3deg) scale(1.02); }
@@ -346,7 +348,6 @@
         }
         ul.scrap-list li::before { content: "✦"; position: absolute; left: 0; color: var(--accent-gold); }
 
-        /* CENTER COLUMN HERO & PHOTO/VIDEO UPLOADER */
         .col-center { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
         .hero-wrapper {
@@ -382,7 +383,6 @@
         .center-quote-card { width: 100%; text-align: center; margin-top: 10px; z-index: 5; }
         .handwritten-quote { font-family: var(--font-main-title); font-size: 1.45rem; line-height: 1.3; }
 
-        /* CALENDAR & TO-DO */
         .calendar-header { font-family: var(--font-main-title); font-size: 1.4rem; color: var(--accent-gold); text-align: center; margin-bottom: 6px; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 0.75rem; }
         .cal-day-head { font-weight: bold; color: var(--accent-gold); }
@@ -403,7 +403,6 @@
         .rot-left { transform: rotate(-1.5deg); }
         .rot-right { transform: rotate(1.5deg); }
 
-        /* MODAL POPUPS */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 0, 0, 0.45); display: none;
@@ -467,10 +466,22 @@
         <div class="auth-card">
             <h2>my vision space</h2>
             <p id="authSubtitle">Sign in to view your vision board</p>
+
+            <button class="auth-social-btn" onclick="handleGoogleSignIn()">
+                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                Continue with Google
+            </button>
+
+            <button class="auth-social-btn apple-btn" onclick="handleAppleSignIn()">
+                <svg width="16" height="18" viewBox="0 0 170 170" fill="currentColor"><path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.33.13-9.13-1.9-14.4-6.08-3.81-3.04-7.84-7.88-12.08-14.52-6.22-9.76-11.14-20.73-14.77-32.91-3.63-12.18-5.45-23.75-5.45-34.72 0-14.85 3.69-27.24 11.07-37.16 7.38-9.92 16.73-14.98 28.05-15.19 4.33 0 9.24 1.16 14.73 3.48 5.49 2.32 9.27 3.48 11.35 3.48 3.52 0 7.42-1.16 11.7-3.48 4.28-2.32 8.97-3.48 14.07-3.48 10.29.35 18.91 4.24 25.86 11.67 6.95 7.43 11.27 16.29 12.96 26.58-10.43 6.31-15.54 15.08-15.33 26.31.21 9.4 4.3 17.18 12.27 23.34 3.91 3.03 8.35 5.3 13.32 6.81-2.1 6.13-4.7 12.06-7.8 17.79zM119.22 31.84c0-7.3 2.65-14.28 7.95-20.93 5.3-6.65 11.89-10.59 19.77-11.82.21.98.32 1.96.32 2.94 0 7.32-2.73 14.48-8.19 21.48-5.46 7-12.06 10.87-19.8 11.61-.05-.98-.05-2.08-.05-3.28z"/></svg>
+                Continue with Apple
+            </button>
+
+            <div class="auth-divider">or use username & password</div>
             
             <div class="auth-input-group">
                 <input type="text" id="authUsername" placeholder="Username (e.g. zizabelle)">
-                <input type="password" id="authPassword" placeholder="Password">
+                <input type="password" id="authPassword" placeholder="Password (min 6 characters)">
             </div>
             
             <button class="auth-btn" id="authPrimaryBtn" onclick="handleAuthSubmit()">Login</button>
@@ -760,12 +771,43 @@
             document.getElementById('authToggleBtn').innerText = isSignUpMode ? "Already have an account? Login" : "Don't have an account? Sign Up";
         }
 
+        function handleGoogleSignIn() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    const user = result.user;
+                    loggedInUsername = user.email ? user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '') : "user";
+                    setupViewMode(loggedInUsername);
+                })
+                .catch((error) => {
+                    alert("Google Sign-In Error: " + error.message);
+                });
+        }
+
+        function handleAppleSignIn() {
+            const provider = new firebase.auth.OAuthProvider('apple.com');
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    const user = result.user;
+                    loggedInUsername = user.email ? user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '') : "user";
+                    setupViewMode(loggedInUsername);
+                })
+                .catch((error) => {
+                    alert("Apple Sign-In Error: " + error.message);
+                });
+        }
+
         function handleAuthSubmit() {
             const userVal = document.getElementById('authUsername').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
             const passVal = document.getElementById('authPassword').value;
 
-            if (!userVal || !passVal) {
-                alert("Please enter both username and password!");
+            if (!userVal) {
+                alert("Please enter a username!");
+                return;
+            }
+
+            if (!passVal || passVal.length < 6) {
+                alert("Password must be at least 6 characters long!");
                 return;
             }
 
@@ -777,14 +819,22 @@
                         loggedInUsername = userVal;
                         setupViewMode(loggedInUsername);
                     })
-                    .catch(err => alert("Sign up error: " + err.message));
+                    .catch(err => {
+                        if (err.code === "auth/email-already-in-use") {
+                            alert("Username already taken! Please try logging in or pick another username.");
+                        } else {
+                            alert("Sign up error: " + err.message);
+                        }
+                    });
             } else {
                 auth.signInWithEmailAndPassword(emailFormat, passVal)
                     .then(() => {
                         loggedInUsername = userVal;
                         setupViewMode(loggedInUsername);
                     })
-                    .catch(err => alert("Login error: " + err.message));
+                    .catch(err => {
+                        alert("Login error: " + err.message);
+                    });
             }
         }
 
@@ -795,10 +845,13 @@
         }
 
         auth.onAuthStateChanged(user => {
-            if (user && user.email) {
-                loggedInUsername = user.email.split('@')[0];
+            if (user) {
+                if (user.email) {
+                    loggedInUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                } else {
+                    loggedInUsername = "user";
+                }
                 
-                // Check URL parameter if viewing someone else
                 const urlParams = new URLSearchParams(window.location.search);
                 const targetUser = urlParams.get('u') || urlParams.get('user') || loggedInUsername;
                 setupViewMode(targetUser);
@@ -817,7 +870,6 @@
 
             document.getElementById('userBadgeLabel').innerText = isOwnerMode ? `@${currentBoardId} (You)` : `@${currentBoardId}`;
 
-            // Hide/Show Edit Buttons depending on if owner
             const editBtns = document.querySelectorAll('.edit-btn, .photo-upload-badge');
             editBtns.forEach(btn => {
                 btn.style.display = isOwnerMode ? 'inline-flex' : 'none';
@@ -829,7 +881,6 @@
             loadVisionBoardFromCloud();
         }
 
-        /* FACEBOOK-LIKE USER SEARCH ENGINE */
         function searchUser() {
             const query = document.getElementById('searchInput').value.trim();
             if (query !== '') {
@@ -840,7 +891,7 @@
             }
         }
 
-        /* INDEXEDDB LARGE MEDIA STORAGE ENGINE */
+        /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
         let idb = null;
 
@@ -918,7 +969,6 @@
             return (match && match[2].length === 11) ? match[2] : null;
         }
 
-        /* CARD CLICK POPUP */
         function handleCardClick(card, event) {
             if (card.dataset.editing === "true") return;
 
@@ -939,7 +989,6 @@
 
         function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
 
-        /* EDITING FUNCTIONS (OWNER ONLY) */
         function enableCardEdit(btn, event) {
             if (!isOwnerMode) return;
             event.stopPropagation();
@@ -974,7 +1023,6 @@
             }
         }
 
-        /* MEDIA RENDER ENGINE */
         function triggerPhotoSelect() {
             if (isOwnerMode) document.getElementById('heroImageInput').click();
         }
@@ -1102,7 +1150,6 @@
             }
         }
 
-        /* THEMES & FONTS */
         function openThemeModal() { document.getElementById('themeModal').style.display = 'flex'; }
         function closeThemeModal() { document.getElementById('themeModal').style.display = 'none'; }
 
@@ -1131,7 +1178,6 @@
             if (isOwnerMode) saveVisionBoardToCloud();
         }
 
-        /* MUSIC PLAYER */
         function toggleMusic() {
             const disk = document.getElementById('vinylDisk');
             const status = document.getElementById('musicStatus');
@@ -1186,7 +1232,6 @@
             }
         }
 
-        /* DARK MODE & CALENDAR */
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             const btn = document.getElementById('modeBtn');
@@ -1219,7 +1264,6 @@
             }
         }
 
-        /* TO-DO LIST */
         let todos = ["Add your first task here ✦"];
 
         function renderTodos() {
@@ -1253,7 +1297,6 @@
             saveVisionBoardToCloud();
         }
 
-        /* FIREBASE CLOUD DATA ENGINE */
         function getVisionBoardData() {
             const cardsData = {};
             document.querySelectorAll('.card[id]').forEach(card => {
