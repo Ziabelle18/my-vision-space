@@ -494,7 +494,7 @@
 
             #card-center-col { order: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
             #card-calendar   { order: 2; width: 100%; }
-            #card-todo       { order: 3; width: 100%; }
+            #card-todo        { order: 3; width: 100%; }
             #card-about      { order: 4; width: 100%; }
             #card-things     { order: 5; width: 100%; }
             #card-healing    { order: 6; width: 100%; }
@@ -758,11 +758,18 @@
     <script>
         /* FIREBASE CONFIGURATION */
         const firebaseConfig = {
-            databaseURL: "https://pettags-36165-default-rtdb.firebaseio.com"
+            apiKey: "AIzaSyC01CDQx0HtHKmrG2sY0Y5emV0gFJ7aQs0",
+            authDomain: "my-vision-space-45872.firebaseapp.com",
+            databaseURL: "https://my-vision-space-45872-default-rtdb.firebaseio.com",
+            projectId: "my-vision-space-45872",
+            storageBucket: "my-vision-space-45872.firebasestorage.app",
+            messagingSenderId: "619791058814",
+            appId: "1:619791058814:web:e85be838c86ecf604e552f",
+            measurementId: "G-2524EVY24L"
         };
 
         let db = null;
-        if (firebaseConfig.databaseURL && firebaseConfig.databaseURL !== "YOUR_FIREBASE_DATABASE_URL_HERE") {
+        if (firebaseConfig.databaseURL) {
             firebase.initializeApp(firebaseConfig);
             db = firebase.database();
         }
@@ -1353,4 +1360,3 @@
     </script>
 </body>
 </html>
-
