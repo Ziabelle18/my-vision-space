@@ -518,6 +518,8 @@
 
     <!-- TOP CONTROLS BAR -->
     <div class="top-controls">
+        <button class="control-btn" onclick="switchUserPrompt()"><span class="gold-icon">✦</span> <span id="userBadgeLabel">User: ...</span></button>
+
         <div class="vinyl-wrapper">
             <div class="vinyl-container" onclick="toggleMusic()">
                 <div class="vinyl-record" id="vinylDisk"></div>
@@ -774,20 +776,40 @@
             db = firebase.database();
         }
 
-        /* AUTOMATIC UNIQUE ID FROM FOLDER NAME */
+        /* DYNAMIC USERNAME & BOARD ID DETECTOR */
         function getFolderKey() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userParam = urlParams.get('u') || urlParams.get('user');
+            
+            // Priority 1: Check URL search query like ?u=zizabelle
+            if (userParam && userParam.trim() !== '') {
+                return userParam.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
+            }
+            
+            // Priority 2: Check subfolder pathing
             const pathParts = window.location.pathname.split('/').filter(p => p.length > 0);
             if (pathParts.length > 0) {
                 const lastPart = pathParts[pathParts.length - 1];
-                if (lastPart.includes('.html')) {
-                    return pathParts.length > 1 ? pathParts[pathParts.length - 2] : "default_board";
+                if (lastPart !== 'index.html' && lastPart !== 'my-vision-space') {
+                    return lastPart.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
                 }
-                return lastPart;
             }
-            return "default_board";
+            
+            // Priority 3: Default User Fallback
+            return "zizabelle";
         }
 
         const currentBoardId = getFolderKey();
+
+        function switchUserPrompt() {
+            const newUser = prompt("Enter username or board name to view/edit (e.g. zizabelle, lester):", currentBoardId);
+            if (newUser && newUser.trim() !== '') {
+                const cleanedUser = newUser.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('u', cleanedUser);
+                window.location.href = currentUrl.toString();
+            }
+        }
 
         /* INDEXEDDB LARGE MEDIA STORAGE ENGINE */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
@@ -1383,6 +1405,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('userBadgeLabel').innerText = `User: ${currentBoardId}`;
             renderCalendar();
             renderTodos();
         });
