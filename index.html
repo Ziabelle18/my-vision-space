@@ -298,6 +298,17 @@
             z-index: 10; box-shadow: 0 16px 32px rgba(197, 160, 89, 0.22);
         }
 
+        /* WIGGLE ANIMATION EFFECT */
+        @keyframes wiggly {
+            0% { transform: rotate(0deg) scale(0.98); }
+            25% { transform: rotate(-3deg) scale(1.02); }
+            50% { transform: rotate(3deg) scale(1.02); }
+            75% { transform: rotate(-1.5deg) scale(1.01); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+
+        .card.wiggle-effect, .modal-card.wiggle-effect { animation: wiggly 0.4s ease-in-out forwards; }
+
         .tape {
             position: absolute; top: -11px; left: 50%;
             transform: translateX(-50%); width: 80px; height: 20px;
@@ -348,22 +359,22 @@
         .center-quote-card { width: 100%; text-align: center; margin-top: 12px; }
         .handwritten-quote { font-family: var(--font-main-title); font-size: 1.55rem; line-height: 1.35; }
 
-        .calendar-header { font-family: var(--font-main-title); font-size: 1.5rem; color: var(--accent-gold); text-align: center; margin-bottom: 8px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; font-size: 0.8rem; }
-        .cal-day-head { font-weight: 700; color: var(--accent-gold); }
-        .cal-date { padding: 5px 0; border-radius: 6px; }
-        .cal-date.today { background: var(--accent-gold); color: #000; font-weight: 700; }
-
-        .todo-input-box { display: flex; gap: 8px; margin-bottom: 12px; }
-        .todo-input-box input {
-            flex: 1; padding: 8px 12px; border: 1px solid rgba(197, 160, 89, 0.4);
+        /* TESTIMONIALS / FRIENDSTER TESTIS */
+        .testi-input-box { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+        .testi-input-box input, .testi-input-box textarea {
+            width: 100%; padding: 8px 12px; border: 1px solid rgba(197, 160, 89, 0.4);
             border-radius: 6px; font-size: 0.85rem; background: transparent; color: inherit;
+            font-family: var(--font-body);
         }
-        .todo-input-box button {
+        .testi-input-box button {
             background: var(--accent-gold); border: none; color: #000;
-            padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;
+            padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;
         }
-        .todo-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px; cursor: pointer; }
+        .testi-item {
+            background: rgba(197, 160, 89, 0.08); border-left: 3px solid var(--accent-gold);
+            padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem;
+        }
+        .testi-author { font-weight: 700; color: var(--accent-gold); font-size: 0.8rem; margin-bottom: 3px; display: flex; justify-content: space-between; }
 
         .rot-left { transform: rotate(-1.2deg); }
         .rot-right { transform: rotate(1.2deg); }
@@ -403,7 +414,7 @@
 
         #ytPlayerContainer { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; left: -9999px; }
 
-        /* RESPONSIVE DESIGN (MOBILE & TABLET ADJUSTMENTS) */
+        /* RESPONSIVE DESIGN */
         @media (max-width: 900px) {
             body { padding-top: 125px; }
 
@@ -424,14 +435,13 @@
             .column { display: contents; }
 
             #card-center-col { order: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
-            #card-calendar   { order: 2; width: 100%; }
-            #card-todo       { order: 3; width: 100%; }
-            #card-about      { order: 4; width: 100%; }
-            #card-things     { order: 5; width: 100%; }
-            #card-healing    { order: 6; width: 100%; }
-            #card-strengths  { order: 7; width: 100%; }
-            #card-goals      { order: 8; width: 100%; }
-            #card-fashion    { order: 9; width: 100%; }
+            #card-about      { order: 2; width: 100%; }
+            #card-things     { order: 3; width: 100%; }
+            #card-healing    { order: 4; width: 100%; }
+            #card-strengths  { order: 5; width: 100%; }
+            #card-goals      { order: 6; width: 100%; }
+            #card-fashion    { order: 7; width: 100%; }
+            #card-testi      { order: 8; width: 100%; }
         }
     </style>
 </head>
@@ -503,15 +513,6 @@
 
                 <!-- KALIWANG COLUMN -->
                 <div class="column col-left">
-                    <div class="card card-white rot-left" id="card-calendar">
-                        <div class="tape"></div>
-                        <div class="card-header-flex">
-                            <div class="card-title">✦ TODAY'S CALENDAR</div>
-                        </div>
-                        <div class="calendar-header" id="calMonthYear">July 2026</div>
-                        <div class="calendar-grid" id="calendarDays"></div>
-                    </div>
-
                     <div class="card card-black rot-right" id="card-about" onclick="handleCardClick(this, event)">
                         <div class="tape"></div>
                         <div class="card-header-flex">
@@ -554,7 +555,7 @@
                 <!-- GITNANG COLUMN -->
                 <div class="column col-center" id="card-center-col">
                     <div class="hero-wrapper" id="heroMediaContainer">
-                        <img src="girl.png" alt="Character" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80';">
+                        <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80" alt="Minimalist Portrait" class="hero-girl" id="heroImg">
                         <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()">✦ Change Photo</div>
                     </div>
 
@@ -572,18 +573,6 @@
 
                 <!-- KANANG COLUMN -->
                 <div class="column col-right">
-                    <div class="card card-pink rot-right" id="card-todo">
-                        <div class="tape"></div>
-                        <div class="card-header-flex">
-                            <div class="card-title">✦ DAILY TO-DO LIST</div>
-                        </div>
-                        <div class="todo-input-box" id="todoInputBox" onclick="event.stopPropagation()">
-                            <input type="text" id="todoInput" placeholder="Add new task...">
-                            <button onclick="addTodo()">+</button>
-                        </div>
-                        <div id="todoContainer" onclick="event.stopPropagation()"></div>
-                    </div>
-
                     <div class="card card-black rot-left" id="card-strengths" onclick="handleCardClick(this, event)">
                         <div class="tape"></div>
                         <div class="card-header-flex">
@@ -619,6 +608,20 @@
                             <li>Classic & Elegant</li>
                             <li>Main Character Energy ✦</li>
                         </ul>
+                    </div>
+
+                    <!-- FRIENDSTER-STYLE TESTIMONIALS CARD -->
+                    <div class="card card-white rot-right" id="card-testi">
+                        <div class="tape"></div>
+                        <div class="card-header-flex">
+                            <div class="card-title">✦ TESTIMONIALS (TESTI)</div>
+                        </div>
+                        <div class="testi-input-box" onclick="event.stopPropagation()">
+                            <input type="text" id="testiName" placeholder="Your Name...">
+                            <textarea id="testiMsg" rows="2" placeholder="Leave a sweet comment / testi..."></textarea>
+                            <button onclick="addTestimonial()">Post Testi ✦</button>
+                        </div>
+                        <div id="testiContainer" onclick="event.stopPropagation()"></div>
                     </div>
                 </div>
 
@@ -725,6 +728,7 @@
         let currentBoardId = "";
         let isOwnerMode = false;
         let isSignUpMode = false;
+        let testimonials = [];
 
         function toggleAuthMode() {
             isSignUpMode = !isSignUpMode;
@@ -811,19 +815,27 @@
                 btn.style.display = isOwnerMode ? 'inline-flex' : 'none';
             });
 
-            const todoBox = document.getElementById('todoInputBox');
-            if (todoBox) todoBox.style.display = isOwnerMode ? 'flex' : 'none';
-
             loadVisionBoardFromCloud();
         }
 
+        /* SEARCH USER WITH REGISTERED USER VALIDATION */
         function searchUser() {
             const query = document.getElementById('searchInput').value.trim();
             if (query !== '') {
                 const cleanedQuery = query.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('u', cleanedQuery);
-                window.location.href = currentUrl.toString();
+                if (db) {
+                    db.ref('visionboards/' + cleanedQuery).once('value').then(snapshot => {
+                        if (snapshot.exists()) {
+                            const currentUrl = new URL(window.location.href);
+                            currentUrl.searchParams.set('u', cleanedQuery);
+                            window.location.href = currentUrl.toString();
+                        } else {
+                            alert(`User '@${cleanedQuery}' is not registered!`);
+                        }
+                    }).catch(() => {
+                        alert("Error searching user!");
+                    });
+                }
             }
         }
 
@@ -905,17 +917,28 @@
             return (match && match[2].length === 11) ? match[2] : null;
         }
 
+        /* CARD POPUP WITH WIGGLE ANIMATION */
         function handleCardClick(card, event) {
             if (card.dataset.editing === "true") return;
 
+            // Trigger wiggle effect on card
+            card.classList.remove('wiggle-effect');
+            void card.offsetWidth;
+            card.classList.add('wiggle-effect');
+
             const modalBody = document.getElementById('modalBody');
             const modalOverlay = document.getElementById('modalOverlay');
+            const modalCardBox = document.getElementById('modalCardBox');
             
             const clone = card.cloneNode(true);
             clone.querySelectorAll('.edit-btn').forEach(btn => btn.remove());
             
             modalBody.innerHTML = clone.innerHTML;
             modalOverlay.style.display = 'flex';
+
+            modalCardBox.classList.remove('wiggle-effect');
+            void modalCardBox.offsetWidth;
+            modalCardBox.classList.add('wiggle-effect');
         }
 
         function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
@@ -1020,7 +1043,7 @@
             } else {
                 activeHeroVidUrl = "";
                 container.innerHTML = `
-                    <img src="${mediaUrl}" alt="Character" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80';">
+                    <img src="${mediaUrl}" alt="Minimalist Portrait" class="hero-girl" id="heroImg">
                     <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()" style="display: ${isOwnerMode ? 'flex' : 'none'}">✦ Change Photo</div>
                 `;
             }
@@ -1170,68 +1193,55 @@
             if (isOwnerMode) saveVisionBoardToCloud();
         }
 
-        function renderCalendar() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
-            const today = now.getDate();
-
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            document.getElementById('calMonthYear').innerText = `${monthNames[month]} ${year}`;
-
-            const grid = document.getElementById('calendarDays');
-            grid.innerHTML = '';
-
-            const dayHeads = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-            dayHeads.forEach(d => { grid.innerHTML += `<div class="cal-day-head">${d}</div>`; });
-
-            const firstDay = new Date(year, month, 1).getDay();
-            const totalDays = new Date(year, month + 1, 0).getDate();
-
-            for (let i = 0; i < firstDay; i++) { grid.innerHTML += `<div></div>`; }
-            for (let day = 1; day <= totalDays; day++) {
-                const isToday = day === today ? 'today' : '';
-                grid.innerHTML += `<div class="cal-date ${isToday}">${day}</div>`;
-            }
-        }
-
-        let todos = ["Add your first task here ✦"];
-
-        function renderTodos() {
-            const container = document.getElementById('todoContainer');
+        /* FRIENDSTER TESTIMONIALS LOGIC */
+        function renderTestimonials() {
+            const container = document.getElementById('testiContainer');
             container.innerHTML = '';
-            todos.forEach((todo, index) => {
+            if (!testimonials || testimonials.length === 0) {
+                container.innerHTML = '<p style="font-size:0.8rem; opacity:0.6; font-style:italic;">No testimonials yet. Be the first to leave one!</p>';
+                return;
+            }
+            testimonials.forEach(item => {
                 container.innerHTML += `
-                    <div class="todo-item" onclick="toggleTodo(${index})">
-                        <span>✦</span>
-                        <span>${todo}</span>
+                    <div class="testi-item">
+                        <div class="testi-author"><span>${item.name}</span> <span>${item.date || ''}</span></div>
+                        <div>"${item.msg}"</div>
                     </div>
                 `;
             });
         }
 
-        function addTodo() {
-            if (!isOwnerMode) return;
-            const input = document.getElementById('todoInput');
-            if (input.value.trim() !== '') {
-                todos.push(input.value.trim());
-                input.value = '';
-                renderTodos();
-                saveVisionBoardToCloud();
-            }
-        }
+        function addTestimonial() {
+            const nameInput = document.getElementById('testiName');
+            const msgInput = document.getElementById('testiMsg');
+            const name = nameInput.value.trim() || (loggedInUsername ? `@${loggedInUsername}` : "Anonymous Friend");
+            const msg = msgInput.value.trim();
 
-        function toggleTodo(index) {
-            if (!isOwnerMode) return;
-            todos.splice(index, 1);
-            renderTodos();
-            saveVisionBoardToCloud();
+            if (msg === '') {
+                alert("Please type a testimonial message!");
+                return;
+            }
+
+            const newTesti = {
+                name: name,
+                msg: msg,
+                date: new Date().toLocaleDateString()
+            };
+
+            testimonials.unshift(newTesti);
+            nameInput.value = '';
+            msgInput.value = '';
+            renderTestimonials();
+
+            if (db && currentBoardId) {
+                db.ref('visionboards/' + currentBoardId + '/testimonials').set(testimonials);
+            }
         }
 
         function getVisionBoardData() {
             const cardsData = {};
             document.querySelectorAll('.card[id]').forEach(card => {
-                if (card.id !== 'card-calendar' && card.id !== 'card-todo') {
+                if (card.id !== 'card-testi') {
                     const titleEl = card.querySelector('.card-title');
                     const titleText = titleEl ? titleEl.innerText : '';
                     
@@ -1260,7 +1270,7 @@
                 headerFont: getComputedStyle(document.documentElement).getPropertyValue('--font-title'),
                 bodyFont: getComputedStyle(document.documentElement).getPropertyValue('--font-body'),
                 musicUrl: localStorage.getItem('vb_music_' + currentBoardId) || "",
-                todos: todos,
+                testimonials: testimonials,
                 cards: cardsData
             };
         }
@@ -1330,9 +1340,12 @@
                 applyMusic(data.musicUrl);
             }
 
-            if (data.todos) {
-                todos = data.todos;
-                renderTodos();
+            if (data.testimonials) {
+                testimonials = data.testimonials;
+                renderTestimonials();
+            } else {
+                testimonials = [];
+                renderTestimonials();
             }
 
             if (data.cards) {
@@ -1398,11 +1411,6 @@
                 }).catch(err => console.warn("Offline mode active:", err));
             }
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            renderCalendar();
-            renderTodos();
-        });
     </script>
 </body>
 </html>
