@@ -269,7 +269,7 @@
             display: inline-flex; align-items: center; justify-content: center;
             font-size: 0.7rem; color: var(--accent-gold); cursor: pointer;
             box-shadow: 0 2px 6px rgba(180, 170, 150, 0.15); transition: transform 0.2s;
-            flex-shrink: 0; opacity: 0.5;
+            flex-shrink: 0; opacity: 0.6;
         }
 
         .edit-btn:hover { transform: scale(1.2) rotate(12deg); opacity: 1; }
@@ -359,22 +359,47 @@
         .center-quote-card { width: 100%; text-align: center; margin-top: 12px; }
         .handwritten-quote { font-family: var(--font-main-title); font-size: 1.55rem; line-height: 1.35; }
 
-        /* TESTIMONIALS / FRIENDSTER TESTIS */
-        .testi-input-box { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+        /* FRIENDSTER TESTIMONIALS & COLOR THEMING */
+        .testi-input-box { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
         .testi-input-box input, .testi-input-box textarea {
             width: 100%; padding: 8px 12px; border: 1px solid rgba(197, 160, 89, 0.4);
             border-radius: 6px; font-size: 0.85rem; background: transparent; color: inherit;
             font-family: var(--font-body);
         }
+        
+        .testi-theme-select {
+            display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 600; color: var(--accent-gold);
+        }
+        .testi-theme-select select {
+            padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(197, 160, 89, 0.4);
+            background: var(--bg-color); color: var(--text-color); font-size: 0.78rem;
+        }
+
         .testi-input-box button {
             background: var(--accent-gold); border: none; color: #000;
             padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;
+            transition: transform 0.2s;
         }
+        .testi-input-box button:hover { transform: scale(1.02); }
+
+        #testiContainer { display: flex; flex-direction: column; gap: 10px; margin-top: 5px; }
+
         .testi-item {
-            background: rgba(197, 160, 89, 0.08); border-left: 3px solid var(--accent-gold);
-            padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.85rem;
+            padding: 12px; border-radius: 8px; font-size: 0.88rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); color: #2b2b2b;
+            border-left: 4px solid var(--accent-gold); transition: transform 0.2s;
         }
-        .testi-author { font-weight: 700; color: var(--accent-gold); font-size: 0.8rem; margin-bottom: 3px; display: flex; justify-content: space-between; }
+        .testi-item:hover { transform: translateY(-2px); }
+
+        /* Individual Testi Color Custom Themes */
+        .testi-theme-sage   { background-color: #d2dfca !important; border-left-color: #5b7050 !important; }
+        .testi-theme-pink   { background-color: #fbe0e7 !important; border-left-color: #d86b86 !important; }
+        .testi-theme-blue   { background-color: #d8edf5 !important; border-left-color: #4a8fa8 !important; }
+        .testi-theme-gray   { background-color: #e2e8f0 !important; border-left-color: #64748b !important; }
+        .testi-theme-cream  { background-color: #fcf8ee !important; border-left-color: #c5a059 !important; }
+        .testi-theme-beige  { background-color: #ebdccb !important; border-left-color: #8c7355 !important; }
+
+        .testi-author { font-weight: 700; color: #1a1a1a; font-size: 0.82rem; margin-bottom: 4px; display: flex; justify-content: space-between; }
 
         .rot-left { transform: rotate(-1.2deg); }
         .rot-right { transform: rotate(1.2deg); }
@@ -457,7 +482,7 @@
                 <button onclick="searchUser()">🔍</button>
             </div>
 
-            <button class="control-btn" title="Logged in user"><span class="gold-icon">✦</span> <span id="userBadgeLabel">User</span></button>
+            <button class="control-btn" title="Logged in user"><span class="gold-icon">✦</span> <span id="userBadgeLabel">@User</span></button>
 
             <div class="vinyl-wrapper">
                 <div class="vinyl-container" onclick="toggleMusic()">
@@ -504,9 +529,15 @@
         <div class="board-container">
 
             <header class="header">
-                <h1><span class="editable-text" id="mainTitleText">my vision board</span> <span class="edit-btn" id="editBtnTitle" contenteditable="false" onclick="enableHeaderEdit(this, 'mainTitleText')">✦</span></h1>
+                <h1>
+                    <span class="editable-text" id="mainTitleText">my vision board</span> 
+                    <span class="edit-btn" id="editBtnTitle" contenteditable="false" onclick="enableHeaderEdit(this, 'mainTitleText')">✦</span>
+                </h1>
                 <br>
-                <p class="quote"><span class="editable-text" id="mainQuoteText">"Type your favorite quote here..."</span> <span class="edit-btn" id="editBtnQuote" contenteditable="false" onclick="enableHeaderEdit(this, 'mainQuoteText')">✦</span></p>
+                <p class="quote">
+                    <span class="editable-text" id="mainQuoteText">"Type your favorite quote here..."</span> 
+                    <span class="edit-btn" id="editBtnQuote" contenteditable="false" onclick="enableHeaderEdit(this, 'mainQuoteText')">✦</span>
+                </p>
             </header>
 
             <div class="main-layout">
@@ -617,8 +648,21 @@
                             <div class="card-title">✦ TESTIMONIALS (TESTI)</div>
                         </div>
                         <div class="testi-input-box" onclick="event.stopPropagation()">
-                            <input type="text" id="testiName" placeholder="Your Name...">
+                            <input type="text" id="testiName" placeholder="Your Name / Handle...">
                             <textarea id="testiMsg" rows="2" placeholder="Leave a sweet comment / testi..."></textarea>
+                            
+                            <div class="testi-theme-select">
+                                <span>Card Theme:</span>
+                                <select id="testiColorTheme">
+                                    <option value="testi-theme-cream">Cream White</option>
+                                    <option value="testi-theme-sage">Sage Green</option>
+                                    <option value="testi-theme-pink">Pastel Pink</option>
+                                    <option value="testi-theme-blue">Pastel Blue</option>
+                                    <option value="testi-theme-gray">Silver Gray</option>
+                                    <option value="testi-theme-beige">Pastel Beige</option>
+                                </select>
+                            </div>
+
                             <button onclick="addTestimonial()">Post Testi ✦</button>
                         </div>
                         <div id="testiContainer" onclick="event.stopPropagation()"></div>
@@ -808,6 +852,7 @@
             document.getElementById('authScreen').style.display = 'none';
             document.getElementById('mainAppContainer').style.display = 'block';
 
+            /* Set accurate username badge */
             document.getElementById('userBadgeLabel').innerText = isOwnerMode ? `@${currentBoardId} (You)` : `@${currentBoardId}`;
 
             const editBtns = document.querySelectorAll('.edit-btn, .photo-upload-badge');
@@ -818,24 +863,25 @@
             loadVisionBoardFromCloud();
         }
 
-        /* SEARCH USER WITH REGISTERED USER VALIDATION */
+        /* SEARCH USER WITH CLEAR FEEDBACK ALERT */
         function searchUser() {
             const query = document.getElementById('searchInput').value.trim();
-            if (query !== '') {
-                const cleanedQuery = query.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-                if (db) {
-                    db.ref('visionboards/' + cleanedQuery).once('value').then(snapshot => {
-                        if (snapshot.exists()) {
-                            const currentUrl = new URL(window.location.href);
-                            currentUrl.searchParams.set('u', cleanedQuery);
-                            window.location.href = currentUrl.toString();
-                        } else {
-                            alert(`User '@${cleanedQuery}' is not registered!`);
-                        }
-                    }).catch(() => {
-                        alert("Error searching user!");
-                    });
-                }
+            if (query === '') return;
+
+            const cleanedQuery = query.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+
+            if (db) {
+                db.ref('visionboards/' + cleanedQuery).once('value').then(snapshot => {
+                    if (snapshot.exists()) {
+                        const currentUrl = new URL(window.location.href);
+                        currentUrl.searchParams.set('u', cleanedQuery);
+                        window.location.href = currentUrl.toString();
+                    } else {
+                        alert(`User '@${cleanedQuery}' not found! No vision board exists for this username.`);
+                    }
+                }).catch(() => {
+                    alert("Error searching for user. Please try again!");
+                });
             }
         }
 
@@ -1193,7 +1239,7 @@
             if (isOwnerMode) saveVisionBoardToCloud();
         }
 
-        /* FRIENDSTER TESTIMONIALS LOGIC */
+        /* FRIENDSTER TESTIMONIALS WITH CUSTOM COLOR THEMES */
         function renderTestimonials() {
             const container = document.getElementById('testiContainer');
             container.innerHTML = '';
@@ -1202,8 +1248,9 @@
                 return;
             }
             testimonials.forEach(item => {
+                const cardTheme = item.theme || 'testi-theme-cream';
                 container.innerHTML += `
-                    <div class="testi-item">
+                    <div class="testi-item ${cardTheme}">
                         <div class="testi-author"><span>${item.name}</span> <span>${item.date || ''}</span></div>
                         <div>"${item.msg}"</div>
                     </div>
@@ -1214,8 +1261,11 @@
         function addTestimonial() {
             const nameInput = document.getElementById('testiName');
             const msgInput = document.getElementById('testiMsg');
+            const themeSelect = document.getElementById('testiColorTheme');
+
             const name = nameInput.value.trim() || (loggedInUsername ? `@${loggedInUsername}` : "Anonymous Friend");
             const msg = msgInput.value.trim();
+            const chosenTheme = themeSelect.value || 'testi-theme-cream';
 
             if (msg === '') {
                 alert("Please type a testimonial message!");
@@ -1225,10 +1275,12 @@
             const newTesti = {
                 name: name,
                 msg: msg,
+                theme: chosenTheme,
                 date: new Date().toLocaleDateString()
             };
 
-            testimonials.unshift(newTesti);
+            // Post at the bottom of the testimonials list
+            testimonials.push(newTesti);
             nameInput.value = '';
             msgInput.value = '';
             renderTestimonials();
