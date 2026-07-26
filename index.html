@@ -761,7 +761,7 @@
         let currentBoardId = "";
         let isOwnerMode = false;
 
-        /* AUTHENTICATION LOGIC */
+        /* AUTHENTICATION LOGIC (MOBILE COMPATIBLE REDIRECT) */
         let isSignUpMode = false;
 
         function toggleAuthMode() {
@@ -773,28 +773,12 @@
 
         function handleGoogleSignIn() {
             const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider)
-                .then((result) => {
-                    const user = result.user;
-                    loggedInUsername = user.email ? user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '') : "user";
-                    setupViewMode(loggedInUsername);
-                })
-                .catch((error) => {
-                    alert("Google Sign-In Error: " + error.message);
-                });
+            auth.signInWithRedirect(provider);
         }
 
         function handleAppleSignIn() {
             const provider = new firebase.auth.OAuthProvider('apple.com');
-            auth.signInWithPopup(provider)
-                .then((result) => {
-                    const user = result.user;
-                    loggedInUsername = user.email ? user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '') : "user";
-                    setupViewMode(loggedInUsername);
-                })
-                .catch((error) => {
-                    alert("Apple Sign-In Error: " + error.message);
-                });
+            auth.signInWithRedirect(provider);
         }
 
         function handleAuthSubmit() {
