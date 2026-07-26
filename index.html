@@ -1213,7 +1213,18 @@
             const cardsData = {};
             document.querySelectorAll('.card[id]').forEach(card => {
                 if (card.id !== 'card-calendar' && card.id !== 'card-todo') {
-                    cardsData[card.id] = card.innerHTML;
+                    const titleEl = card.querySelector('.card-title');
+                    const titleText = titleEl ? titleEl.innerText : '';
+                    
+                    const listItems = Array.from(card.querySelectorAll('li')).map(li => li.innerText);
+                    const quoteEl = card.querySelector('.handwritten-quote');
+                    const quoteText = quoteEl ? quoteEl.innerText : '';
+
+                    cardsData[card.id] = {
+                        title: titleText,
+                        items: listItems,
+                        quote: quoteText
+                    };
                 }
             });
 
@@ -1310,7 +1321,25 @@
                 Object.keys(data.cards).forEach(cardId => {
                     const cardElem = document.getElementById(cardId);
                     if (cardElem) {
-                        cardElem.innerHTML = data.cards[cardId];
+                        const cData = data.cards[cardId];
+                        if (typeof cData === 'object' && cData !== null) {
+                            const titleEl = cardElem.querySelector('.card-title');
+                            if (titleEl && cData.title) titleEl.innerText = cData.title;
+
+                            if (cData.items && Array.isArray(cData.items)) {
+                                const listEl = cardElem.querySelector('ul.scrap-list');
+                                if (listEl) {
+                                    listEl.innerHTML = cData.items.map(item => `<li>${item}</li>`).join('');
+                                }
+                            }
+
+                            if (cData.quote) {
+                                const quoteEl = cardElem.querySelector('.handwritten-quote');
+                                if (quoteEl) quoteEl.innerText = cData.quote;
+                            }
+                        } else if (typeof cData === 'string') {
+                            cardElem.innerHTML = cData;
+                        }
                     }
                 });
             }
