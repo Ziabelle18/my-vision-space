@@ -761,7 +761,7 @@
         let currentBoardId = "";
         let isOwnerMode = false;
 
-        /* AUTHENTICATION LOGIC (MOBILE COMPATIBLE REDIRECT) */
+        /* AUTHENTICATION LOGIC WITH REDIRECT RESULT CATCHER */
         let isSignUpMode = false;
 
         function toggleAuthMode() {
@@ -770,6 +770,19 @@
             document.getElementById('authPrimaryBtn').innerText = isSignUpMode ? "Sign Up" : "Login";
             document.getElementById('authToggleBtn').innerText = isSignUpMode ? "Already have an account? Login" : "Don't have an account? Sign Up";
         }
+
+        // Process Sign-In Redirect Result
+        auth.getRedirectResult().then((result) => {
+            if (result && result.user) {
+                const user = result.user;
+                loggedInUsername = user.email ? user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '') : "user";
+                setupViewMode(loggedInUsername);
+            }
+        }).catch((error) => {
+            if (error.code && error.code !== "auth/popup-closed-by-user") {
+                alert("Social Login Issue: " + error.message);
+            }
+        });
 
         function handleGoogleSignIn() {
             const provider = new firebase.auth.GoogleAuthProvider();
