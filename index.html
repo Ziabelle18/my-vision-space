@@ -1,1 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Personal Vision Board</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel+Decorative:wght@600;700&family=Cinzel:wght@600;700&family=Fira+Code:wght@400;500&family=Montserrat:wght@400;500;600&family=Pacifico&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDKs (Modular Script via CDN) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            /* DEFAULT THEME: CREAM WHITE */
+            --bg-color: #fdfbf7;
+            --card-white: #fffdfb;
+            --card-pink: #f4eee5;
+            --card-black: #1e1c1b;
+            --text-color: #2b2b2b;
+            --accent-gold: #c5a059;
+            --font-main-title: 'Caveat', cursive;
+            --font-title: 'Playfair Display', serif;
+            --font-body: 'Montserrat', sans-serif;
+            --shadow-soft: 0 8px 20px rgba(180, 170, 150, 0.12);
+            --tape-color: rgba(230, 225, 210, 0.75);
+        }
+
+        /* OTHER THEMES PRESETS */
+        body.theme-pastel-sage {
+            --bg-color: #eaf0ed;
+            --card-pink: #c8d6af;
+            --shadow-soft: 0 8px 20px rgba(150, 170, 150, 0.15);
+            --tape-color: rgba(200, 215, 200, 0.75);
+        }
+
+        body.theme-pastel-pink {
+            --bg-color: #fceef2;
+            --card-pink: #f8d7e0;
+            --shadow-soft: 0 8px 20px rgba(220, 150, 170, 0.12);
+            --tape-color: rgba(230, 200, 210, 0.75);
+        }
+
+        body.theme-pastel-blue {
+            --bg-color: #eaf4f8;
+            --card-pink: #d0e8f2;
+            --shadow-soft: 0 8px 20px rgba(150, 190, 210, 0.15);
+            --tape-color: rgba(200, 225, 235, 0.75);
+        }
+
+        /* AESTHETIC SILVER GRAY THEME */
+        body.theme-silver-gray {
+            --bg-color: #f0f2f5;
+            --card-white: #ffffff;
+            --card-pink: #e2e8f0;
+            --card-black: #2d3748;
+            --text-color: #2d3748;
+            --accent-gold: #94a3b8;
+            --shadow-soft: 0 8px 20px rgba(148, 163, 184, 0.18);
+            --tape-color: rgba(203, 213, 225, 0.75);
+        }
+
+        body.theme-pastel-beige {
+            --bg-color: #f7f0e6;
+            --card-pink: #ebdccb;
+            --shadow-soft: 0 8px 20px rgba(190, 170, 150, 0.15);
+            --tape-color: rgba(225, 210, 195, 0.75);
+        }
+
+        body.dark-mode {
+            --bg-color: #1a1918;
+            --card-white: #272523;
+            --card-pink: #38252a;
+            --card-black: #121110;
+            --text-color: #e5dfd5;
+            --accent-gold: #d4ae63;
+            --shadow-soft: 0 8px 25px rgba(0, 0, 0, 0.35);
+            --tape-color: rgba(255, 255, 255, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent !important;
+            outline: none !important;
+        }
+
+        html, body {
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden !important;
+            position: relative;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: var(--font-body);
+            color: var(--text-color);
+            padding: 20px 10px 80px 10px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            background-image: radial-gradient(rgba(200, 200, 180, 0.2) 1px, transparent 0);
+            background-size: 24px 24px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(50px);
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .blob-1 { width: 300px; height: 300px; background: #ebdccb; top: -50px; left: -80px; }
+        .blob-2 { width: 320px; height: 320px; background: #fae1dd; bottom: 100px; right: -100px; }
+
+        /* TOP CONTROLS BAR */
+        .top-controls {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 100;
+            flex-wrap: nowrap;
+        }
+
+        .control-btn {
+            background: var(--card-white);
+            color: var(--text-color);
+            border: 1px solid var(--accent-gold);
+            padding: 6px 11px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-soft);
+            transition: transform 0.2s;
+            white-space: nowrap;
+        }
+
+        .control-btn span.gold-icon { color: var(--accent-gold); font-weight: bold; margin-right: 3px; }
+        .control-btn:hover { transform: scale(1.05); }
+
+        /* VINYL PLAYER */
+        .vinyl-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .vinyl-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--card-white);
+            border: 1px solid var(--accent-gold);
+            padding: 4px 10px 4px 6px;
+            border-radius: 30px;
+            box-shadow: var(--shadow-soft);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .vinyl-container:hover { transform: scale(1.05); }
+
+        .vinyl-record {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #333 20%, #111 25%, #111 60%, #222 62%, #111 100%);
+            border: 2px solid var(--accent-gold);
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .vinyl-record::after {
+            content: ""; width: 5px; height: 5px;
+            background: var(--accent-gold); border-radius: 50%;
+        }
+
+        .vinyl-record.spinning { animation: spinVinyl 3s linear infinite; }
+        @keyframes spinVinyl { 100% { transform: rotate(360deg); } }
+
+        .vinyl-info { font-size: 0.7rem; font-weight: 600; display: flex; flex-direction: column; }
+        .vinyl-sub { font-size: 0.58rem; opacity: 0.7; font-style: italic; }
+
+        .music-settings-btn {
+            background: var(--card-white);
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold);
+            border-radius: 50%;
+            width: 24px; height: 24px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 0.72rem;
+            box-shadow: var(--shadow-soft);
+            transition: transform 0.2s;
+        }
+
+        .board-container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* HEADER */
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            margin-top: 25px;
+            width: 100%;
+        }
+
+        .header h1 {
+            font-family: var(--font-main-title);
+            font-size: 5rem;
+            line-height: 0.9;
+            transform: rotate(-2deg);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            max-width: 100%;
+        }
+
+        .header .quote {
+            font-family: var(--font-main-title);
+            font-size: 1.6rem;
+            color: var(--accent-gold);
+            font-weight: 700;
+            margin-top: 5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            max-width: 100%;
+        }
+
+        .edit-btn {
+            width: 22px; height: 22px;
+            background: rgba(230, 225, 210, 0.45);
+            border: 1px solid rgba(197, 160, 89, 0.35);
+            border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.62rem; color: var(--accent-gold);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(180, 170, 150, 0.15);
+            transition: transform 0.2s, background 0.2s, opacity 0.2s;
+            flex-shrink: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            opacity: 0.38;
+        }
+
+        .edit-btn:hover { transform: scale(1.18) rotate(12deg); background: rgba(220, 210, 195, 0.7); opacity: 1; }
+
+        /* DESKTOP 3-COLUMN GRID LAYOUT */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 1fr;
+            gap: 18px;
+            align-items: start;
+            width: 100%;
+        }
+
+        .column { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+
+        /* CARD BASE */
+        .card {
+            padding: 18px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-soft);
+            position: relative;
+            border: 1px solid rgba(180, 170, 150, 0.15);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+            width: 100%;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .card[data-editing="true"] { user-select: text !important; -webkit-user-select: text !important; }
+
+        .card-white { background: var(--card-white); color: var(--text-color); }
+        .card-pink { background: var(--card-pink); color: var(--text-color); border-color: rgba(180, 170, 150, 0.25); }
+        .card-black { background: var(--card-black); color: #ffffff; border: none; }
+        .card-black .card-title { color: #ffffff; border-bottom-color: #333; }
+
+        .card:hover {
+            transform: translateY(-4px) scale(1.01) !important;
+            z-index: 10;
+            box-shadow: 0 12px 24px rgba(197, 160, 89, 0.22);
+        }
+
+        /* WIGGLE ANIMATION */
+        @keyframes wiggly {
+            0% { transform: rotate(0deg) scale(0.98); }
+            25% { transform: rotate(-3deg) scale(1.02); }
+            50% { transform: rotate(3deg) scale(1.02); }
+            75% { transform: rotate(-1.5deg) scale(1.01); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+
+        .card.wiggle-effect, .modal-card.wiggle-effect { 
+            animation: wiggly 0.4s ease-in-out forwards; 
+        }
+
+        .tape {
+            position: absolute;
+            top: -10px; left: 50%;
+            transform: translateX(-50%);
+            width: 75px; height: 18px;
+            background: var(--tape-color);
+            border-left: 2px dashed rgba(0,0,0,0.08);
+            border-right: 2px dashed rgba(0,0,0,0.08);
+            pointer-events: none;
+        }
+
+        .card-header-flex {
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1.5px solid rgba(197, 160, 89, 0.3);
+            padding-bottom: 5px; margin-bottom: 10px;
+        }
+
+        .card-title {
+            font-family: var(--font-title);
+            font-size: 1rem; font-weight: 700;
+            letter-spacing: 1.2px; margin-bottom: 0; border-bottom: none;
+        }
+
+        ul.scrap-list { list-style: none; }
+
+        ul.scrap-list li {
+            font-size: 0.86rem; margin-bottom: 6px; padding-left: 18px;
+            position: relative; line-height: 1.35;
+        }
+
+        ul.scrap-list li::before { content: "✦"; position: absolute; left: 0; color: var(--accent-gold); }
+
+        /* CENTER COLUMN HERO & PHOTO/VIDEO UPLOADER */
+        .col-center { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+        .hero-wrapper {
+            width: 100%; text-align: center; cursor: pointer; position: relative; user-select: none;
+        }
+
+        /* CANVAS PROCESSOR FOR IMAGES & VIDEOS */
+        .hero-girl, .hero-canvas {
+            width: 100%; height: auto; max-height: 500px; object-fit: contain;
+            filter: drop-shadow(0 15px 30px rgba(180, 170, 150, 0.2));
+            transition: transform 0.2s ease;
+            display: block; margin: 0 auto;
+            background: transparent !important;
+            mix-blend-mode: normal !important;
+        }
+
+        /* ABSOLUTE DARK MODE ISOLATION */
+        body.dark-mode .hero-canvas,
+        body.dark-mode .hero-girl {
+            filter: drop-shadow(0 15px 30px rgba(0,0,0,0.4)) !important;
+            mix-blend-mode: normal !important;
+            isolation: isolate;
+        }
+
+        .hero-video-hidden {
+            display: none !important;
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* AESTHETIC TRANSPARENT PHOTO UPLOAD BADGE */
+        .photo-upload-badge {
+            position: absolute; bottom: 15px; right: 15px;
+            background: rgba(255, 253, 251, 0.35);
+            border: 1px solid rgba(197, 160, 89, 0.45);
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            
+            padding: 5px 12px; border-radius: 20px;
+            font-size: 0.72rem; font-weight: 600; color: var(--accent-gold);
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(180, 170, 150, 0.1);
+            transition: transform 0.2s, background 0.2s, opacity 0.2s;
+            display: flex; align-items: center; gap: 4px;
+            opacity: 0.55;
+            z-index: 10;
+        }
+
+        .photo-upload-badge:hover {
+            transform: scale(1.08);
+            background: rgba(255, 253, 251, 0.7);
+            opacity: 1;
+        }
+
+        .center-quote-card { width: 100%; text-align: center; margin-top: 10px; z-index: 5; }
+        .handwritten-quote { font-family: var(--font-main-title); font-size: 1.45rem; line-height: 1.3; }
+
+        /* CALENDAR & TO-DO */
+        .calendar-header { font-family: var(--font-main-title); font-size: 1.4rem; color: var(--accent-gold); text-align: center; margin-bottom: 6px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 0.75rem; }
+        .cal-day-head { font-weight: bold; color: var(--accent-gold); }
+        .cal-date { padding: 4px 0; border-radius: 4px; }
+        .cal-date.today { background: var(--accent-gold); color: #000; font-weight: bold; }
+
+        .todo-input-box { display: flex; gap: 6px; margin-bottom: 10px; }
+        .todo-input-box input {
+            flex: 1; padding: 6px 10px; border: 1px solid rgba(197, 160, 89, 0.4);
+            border-radius: 4px; font-size: 0.8rem; background: transparent; color: inherit;
+        }
+        .todo-input-box button {
+            background: var(--accent-gold); border: none; color: #000;
+            padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;
+        }
+        .todo-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-bottom: 6px; cursor: pointer; }
+
+        .rot-left { transform: rotate(-1.5deg); }
+        .rot-right { transform: rotate(1.5deg); }
+
+        /* MODAL POPUPS & CUSTOMIZERS */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.45); display: none;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+
+        .modal-card {
+            background: var(--card-white); color: var(--text-color);
+            padding: 25px; border-radius: 12px; max-width: 420px; width: 90%;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.25); position: relative;
+        }
+
+        .modal-close {
+            position: absolute; top: 12px; right: 16px;
+            font-size: 1.4rem; border: none; background: none; cursor: pointer; color: var(--text-color);
+        }
+
+        .customizer-title { font-family: var(--font-title); font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; color: var(--accent-gold); text-align: center; }
+        
+        .customizer-section { margin-bottom: 14px; }
+        .customizer-label { font-size: 0.82rem; font-weight: 600; margin-bottom: 6px; display: block; color: var(--accent-gold); }
+        
+        .picker-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .picker-btn {
+            background: var(--bg-color); border: 1px solid var(--accent-gold);
+            padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;
+            text-align: center; transition: transform 0.2s, background 0.2s; color: var(--text-color);
+        }
+        .picker-btn:hover { transform: scale(1.03); background: var(--card-pink); }
+
+        select.font-select {
+            width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--accent-gold);
+            background: var(--bg-color); color: var(--text-color); font-size: 0.85rem; margin-bottom: 10px;
+        }
+
+        /* HIDDEN YOUTUBE IFRAME CONTAINER */
+        #ytPlayerContainer {
+            position: absolute;
+            width: 1px; height: 1px;
+            opacity: 0; pointer-events: none;
+            overflow: hidden; left: -9999px;
+        }
+
+        /* MOBILE OVERRIDES */
+        @media (max-width: 850px) {
+            .top-controls { 
+                position: relative; 
+                top: 0; right: 0; left: 0; 
+                justify-content: center; 
+                margin-bottom: 15px; 
+                flex-wrap: wrap; 
+            }
+
+            .header {
+                margin-top: 10px;
+                margin-bottom: 20px;
+            }
+
+            .header h1 { font-size: 3.4rem; }
+            .header .quote { font-size: 1.35rem; }
+
+            .main-layout { display: flex; flex-direction: column; gap: 18px; }
+            .column { display: contents; }
+            .hero-girl, .hero-canvas { width: 100%; max-height: 440px; }
+
+            #card-center-col { order: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
+            #card-calendar   { order: 2; width: 100%; }
+            #card-todo       { order: 3; width: 100%; }
+            #card-about      { order: 4; width: 100%; }
+            #card-things     { order: 5; width: 100%; }
+            #card-healing    { order: 6; width: 100%; }
+            #card-strengths  { order: 7; width: 100%; }
+            #card-goals      { order: 8; width: 100%; }
+            #card-fashion    { order: 9; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
+    <!-- AUDIO PLAYER & HIDDEN YOUTUBE CONTAINER -->
+    <audio id="bgMusic" loop src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"></audio>
+    <div id="ytPlayerContainer"></div>
+
+    <!-- FILE INPUT ACCEPTING IMAGES, GIFS & VIDEOS -->
+    <input type="file" id="heroImageInput" accept="image/*,.gif,video/mp4,video/webm" style="display: none;" onchange="handleImageUpload(event)">
+
+    <!-- TOP CONTROLS BAR -->
+    <div class="top-controls">
+        <div class="vinyl-wrapper">
+            <div class="vinyl-container" onclick="toggleMusic()">
+                <div class="vinyl-record" id="vinylDisk"></div>
+                <div class="vinyl-info">
+                    <span id="musicStatus">Play Music <span style="color:var(--accent-gold)">✦</span></span>
+                    <span class="vinyl-sub" id="musicSub">Cozy Lofi Vibes</span>
+                </div>
+            </div>
+            <button class="music-settings-btn" onclick="changeMusicUrl()" title="Change Music URL">✦</button>
+        </div>
+
+        <button class="control-btn" onclick="openThemeModal()"><span class="gold-icon">✦</span> Theme</button>
+        <button class="control-btn" onclick="openFontModal()"><span class="gold-icon">✦</span> Font</button>
+        <button class="control-btn" onclick="toggleDarkMode()" id="modeBtn"><span class="gold-icon">✦</span> Dark</button>
+    </div>
+
+    <div class="board-container">
+
+        <header class="header">
+            <h1><span class="editable-text" id="mainTitleText">my vision board</span> <span class="edit-btn" contenteditable="false" onclick="enableHeaderEdit(this, 'mainTitleText')">✦</span></h1>
+            <br>
+            <p class="quote"><span class="editable-text" id="mainQuoteText">"Type your favorite quote here..."</span> <span class="edit-btn" contenteditable="false" onclick="enableHeaderEdit(this, 'mainQuoteText')">✦</span></p>
+        </header>
+
+        <div class="main-layout">
+
+            <!-- KALIWANG COLUMN -->
+            <div class="column col-left">
+                
+                <!-- Today's Calendar -->
+                <div class="card card-white rot-left" id="card-calendar">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ TODAY'S CALENDAR</div>
+                    </div>
+                    <div class="calendar-header" id="calMonthYear">July 2026</div>
+                    <div class="calendar-grid" id="calendarDays"></div>
+                </div>
+
+                <!-- Card 1 -->
+                <div class="card card-black rot-right" id="card-about" onclick="handleCardClick(this, event)">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ ABOUT ME</div>
+                        <span class="edit-btn" contenteditable="false" onclick="enableCardEdit(this, event)">✦</span>
+                    </div>
+                    <ul class="scrap-list">
+                        <li>Click ✦ button to edit this item</li>
+                        <li>Add your personal traits or goals</li>
+                        <li>Type your dream here...</li>
+                    </ul>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="card card-white rot-right" id="card-things" onclick="handleCardClick(this, event)">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ THINGS I LOVE</div>
+                        <span class="edit-btn" contenteditable="false" onclick="enableCardEdit(this, event)">✦</span>
+                    </div>
+                    <ul class="scrap-list">
+                        <li>My favorite hobbies</li>
+                        <li>Songs & performances</li>
+                        <li>Favorite coffee or tea</li>
+                    </ul>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="card card-pink rot-left" id="card-healing" onclick="handleCardClick(this, event)">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ MY JOURNEY</div>
+                        <span class="edit-btn" contenteditable="false" onclick="enableCardEdit(this, event)">✦</span>
+                    </div>
+                    <ul class="scrap-list">
+                        <li>Daily peaceful reminders</li>
+                        <li>Mindset shifts & growth</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- GITNANG COLUMN -->
+            <div class="column col-center" id="card-center-col">
+                <div class="hero-wrapper" id="heroMediaContainer">
+                    <img src="girl.png" alt="Character" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80';">
+                    <div class="photo-upload-badge" onclick="triggerPhotoSelect()">✦ Change Photo</div>
+                </div>
+
+                <!-- Main Quote Card -->
+                <div class="card card-white center-quote-card" id="card-philosophy" onclick="handleCardClick(this, event)">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ MY PHILOSOPHY</div>
+                        <span class="edit-btn" contenteditable="false" onclick="enableCardEdit(this, event)">✦</span>
+                    </div>
+                    <p class="handwritten-quote">
+                        "Your inspiring handwritten quote goes here..."
+                    </p>
+                </div>
+            </div>
+
+            <!-- KANANG COLUMN -->
+            <div class="column col-right">
+                
+                <!-- Daily To-Do List -->
+                <div class="card card-pink rot-right" id="card-todo">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ DAILY TO-DO LIST</div>
+                    </div>
+                    <div class="todo-input-box" onclick="event.stopPropagation()">
+                        <input type="text" id="todoInput" placeholder="Add new task...">
+                        <button onclick="addTodo()">+</button>
+                    </div>
+                    <div id="todoContainer" onclick="event.stopPropagation()"></div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="card card-black rot-left" id="card-strengths" onclick="handleCardClick(this, event)">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ MY STRENGTHS</div>
+                        <span class="edit-btn" contenteditable="false" onclick="enableCardEdit(this, event)">✦</span>
+                    </div>
+                    <ul class="scrap-list">
+                        <li>Strength #1</li>
+                        <li>Strength #2</li>
+                    </ul>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="card card-white rot-right" id="card-goals" onclick="handleCardClick(this, event)">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ FUTURE GOALS</div>
+                        <span class="edit-btn" contenteditable="false" onclick="enableCardEdit(this, event)">✦</span>
+                    </div>
+                    <ul class="scrap-list">
+                        <li>Goal #1 for this year</li>
+                        <li>Dream destination</li>
+                        <li>Financial target</li>
+                    </ul>
+                </div>
+
+                <!-- Card 6 -->
+                <div class="card card-pink rot-left" id="card-fashion" onclick="handleCardClick(this, event)">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ MY STYLE & VIBE</div>
+                        <span class="edit-btn" contenteditable="false" onclick="enableCardEdit(this, event)">✦</span>
+                    </div>
+                    <ul class="scrap-list">
+                        <li>Classic & Elegant</li>
+                        <li>Main Character Energy ✦</li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- General Card Popup Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+        <div class="modal-card" id="modalCardBox" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Theme Selector Modal -->
+    <div class="modal-overlay" id="themeModal" onclick="closeThemeModal()">
+        <div class="modal-card wiggle-effect" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeThemeModal()">&times;</button>
+            <div class="customizer-title">✦ Select Color Theme</div>
+            <div class="picker-grid">
+                <div class="picker-btn" onclick="setTheme('theme-cream-white')">✦ Cream White</div>
+                <div class="picker-btn" onclick="setTheme('theme-pastel-pink')">✦ Pastel Pink</div>
+                <div class="picker-btn" onclick="setTheme('theme-pastel-blue')">✦ Pastel Blue</div>
+                <div class="picker-btn" onclick="setTheme('theme-pastel-sage')">✦ Pastel Sage</div>
+                <div class="picker-btn" onclick="setTheme('theme-silver-gray')">✦ Silver Gray</div>
+                <div class="picker-btn" onclick="setTheme('theme-pastel-beige')">✦ Pastel Beige</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Font Selector Modal -->
+    <div class="modal-overlay" id="fontModal" onclick="closeFontModal()">
+        <div class="modal-card wiggle-effect" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeFontModal()">&times;</button>
+            <div class="customizer-title">✦ Customize Typography</div>
+            
+            <div class="customizer-section">
+                <label class="customizer-label">✦ Main Header & Top Quote Font:</label>
+                <select class="font-select" id="mainTitleFontSelect" onchange="applyMainTitleFont(this.value)">
+                    <option value="'Caveat', cursive">Caveat (Handwritten Original)</option>
+                    <option value="'Cinzel Decorative', serif">Vienna (Classic Heritage)</option>
+                    <option value="'Playfair Display', serif">Playfair Display (Serif)</option>
+                    <option value="'Montserrat', sans-serif">Montserrat (Clean)</option>
+                    <option value="'Quicksand', sans-serif">Quicksand (Soft Modern)</option>
+                    <option value="'Pacifico', cursive">Pacifico (Retro Script)</option>
+                    <option value="'Cinzel', serif">Cinzel (Classic Elegant)</option>
+                    <option value="'Fira Code', monospace">Fira Code (Tech Aesthetic)</option>
+                </select>
+            </div>
+
+            <div class="customizer-section">
+                <label class="customizer-label">✦ Card Headers Font:</label>
+                <select class="font-select" id="headerFontSelect" onchange="applyHeaderFont(this.value)">
+                    <option value="'Playfair Display', serif">Playfair Display (Original)</option>
+                    <option value="'Cinzel Decorative', serif">Vienna (Classic Heritage)</option>
+                    <option value="'Caveat', cursive">Caveat (Handwritten)</option>
+                    <option value="'Montserrat', sans-serif">Montserrat (Clean)</option>
+                    <option value="'Quicksand', sans-serif">Quicksand (Soft Modern)</option>
+                    <option value="'Pacifico', cursive">Pacifico (Retro Script)</option>
+                    <option value="'Cinzel', serif">Cinzel (Classic Elegant)</option>
+                    <option value="'Fira Code', monospace">Fira Code (Tech Aesthetic)</option>
+                </select>
+            </div>
+
+            <div class="customizer-section">
+                <label class="customizer-label">✦ Body Text & Inside Boxes Font:</label>
+                <select class="font-select" id="bodyFontSelect" onchange="applyBodyFont(this.value)">
+                    <option value="'Montserrat', sans-serif">Montserrat (Original)</option>
+                    <option value="'Cinzel Decorative', serif">Vienna (Classic Heritage)</option>
+                    <option value="'Caveat', cursive">Caveat (Handwritten)</option>
+                    <option value="'Playfair Display', serif">Playfair Display (Serif)</option>
+                    <option value="'Quicksand', sans-serif">Quicksand (Soft Modern)</option>
+                    <option value="'Pacifico', cursive">Pacifico (Retro Script)</option>
+                    <option value="'Cinzel', serif">Cinzel (Classic Elegant)</option>
+                    <option value="'Fira Code', monospace">Fira Code (Tech Aesthetic)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT WITH INDEXEDDB MEDIA VAULT & REALTIME RENDER ENGINE -->
+    <script>
+        /* FIREBASE CONFIGURATION */
+        const firebaseConfig = {
+            databaseURL: "https://pettags-36165-default-rtdb.firebaseio.com"
+        };
+
+        let db = null;
+        if (firebaseConfig.databaseURL && firebaseConfig.databaseURL !== "YOUR_FIREBASE_DATABASE_URL_HERE") {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+        }
+
+        /* AUTOMATIC UNIQUE ID FROM FOLDER NAME */
+        function getFolderKey() {
+            const pathParts = window.location.pathname.split('/').filter(p => p.length > 0);
+            if (pathParts.length > 0) {
+                const lastPart = pathParts[pathParts.length - 1];
+                if (lastPart.includes('.html')) {
+                    return pathParts.length > 1 ? pathParts[pathParts.length - 2] : "default_board";
+                }
+                return lastPart;
+            }
+            return "default_board";
+        }
+
+        const currentBoardId = getFolderKey();
+
+        /* INDEXEDDB LARGE MEDIA STORAGE ENGINE */
+        const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
+        let idb = null;
+
+        idbReq.onupgradeneeded = function(e) {
+            idb = e.target.result;
+            if (!idb.objectStoreNames.contains("media")) {
+                idb.createObjectStore("media");
+            }
+        };
+
+        idbReq.onsuccess = function(e) {
+            idb = e.target.result;
+            loadVisionBoardFromCloud();
+        };
+
+        function saveMediaToIDB(key, val) {
+            if (!idb) return;
+            const tx = idb.transaction("media", "readwrite");
+            const store = tx.objectStore("media");
+            store.put(val, key);
+        }
+
+        function clearMediaFromIDB(key) {
+            if (!idb) return;
+            const tx = idb.transaction("media", "readwrite");
+            const store = tx.objectStore("media");
+            store.delete(key);
+        }
+
+        function getMediaFromIDB(key, callback) {
+            if (!idb) return callback(null);
+            const tx = idb.transaction("media", "readonly");
+            const store = tx.objectStore("media");
+            const req = store.get(key);
+            req.onsuccess = function() {
+                callback(req.result);
+            };
+            req.onerror = function() {
+                callback(null);
+            };
+        }
+
+        // YouTube IFrame API
+        let ytPlayer = null;
+        let isYtReady = false;
+        let activeMusicType = 'mp3';
+
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        function onYouTubeIframeAPIReady() {
+            ytPlayer = new YT.Player('ytPlayerContainer', {
+                height: '0',
+                width: '0',
+                videoId: '',
+                playerVars: { 'autoplay': 0, 'controls': 0, 'loop': 1 },
+                events: {
+                    'onReady': () => { isYtReady = true; },
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerStateChange(event) {
+            const disk = document.getElementById('vinylDisk');
+            const status = document.getElementById('musicStatus');
+            if (event.data === YT.PlayerState.PLAYING) {
+                disk.classList.add('spinning');
+                status.innerHTML = 'Playing <span style="color:var(--accent-gold)">✦</span>';
+            } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+                disk.classList.remove('spinning');
+                status.innerHTML = 'Play Music <span style="color:var(--accent-gold)">✦</span>';
+            }
+        }
+
+        function getYouTubeId(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        // 1. Card Click & Popup with Wiggle Animation
+        function handleCardClick(card, event) {
+            if (card.dataset.editing === "true") return;
+
+            const modalBody = document.getElementById('modalBody');
+            const modalOverlay = document.getElementById('modalOverlay');
+            const modalCardBox = document.getElementById('modalCardBox');
+            
+            const clone = card.cloneNode(true);
+            clone.querySelectorAll('.edit-btn').forEach(btn => btn.remove());
+            
+            modalBody.innerHTML = clone.innerHTML;
+            modalOverlay.style.display = 'flex';
+
+            modalCardBox.classList.remove('wiggle-effect');
+            void modalCardBox.offsetWidth;
+            modalCardBox.classList.add('wiggle-effect');
+        }
+
+        function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
+
+        // 2. Text Editing & Saving
+        function enableCardEdit(btn, event) {
+            event.stopPropagation();
+            const card = btn.closest('.card');
+            
+            if (card.dataset.editing === "true") {
+                card.dataset.editing = "false";
+                card.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+                btn.innerText = "✦"; btn.style.width = "22px";
+                saveVisionBoardToCloud();
+            } else {
+                card.dataset.editing = "true";
+                const title = card.querySelector('.card-title');
+                if (title) title.setAttribute('contenteditable', 'true');
+                card.querySelectorAll('li, p').forEach(el => el.setAttribute('contenteditable', 'true'));
+                if (title) title.focus();
+                btn.innerText = "💾"; btn.style.width = "26px";
+            }
+        }
+
+        function enableHeaderEdit(btn, targetId) {
+            const target = document.getElementById(targetId);
+            if (target.isContentEditable) {
+                target.removeAttribute('contenteditable');
+                btn.innerText = "✦";
+                saveVisionBoardToCloud();
+            } else {
+                target.setAttribute('contenteditable', 'true');
+                target.focus();
+                btn.innerText = "💾";
+            }
+        }
+
+        // 3. Image, GIF & REALTIME TRANSPARENT VIDEO RENDER ENGINE
+        function triggerPhotoSelect() { document.getElementById('heroImageInput').click(); }
+
+        let videoAnimFrame = null;
+        let activeHeroVidUrl = "";
+
+        function renderTransparentVideoFrame(videoEl, canvasEl, ctx) {
+            if (videoEl.paused || videoEl.ended) return;
+
+            if (canvasEl.width !== videoEl.videoWidth && videoEl.videoWidth > 0) {
+                canvasEl.width = videoEl.videoWidth;
+                canvasEl.height = videoEl.videoHeight;
+            }
+
+            if (canvasEl.width > 0) {
+                ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+                const frame = ctx.getImageData(0, 0, canvasEl.width, canvasEl.height);
+                const l = frame.data.length;
+
+                // Smart White-Detection (Only removes pure/near white background, leaves colored video intact)
+                for (let i = 0; i < l; i += 4) {
+                    const r = frame.data[i];
+                    const g = frame.data[i + 1];
+                    const b = frame.data[i + 2];
+
+                    if (r > 222 && g > 222 && b > 222) {
+                        frame.data[i + 3] = 0; // Transparent White
+                    } else if (r > 200 && g > 200 && b > 200) {
+                        const avg = (r + g + b) / 3;
+                        const alpha = Math.max(0, (255 - avg) * 3);
+                        if (alpha < frame.data[i + 3]) {
+                            frame.data[i + 3] = alpha;
+                        }
+                    }
+                }
+                ctx.putImageData(frame, 0, 0);
+            }
+
+            videoAnimFrame = requestAnimationFrame(() => renderTransparentVideoFrame(videoEl, canvasEl, ctx));
+        }
+
+        function setHeroMedia(mediaUrl, isVideo = false) {
+            if (videoAnimFrame) {
+                cancelAnimationFrame(videoAnimFrame);
+                videoAnimFrame = null;
+            }
+
+            const container = document.getElementById('heroMediaContainer');
+            const badge = container.querySelector('.photo-upload-badge');
+
+            if (isVideo) {
+                activeHeroVidUrl = mediaUrl;
+                container.innerHTML = `
+                    <video src="${mediaUrl}" id="heroVidSrc" class="hero-video-hidden" autoplay loop muted playsinline crossorigin="anonymous"></video>
+                    <canvas id="heroCanvas" class="hero-canvas"></canvas>
+                `;
+                
+                const vid = document.getElementById('heroVidSrc');
+                const cvs = document.getElementById('heroCanvas');
+                const ctx = cvs.getContext('2d', { willReadFrequently: true });
+
+                vid.addEventListener('play', () => {
+                    renderTransparentVideoFrame(vid, cvs, ctx);
+                });
+
+                vid.play().catch(() => {});
+            } else {
+                activeHeroVidUrl = "";
+                container.innerHTML = `
+                    <img src="${mediaUrl}" alt="Character" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80';">
+                `;
+            }
+            container.appendChild(badge);
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 8 * 1024 * 1024) {
+                    alert("Please select a file smaller than 8MB to keep your board fast!");
+                    return;
+                }
+
+                const reader = new FileReader();
+
+                if (file.type.startsWith('video/')) {
+                    reader.onload = function(e) {
+                        setHeroMedia(e.target.result, true);
+                        saveVisionBoardToCloud();
+                    };
+                    reader.readAsDataURL(file);
+                } 
+                else if (file.type === "image/gif") {
+                    reader.onload = function(e) {
+                        setHeroMedia(e.target.result, false);
+                        saveVisionBoardToCloud();
+                    };
+                    reader.readAsDataURL(file);
+                } 
+                else {
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            const maxWidth = 800;
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > maxWidth) {
+                                height = Math.round((height * maxWidth) / width);
+                                width = maxWidth;
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+
+                            ctx.clearRect(0, 0, width, height);
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            const compressedDataUrl = canvas.toDataURL('image/png');
+                            setHeroMedia(compressedDataUrl, false);
+                            saveVisionBoardToCloud();
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+
+        // 4. Themes & Fonts Customizers
+        function openThemeModal() { document.getElementById('themeModal').style.display = 'flex'; }
+        function closeThemeModal() { document.getElementById('themeModal').style.display = 'none'; }
+
+        function setTheme(themeClass) {
+            document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
+            if (themeClass) { document.body.classList.add(themeClass); }
+            closeThemeModal();
+            saveVisionBoardToCloud();
+        }
+
+        function openFontModal() { document.getElementById('fontModal').style.display = 'flex'; }
+        function closeFontModal() { document.getElementById('fontModal').style.display = 'none'; }
+
+        function applyMainTitleFont(fontFamily) {
+            document.documentElement.style.setProperty('--font-main-title', fontFamily);
+            saveVisionBoardToCloud();
+        }
+
+        function applyHeaderFont(fontFamily) {
+            document.documentElement.style.setProperty('--font-title', fontFamily);
+            saveVisionBoardToCloud();
+        }
+
+        function applyBodyFont(fontFamily) {
+            document.documentElement.style.setProperty('--font-body', fontFamily);
+            saveVisionBoardToCloud();
+        }
+
+        // 5. Dual Music Player
+        function toggleMusic() {
+            const disk = document.getElementById('vinylDisk');
+            const status = document.getElementById('musicStatus');
+
+            if (activeMusicType === 'youtube' && ytPlayer && isYtReady) {
+                const state = ytPlayer.getPlayerState();
+                if (state === YT.PlayerState.PLAYING) {
+                    ytPlayer.pauseVideo();
+                } else {
+                    ytPlayer.playVideo();
+                }
+            } else {
+                const audio = document.getElementById('bgMusic');
+                if (audio.paused) {
+                    audio.play(); disk.classList.add('spinning'); status.innerHTML = 'Playing <span style="color:var(--accent-gold)">✦</span>';
+                } else {
+                    audio.pause(); disk.classList.remove('spinning'); status.innerHTML = 'Play Music <span style="color:var(--accent-gold)">✦</span>';
+                }
+            }
+        }
+
+        function changeMusicUrl() {
+            const currentSong = localStorage.getItem('vb_music_' + currentBoardId) || "";
+            const newUrl = prompt("Enter custom MP3 audio URL or YouTube link for the vinyl player:", currentSong);
+            if (newUrl && newUrl.trim() !== '') {
+                const trimmed = newUrl.trim();
+                applyMusic(trimmed);
+                saveVisionBoardToCloud();
+            }
+        }
+
+        function applyMusic(url) {
+            const ytId = getYouTubeId(url);
+            const audio = document.getElementById('bgMusic');
+
+            if (ytId) {
+                audio.pause();
+                activeMusicType = 'youtube';
+                document.getElementById('musicSub').innerText = "YouTube Track ✨";
+                if (ytPlayer && isYtReady) {
+                    ytPlayer.loadVideoById(ytId);
+                    ytPlayer.playVideo();
+                }
+            } else {
+                if (ytPlayer && isYtReady) { ytPlayer.stopVideo(); }
+                activeMusicType = 'mp3';
+                audio.src = url;
+                document.getElementById('musicSub').innerText = "Custom Song ✨";
+                audio.play();
+                document.getElementById('vinylDisk').classList.add('spinning');
+                document.getElementById('musicStatus').innerHTML = 'Playing <span style="color:var(--accent-gold)">✦</span>';
+            }
+        }
+
+        // 6. Dark Mode & Calendar
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const btn = document.getElementById('modeBtn');
+            btn.innerHTML = document.body.classList.contains('dark-mode') ? '<span class="gold-icon">✦</span> Light' : '<span class="gold-icon">✦</span> Dark';
+            saveVisionBoardToCloud();
+        }
+
+        function renderCalendar() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const today = now.getDate();
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('calMonthYear').innerText = `${monthNames[month]} ${year}`;
+
+            const grid = document.getElementById('calendarDays');
+            grid.innerHTML = '';
+
+            const dayHeads = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            dayHeads.forEach(d => { grid.innerHTML += `<div class="cal-day-head">${d}</div>`; });
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) { grid.innerHTML += `<div></div>`; }
+            for (let day = 1; day <= totalDays; day++) {
+                const isToday = day === today ? 'today' : '';
+                grid.innerHTML += `<div class="cal-date ${isToday}">${day}</div>`;
+            }
+        }
+
+        // 7. To-Do List
+        let todos = ["Add your first task here ✦"];
+
+        function renderTodos() {
+            const container = document.getElementById('todoContainer');
+            container.innerHTML = '';
+            todos.forEach((todo, index) => {
+                container.innerHTML += `
+                    <div class="todo-item" onclick="toggleTodo(${index})">
+                        <span>✦</span>
+                        <span>${todo}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            if (input.value.trim() !== '') {
+                todos.push(input.value.trim());
+                input.value = '';
+                renderTodos();
+                saveVisionBoardToCloud();
+            }
+        }
+
+        function toggleTodo(index) {
+            todos.splice(index, 1);
+            renderTodos();
+            saveVisionBoardToCloud();
+        }
+
+        /* --- CLOUD SYNC & FIREBASE DATA FUNCTIONS --- */
+        function getVisionBoardData() {
+            const cardsData = {};
+            document.querySelectorAll('.card[id]').forEach(card => {
+                if (card.id !== 'card-calendar' && card.id !== 'card-todo') {
+                    cardsData[card.id] = card.innerHTML;
+                }
+            });
+
+            const heroImgEl = document.getElementById('heroImg');
+
+            return {
+                mainTitle: document.getElementById('mainTitleText').innerText,
+                mainQuote: document.getElementById('mainQuoteText').innerText,
+                heroImg: heroImgEl ? heroImgEl.src : "",
+                heroVid: activeHeroVidUrl,
+                themeClass: document.body.className,
+                isDarkMode: document.body.classList.contains('dark-mode'),
+                mainTitleFont: getComputedStyle(document.documentElement).getPropertyValue('--font-main-title'),
+                headerFont: getComputedStyle(document.documentElement).getPropertyValue('--font-title'),
+                bodyFont: getComputedStyle(document.documentElement).getPropertyValue('--font-body'),
+                musicUrl: localStorage.getItem('vb_music_' + currentBoardId) || "",
+                todos: todos,
+                cards: cardsData
+            };
+        }
+
+        function saveVisionBoardToCloud() {
+            const data = getVisionBoardData();
+            
+            // Save Heavy Media directly to IndexedDB Vault and purge conflicting cache
+            if (data.heroVid) {
+                saveMediaToIDB('heroVid_' + currentBoardId, data.heroVid);
+                clearMediaFromIDB('heroImg_' + currentBoardId);
+            } else if (data.heroImg) {
+                saveMediaToIDB('heroImg_' + currentBoardId, data.heroImg);
+                clearMediaFromIDB('heroVid_' + currentBoardId);
+            }
+
+            // Save Lightweight Board Structure to LocalStorage
+            const lightData = Object.assign({}, data);
+            delete lightData.heroVid; 
+            delete lightData.heroImg;
+
+            try {
+                localStorage.setItem('visionBoard_' + currentBoardId, JSON.stringify(lightData));
+            } catch (e) {}
+
+            if (db) {
+                db.ref('visionboards/' + currentBoardId).set(data);
+            }
+        }
+
+        function applyVisionBoardData(data) {
+            if (!data) return;
+
+            if (data.mainTitle) document.getElementById('mainTitleText').innerText = data.mainTitle;
+            if (data.mainQuote) document.getElementById('mainQuoteText').innerText = data.mainQuote;
+            
+            if (data.heroVid) {
+                setHeroMedia(data.heroVid, true);
+            } else if (data.heroImg) {
+                setHeroMedia(data.heroImg, false);
+            }
+
+            if (data.themeClass) document.body.className = data.themeClass;
+            
+            if (data.isDarkMode) {
+                document.body.classList.add('dark-mode');
+                document.getElementById('modeBtn').innerHTML = '<span class="gold-icon">✦</span> Light';
+            } else {
+                document.body.classList.remove('dark-mode');
+                document.getElementById('modeBtn').innerHTML = '<span class="gold-icon">✦</span> Dark';
+            }
+
+            if (data.mainTitleFont) {
+                document.documentElement.style.setProperty('--font-main-title', data.mainTitleFont);
+                document.getElementById('mainTitleFontSelect').value = data.mainTitleFont.trim();
+            }
+            if (data.headerFont) {
+                document.documentElement.style.setProperty('--font-title', data.headerFont);
+                document.getElementById('headerFontSelect').value = data.headerFont.trim();
+            }
+            if (data.bodyFont) {
+                document.documentElement.style.setProperty('--font-body', data.bodyFont);
+                document.getElementById('bodyFontSelect').value = data.bodyFont.trim();
+            }
+
+            if (data.musicUrl) {
+                localStorage.setItem('vb_music_' + currentBoardId, data.musicUrl);
+                applyMusic(data.musicUrl);
+            }
+
+            if (data.todos) {
+                todos = data.todos;
+                renderTodos();
+            }
+
+            if (data.cards) {
+                Object.keys(data.cards).forEach(cardId => {
+                    const cardElem = document.getElementById(cardId);
+                    if (cardElem) {
+                        cardElem.innerHTML = data.cards[cardId];
+                    }
+                });
+            }
+        }
+
+        function loadVisionBoardFromCloud() {
+            // First Priority: Instant Media Load from IndexedDB Vault
+            getMediaFromIDB('heroVid_' + currentBoardId, function(vidData) {
+                if (vidData) {
+                    setHeroMedia(vidData, true);
+                } else {
+                    getMediaFromIDB('heroImg_' + currentBoardId, function(imgData) {
+                        if (imgData) setHeroMedia(imgData, false);
+                    });
+                }
+            });
+
+            // LocalStorage for text layout & themes
+            const localData = localStorage.getItem('visionBoard_' + currentBoardId);
+            if (localData) {
+                try { applyVisionBoardData(JSON.parse(localData)); } catch(e){}
+            }
+
+            // Realtime Sync from Firebase
+            if (db) {
+                db.ref('visionboards/' + currentBoardId).once('value').then(snapshot => {
+                    if (snapshot.exists()) {
+                        const cloudData = snapshot.val();
+                        applyVisionBoardData(cloudData);
+                        
+                        if (cloudData.heroVid) {
+                            saveMediaToIDB('heroVid_' + currentBoardId, cloudData.heroVid);
+                            clearMediaFromIDB('heroImg_' + currentBoardId);
+                        } else if (cloudData.heroImg) {
+                            saveMediaToIDB('heroImg_' + currentBoardId, cloudData.heroImg);
+                            clearMediaFromIDB('heroVid_' + currentBoardId);
+                        }
+                    }
+                }).catch(err => console.warn("Offline mode active:", err));
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCalendar();
+            renderTodos();
+        });
+    </script>
+</body>
+</html>
 
