@@ -618,7 +618,7 @@
                 <!-- GITNANG COLUMN - HERO PHOTO CONTAINER -->
                 <div class="column col-center" id="card-center-col">
                     <div class="hero-wrapper" id="heroMediaContainer">
-                        <img src="girl.png" alt="Portrait" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80';">
+                        <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80" alt="Portrait" class="hero-girl" id="heroImg">
                         <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()">✦ Change Photo</div>
                     </div>
 
@@ -806,7 +806,7 @@
         let isSignUpMode = false;
         let testimonials = [];
 
-        /* INSTANT REFRESH CHECK TO PREVENT LOGIN FLASH AND CROSS-USER BLINKING */
+        /* INSTANT REFRESH CHECK TO PREVENT LOGIN FLASH */
         if (loggedInUsername) {
             document.getElementById('authScreen').style.display = 'none';
             document.getElementById('mainAppContainer').style.display = 'block';
@@ -1090,8 +1090,13 @@
             }
         }
 
+        /* RESET FILE INPUT BEFORE SELECTING TO GUARANTEE FILE PICKER FIRES */
         function triggerPhotoSelect() {
-            if (isOwnerMode) document.getElementById('heroImageInput').click();
+            if (isOwnerMode) {
+                const input = document.getElementById('heroImageInput');
+                input.value = '';
+                input.click();
+            }
         }
 
         let videoAnimFrame = null;
@@ -1131,7 +1136,6 @@
             videoAnimFrame = requestAnimationFrame(() => renderTransparentVideoFrame(videoEl, canvasEl, ctx));
         }
 
-        /* SAFE SINGLE HERO MEDIA SETTER */
         function setHeroMedia(mediaUrl, isVideo = false) {
             if (videoAnimFrame) {
                 cancelAnimationFrame(videoAnimFrame);
@@ -1158,64 +1162,73 @@
             } else {
                 activeHeroVidUrl = "";
                 container.innerHTML = `
-                    <img src="${mediaUrl}" alt="Portrait" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80';">
+                    <img src="${mediaUrl}" alt="Portrait" class="hero-girl" id="heroImg">
                     <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()" style="display: ${isOwnerMode ? 'flex' : 'none'}">✦ Change Photo</div>
                 `;
             }
         }
 
+        /* RELIABLE PHOTO UPLOAD & IMMEDIATE CLOUD/LOCAL SAVE */
         function handleImageUpload(event) {
             if (!isOwnerMode) return;
             const file = event.target.files[0];
-            if (file) {
-                if (file.size > 8 * 1024 * 1024) {
-                    alert("Please select a file smaller than 8MB to keep your board fast!");
-                    return;
-                }
+            if (!file) return;
 
-                const reader = new FileReader();
+            if (file.size > 8 * 1024 * 1024) {
+                alert("Please select a file smaller than 8MB to keep your board fast!");
+                return;
+            }
 
-                if (file.type.startsWith('video/')) {
-                    reader.onload = function(e) {
-                        setHeroMedia(e.target.result, true);
-                        saveVisionBoardToCloud();
+            const reader = new FileReader();
+
+            if (file.type.startsWith('video/')) {
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    setHeroMedia(dataUrl, true);
+                    saveMediaToIDB('heroVid_' + currentBoardId, dataUrl);
+                    clearMediaFromIDB('heroImg_' + currentBoardId);
+                    if (db) db.ref('visionboards/' + currentBoardId + '/heroVid').set(dataUrl);
+                };
+                reader.readAsDataURL(file);
+            } 
+            else if (file.type === "image/gif") {
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    setHeroMedia(dataUrl, false);
+                    saveMediaToIDB('heroImg_' + currentBoardId, dataUrl);
+                    clearMediaFromIDB('heroVid_' + currentBoardId);
+                    if (db) db.ref('visionboards/' + currentBoardId + '/heroImg').set(dataUrl);
+                };
+                reader.readAsDataURL(file);
+            } 
+            else {
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const maxWidth = 800;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width; canvas.height = height;
+                        ctx.clearRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        const compressedDataUrl = canvas.toDataURL('image/png');
+                        setHeroMedia(compressedDataUrl, false);
+                        saveMediaToIDB('heroImg_' + currentBoardId, compressedDataUrl);
+                        clearMediaFromIDB('heroVid_' + currentBoardId);
+                        if (db) db.ref('visionboards/' + currentBoardId + '/heroImg').set(compressedDataUrl);
                     };
-                    reader.readAsDataURL(file);
-                } 
-                else if (file.type === "image/gif") {
-                    reader.onload = function(e) {
-                        setHeroMedia(e.target.result, false);
-                        saveVisionBoardToCloud();
-                    };
-                    reader.readAsDataURL(file);
-                } 
-                else {
-                    reader.onload = function(e) {
-                        const img = new Image();
-                        img.onload = function() {
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            const maxWidth = 800;
-                            let width = img.width;
-                            let height = img.height;
-
-                            if (width > maxWidth) {
-                                height = Math.round((height * maxWidth) / width);
-                                width = maxWidth;
-                            }
-
-                            canvas.width = width; canvas.height = height;
-                            ctx.clearRect(0, 0, width, height);
-                            ctx.drawImage(img, 0, 0, width, height);
-
-                            const compressedDataUrl = canvas.toDataURL('image/png');
-                            setHeroMedia(compressedDataUrl, false);
-                            saveVisionBoardToCloud();
-                        };
-                        img.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
             }
         }
 
@@ -1406,15 +1419,6 @@
             if (!isOwnerMode || !currentBoardId) return;
 
             const data = getVisionBoardData();
-            
-            if (data.heroVid) {
-                saveMediaToIDB('heroVid_' + currentBoardId, data.heroVid);
-                clearMediaFromIDB('heroImg_' + currentBoardId);
-            } else if (data.heroImg) {
-                saveMediaToIDB('heroImg_' + currentBoardId, data.heroImg);
-                clearMediaFromIDB('heroVid_' + currentBoardId);
-            }
-
             const lightData = Object.assign({}, data);
             delete lightData.heroVid; delete lightData.heroImg;
 
@@ -1423,7 +1427,18 @@
             } catch (e) {}
 
             if (db) {
-                db.ref('visionboards/' + currentBoardId).set(data);
+                db.ref('visionboards/' + currentBoardId).update({
+                    mainTitle: data.mainTitle,
+                    mainQuote: data.mainQuote,
+                    themeClass: data.themeClass,
+                    isDarkMode: data.isDarkMode,
+                    mainTitleFont: data.mainTitleFont,
+                    headerFont: data.headerFont,
+                    bodyFont: data.bodyFont,
+                    musicUrl: data.musicUrl,
+                    testimonials: data.testimonials,
+                    cards: data.cards
+                });
             }
         }
 
@@ -1432,12 +1447,6 @@
 
             if (data.mainTitle && isOwnerMode) document.getElementById('mainTitleText').innerText = data.mainTitle;
             if (data.mainQuote) document.getElementById('mainQuoteText').innerText = data.mainQuote;
-            
-            if (data.heroVid) {
-                setHeroMedia(data.heroVid, true);
-            } else if (data.heroImg) {
-                setHeroMedia(data.heroImg, false);
-            }
 
             if (data.themeClass) document.body.className = data.themeClass;
             
@@ -1533,11 +1542,11 @@
                         applyVisionBoardData(cloudData);
                         
                         if (cloudData.heroVid) {
+                            setHeroMedia(cloudData.heroVid, true);
                             saveMediaToIDB('heroVid_' + currentBoardId, cloudData.heroVid);
-                            clearMediaFromIDB('heroImg_' + currentBoardId);
                         } else if (cloudData.heroImg) {
+                            setHeroMedia(cloudData.heroImg, false);
                             saveMediaToIDB('heroImg_' + currentBoardId, cloudData.heroImg);
-                            clearMediaFromIDB('heroVid_' + currentBoardId);
                         }
                     }
                 }).catch(err => console.warn("Offline mode active:", err));
