@@ -126,6 +126,7 @@
             font-family: var(--font-main-title);
             font-size: 2.2rem; font-weight: 700; color: var(--text-color);
             display: flex; align-items: center; gap: 6px; text-decoration: none;
+            cursor: pointer;
         }
 
         .nav-controls { display: flex; align-items: center; gap: 8px; }
@@ -156,6 +157,11 @@
 
         .control-btn span.gold-icon { color: var(--accent-gold); font-weight: bold; }
         .control-btn:hover { transform: translateY(-2px); border-color: var(--accent-gold); }
+
+        .home-btn {
+            background: var(--accent-gold) !important; color: #000 !important;
+            font-weight: 700 !important; border: none !important;
+        }
 
         .vinyl-wrapper { display: flex; align-items: center; gap: 6px; }
 
@@ -193,6 +199,15 @@
             width: 28px; height: 28px; display: flex; align-items: center;
             justify-content: center; cursor: pointer; font-size: 0.8rem;
             box-shadow: var(--shadow-soft); transition: transform 0.2s;
+        }
+
+        /* VISITOR BANNER */
+        .visitor-banner {
+            display: none; width: 100%; max-width: 600px; margin: 0 auto 15px auto;
+            background: var(--card-pink); border: 1px dashed var(--accent-gold);
+            padding: 8px 16px; border-radius: 30px; text-align: center;
+            font-size: 0.85rem; font-weight: 600; color: var(--text-color);
+            box-shadow: var(--shadow-soft);
         }
 
         /* AUTH SCREEN */
@@ -298,7 +313,6 @@
             z-index: 10; box-shadow: 0 16px 32px rgba(197, 160, 89, 0.22);
         }
 
-        /* WIGGLE ANIMATION EFFECT */
         @keyframes wiggly {
             0% { transform: rotate(0deg) scale(0.98); }
             25% { transform: rotate(-3deg) scale(1.02); }
@@ -391,7 +405,6 @@
         }
         .testi-item:hover { transform: translateY(-2px); }
 
-        /* Individual Testi Color Custom Themes */
         .testi-theme-sage   { background-color: #d2dfca !important; border-left-color: #5b7050 !important; }
         .testi-theme-pink   { background-color: #fbe0e7 !important; border-left-color: #d86b86 !important; }
         .testi-theme-blue   { background-color: #d8edf5 !important; border-left-color: #4a8fa8 !important; }
@@ -474,9 +487,11 @@
 
     <!-- TOP NAVIGATION BAR -->
     <nav class="app-navbar">
-        <a href="#" class="nav-brand">✦ Vision Space</a>
+        <a onclick="goHome()" class="nav-brand">✦ Vision Space</a>
 
         <div class="nav-controls">
+            <button class="control-btn home-btn" onclick="goHome()"><span class="gold-icon">🏠</span> My Space</button>
+
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="Search user..." onkeydown="if(event.key==='Enter') searchUser()">
                 <button onclick="searchUser()">🔍</button>
@@ -527,6 +542,9 @@
         <input type="file" id="heroImageInput" accept="image/*,.gif,video/mp4,video/webm" style="display: none;" onchange="handleImageUpload(event)">
 
         <div class="board-container">
+
+            <!-- VISITOR BANNER INDICATOR -->
+            <div class="visitor-banner" id="visitorBanner"></div>
 
             <header class="header">
                 <h1>
@@ -852,8 +870,21 @@
             document.getElementById('authScreen').style.display = 'none';
             document.getElementById('mainAppContainer').style.display = 'block';
 
-            /* Set accurate username badge */
-            document.getElementById('userBadgeLabel').innerText = isOwnerMode ? `@${currentBoardId} (You)` : `@${currentBoardId}`;
+            /* Set user badge */
+            document.getElementById('userBadgeLabel').innerText = isOwnerMode ? `@${loggedInUsername} (You)` : `@${loggedInUsername}`;
+
+            /* VISITOR BANNER & TITLE UPDATES */
+            const banner = document.getElementById('visitorBanner');
+            const mainTitle = document.getElementById('mainTitleText');
+
+            if (!isOwnerMode) {
+                banner.style.display = 'block';
+                banner.innerHTML = `✨ You are currently visiting <strong>@${currentBoardId}</strong>'s Vision Space`;
+                mainTitle.innerText = `${currentBoardId}'s vision board`;
+            } else {
+                banner.style.display = 'none';
+                mainTitle.innerText = "my vision board";
+            }
 
             const editBtns = document.querySelectorAll('.edit-btn, .photo-upload-badge');
             editBtns.forEach(btn => {
@@ -863,7 +894,15 @@
             loadVisionBoardFromCloud();
         }
 
-        /* SEARCH USER WITH CLEAR FEEDBACK ALERT */
+        function goHome() {
+            if (loggedInUsername) {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('u', loggedInUsername);
+                window.location.href = currentUrl.toString();
+            }
+        }
+
+        /* SEARCH USER WITH VALIDATION */
         function searchUser() {
             const query = document.getElementById('searchInput').value.trim();
             if (query === '') return;
@@ -967,7 +1006,6 @@
         function handleCardClick(card, event) {
             if (card.dataset.editing === "true") return;
 
-            // Trigger wiggle effect on card
             card.classList.remove('wiggle-effect');
             void card.offsetWidth;
             card.classList.add('wiggle-effect');
@@ -1239,7 +1277,7 @@
             if (isOwnerMode) saveVisionBoardToCloud();
         }
 
-        /* FRIENDSTER TESTIMONIALS WITH CUSTOM COLOR THEMES */
+        /* FRIENDSTER TESTIMONIALS LOGIC */
         function renderTestimonials() {
             const container = document.getElementById('testiContainer');
             container.innerHTML = '';
@@ -1279,7 +1317,6 @@
                 date: new Date().toLocaleDateString()
             };
 
-            // Post at the bottom of the testimonials list
             testimonials.push(newTesti);
             nameInput.value = '';
             msgInput.value = '';
@@ -1355,7 +1392,7 @@
         function applyVisionBoardData(data) {
             if (!data) return;
 
-            if (data.mainTitle) document.getElementById('mainTitleText').innerText = data.mainTitle;
+            if (data.mainTitle && isOwnerMode) document.getElementById('mainTitleText').innerText = data.mainTitle;
             if (data.mainQuote) document.getElementById('mainQuoteText').innerText = data.mainQuote;
             
             if (data.heroVid) {
