@@ -351,7 +351,6 @@
 
         .col-center { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
-        /* STRICTLY CONSTRAINED PHOTO WRAPPER - PREVENTS OVERFLOW & DUPLICATION */
         .hero-wrapper {
             width: 100%; max-width: 320px; margin: 0 auto 10px auto;
             text-align: center; cursor: pointer; position: relative; user-select: none;
@@ -508,20 +507,24 @@
 
             <button class="control-btn" title="Logged in user"><span class="gold-icon">✦</span> <span id="userBadgeLabel">@User</span></button>
 
-            <div class="vinyl-wrapper">
-                <div class="vinyl-container" onclick="toggleMusic()">
-                    <div class="vinyl-record" id="vinylDisk"></div>
-                    <div class="vinyl-info">
-                        <span id="musicStatus">Play Music <span style="color:var(--accent-gold)">✦</span></span>
-                        <span class="vinyl-sub" id="musicSub">Cozy Lofi Vibes</span>
+            <!-- OWNER-ONLY CUSTOMIZER CONTROLS (HIDDEN WHEN VISITING OTHERS) -->
+            <div id="ownerControlsGroup" style="display: none; align-items: center; gap: 8px;">
+                <div class="vinyl-wrapper">
+                    <div class="vinyl-container" onclick="toggleMusic()">
+                        <div class="vinyl-record" id="vinylDisk"></div>
+                        <div class="vinyl-info">
+                            <span id="musicStatus">Play Music <span style="color:var(--accent-gold)">✦</span></span>
+                            <span class="vinyl-sub" id="musicSub">Cozy Lofi Vibes</span>
+                        </div>
                     </div>
+                    <button class="music-settings-btn" onclick="changeMusicUrl()" title="Change Music URL">✦</button>
                 </div>
-                <button class="music-settings-btn" onclick="changeMusicUrl()" title="Change Music URL">✦</button>
+
+                <button class="control-btn" onclick="openThemeModal()"><span class="gold-icon">✦</span> Theme</button>
+                <button class="control-btn" onclick="openFontModal()"><span class="gold-icon">✦</span> Font</button>
+                <button class="control-btn" onclick="toggleDarkMode()" id="modeBtn"><span class="gold-icon">✦</span> Dark</button>
             </div>
 
-            <button class="control-btn" onclick="openThemeModal()"><span class="gold-icon">✦</span> Theme</button>
-            <button class="control-btn" onclick="openFontModal()"><span class="gold-icon">✦</span> Font</button>
-            <button class="control-btn" onclick="toggleDarkMode()" id="modeBtn"><span class="gold-icon">✦</span> Dark</button>
             <button class="control-btn" onclick="handleLogout()" style="border-color:#e53e3e; color:#e53e3e;">Logout</button>
         </div>
     </nav>
@@ -826,8 +829,9 @@
 
             if (isSignUpMode) {
                 auth.createUserWithEmailAndPassword(emailFormat, passVal)
-                    .then(() => {
+                    .then((userCred) => {
                         loggedInUsername = userVal;
+                        localStorage.setItem('vb_logged_user', loggedInUsername);
                         setupViewMode(loggedInUsername);
                     })
                     .catch(err => {
@@ -839,8 +843,9 @@
                     });
             } else {
                 auth.signInWithEmailAndPassword(emailFormat, passVal)
-                    .then(() => {
+                    .then((userCred) => {
                         loggedInUsername = userVal;
+                        localStorage.setItem('vb_logged_user', loggedInUsername);
                         setupViewMode(loggedInUsername);
                     })
                     .catch(err => {
@@ -850,19 +855,27 @@
         }
 
         function handleLogout() {
+            localStorage.removeItem('vb_logged_user');
             auth.signOut().then(() => {
                 location.reload();
             });
         }
 
+        /* PERSISTENT AUTH STATE LISTENER WITH LOCALSTORAGE FALLBACK FOR SMOOTH REFRESH */
         auth.onAuthStateChanged(user => {
-            if (user) {
-                if (user.email) {
+            const cachedUser = localStorage.getItem('vb_logged_user');
+
+            if (user || cachedUser) {
+                if (user && user.email) {
                     loggedInUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                } else if (cachedUser) {
+                    loggedInUsername = cachedUser;
                 } else {
                     loggedInUsername = "user";
                 }
                 
+                localStorage.setItem('vb_logged_user', loggedInUsername);
+
                 const urlParams = new URLSearchParams(window.location.search);
                 const targetUser = urlParams.get('u') || urlParams.get('user') || loggedInUsername;
                 setupViewMode(targetUser);
@@ -881,6 +894,12 @@
 
             /* Set user badge */
             document.getElementById('userBadgeLabel').innerText = isOwnerMode ? `@${loggedInUsername} (You)` : `@${loggedInUsername}`;
+
+            /* SHOW/HIDE CUSTOMIZER BUTTONS (THEMES, FONTS, MUSIC, DARK MODE) */
+            const ownerControls = document.getElementById('ownerControlsGroup');
+            if (ownerControls) {
+                ownerControls.style.display = isOwnerMode ? 'flex' : 'none';
+            }
 
             /* VISITOR BANNER & TITLE UPDATES */
             const banner = document.getElementById('visitorBanner');
@@ -1111,7 +1130,6 @@
             videoAnimFrame = requestAnimationFrame(() => renderTransparentVideoFrame(videoEl, canvasEl, ctx));
         }
 
-        /* CLEAN SINGLE HERO MEDIA SETTER */
         function setHeroMedia(mediaUrl, isVideo = false) {
             if (videoAnimFrame) {
                 cancelAnimationFrame(videoAnimFrame);
@@ -1199,32 +1217,36 @@
             }
         }
 
-        function openThemeModal() { document.getElementById('themeModal').style.display = 'flex'; }
+        function openThemeModal() { if(isOwnerMode) document.getElementById('themeModal').style.display = 'flex'; }
         function closeThemeModal() { document.getElementById('themeModal').style.display = 'none'; }
 
         function setTheme(themeClass) {
+            if(!isOwnerMode) return;
             document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
             if (themeClass) { document.body.classList.add(themeClass); }
             closeThemeModal();
-            if (isOwnerMode) saveVisionBoardToCloud();
+            saveVisionBoardToCloud();
         }
 
-        function openFontModal() { document.getElementById('fontModal').style.display = 'flex'; }
+        function openFontModal() { if(isOwnerMode) document.getElementById('fontModal').style.display = 'flex'; }
         function closeFontModal() { document.getElementById('fontModal').style.display = 'none'; }
 
         function applyMainTitleFont(fontFamily) {
+            if(!isOwnerMode) return;
             document.documentElement.style.setProperty('--font-main-title', fontFamily);
-            if (isOwnerMode) saveVisionBoardToCloud();
+            saveVisionBoardToCloud();
         }
 
         function applyHeaderFont(fontFamily) {
+            if(!isOwnerMode) return;
             document.documentElement.style.setProperty('--font-title', fontFamily);
-            if (isOwnerMode) saveVisionBoardToCloud();
+            saveVisionBoardToCloud();
         }
 
         function applyBodyFont(fontFamily) {
+            if(!isOwnerMode) return;
             document.documentElement.style.setProperty('--font-body', fontFamily);
-            if (isOwnerMode) saveVisionBoardToCloud();
+            saveVisionBoardToCloud();
         }
 
         function toggleMusic() {
@@ -1249,12 +1271,13 @@
         }
 
         function changeMusicUrl() {
+            if (!isOwnerMode) return;
             const currentSong = localStorage.getItem('vb_music_' + currentBoardId) || "";
             const newUrl = prompt("Enter custom MP3 audio URL or YouTube link for the vinyl player:", currentSong);
             if (newUrl && newUrl.trim() !== '') {
                 const trimmed = newUrl.trim();
                 applyMusic(trimmed);
-                if (isOwnerMode) saveVisionBoardToCloud();
+                saveVisionBoardToCloud();
             }
         }
 
@@ -1282,10 +1305,11 @@
         }
 
         function toggleDarkMode() {
+            if (!isOwnerMode) return;
             document.body.classList.toggle('dark-mode');
             const btn = document.getElementById('modeBtn');
             btn.innerHTML = document.body.classList.contains('dark-mode') ? '<span class="gold-icon">✦</span> Light' : '<span class="gold-icon">✦</span> Dark';
-            if (isOwnerMode) saveVisionBoardToCloud();
+            saveVisionBoardToCloud();
         }
 
         /* FRIENDSTER TESTIMONIALS LOGIC */
@@ -1417,23 +1441,28 @@
             
             if (data.isDarkMode) {
                 document.body.classList.add('dark-mode');
-                document.getElementById('modeBtn').innerHTML = '<span class="gold-icon">✦</span> Light';
+                const modeBtn = document.getElementById('modeBtn');
+                if(modeBtn) modeBtn.innerHTML = '<span class="gold-icon">✦</span> Light';
             } else {
                 document.body.classList.remove('dark-mode');
-                document.getElementById('modeBtn').innerHTML = '<span class="gold-icon">✦</span> Dark';
+                const modeBtn = document.getElementById('modeBtn');
+                if(modeBtn) modeBtn.innerHTML = '<span class="gold-icon">✦</span> Dark';
             }
 
             if (data.mainTitleFont) {
                 document.documentElement.style.setProperty('--font-main-title', data.mainTitleFont);
-                document.getElementById('mainTitleFontSelect').value = data.mainTitleFont.trim();
+                const mf = document.getElementById('mainTitleFontSelect');
+                if(mf) mf.value = data.mainTitleFont.trim();
             }
             if (data.headerFont) {
                 document.documentElement.style.setProperty('--font-title', data.headerFont);
-                document.getElementById('headerFontSelect').value = data.headerFont.trim();
+                const hf = document.getElementById('headerFontSelect');
+                if(hf) hf.value = data.headerFont.trim();
             }
             if (data.bodyFont) {
                 document.documentElement.style.setProperty('--font-body', data.bodyFont);
-                document.getElementById('bodyFontSelect').value = data.bodyFont.trim();
+                const bf = document.getElementById('bodyFontSelect');
+                if(bf) bf.value = data.bodyFont.trim();
             }
 
             if (data.musicUrl) {
