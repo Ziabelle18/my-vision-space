@@ -331,6 +331,14 @@
         }
         .modal-close { position: absolute; top: 12px; right: 16px; font-size: 1.4rem; border: none; background: none; cursor: pointer; color: var(--text-color); }
 
+        /* MULTILINE LIST EDIT TEXTAREA */
+        .list-edit-textarea {
+            width: 100%; height: 140px; padding: 12px; border: 1px solid var(--accent-gold);
+            border-radius: 8px; font-size: 0.9rem; font-family: var(--font-body);
+            background: var(--bg-color); color: var(--text-color); margin: 10px 0; resize: vertical;
+            line-height: 1.5;
+        }
+
         #ytPlayerContainer { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; left: -9999px; }
 
         @media (max-width: 850px) {
@@ -356,7 +364,7 @@
     <audio id="bgMusic" loop src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"></audio>
     <div id="ytPlayerContainer"></div>
 
-    <!-- HIDDEN FILE INPUTS FOR UPLOADS -->
+    <!-- FILE INPUTS -->
     <input type="file" id="heroImageInput" accept="image/*,.gif,video/mp4,video/webm" style="display: none;" onchange="handleImageUpload(event)">
     <input type="file" id="coverImageInput" accept="image/*" style="display: none;" onchange="handleCoverUpload(event)">
     <input type="file" id="avatarImageInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
@@ -442,7 +450,7 @@
 
         <div class="main-layout">
 
-            <!-- KALIWANG COLUMN (VISITORS, FOLLOWERS, DYNAMIC GALLERY, ABOUT ME WITH 3 ROWS) -->
+            <!-- KALIWANG COLUMN -->
             <div class="column col-left">
                 
                 <!-- Recent Visitors Card -->
@@ -473,7 +481,7 @@
                     <div class="mini-gallery-grid" id="galleryContainer"></div>
                 </div>
 
-                <!-- About Me Card (EXACTLY 3 ROWS) -->
+                <!-- About Me Card (3 ROWS DEFAULT) -->
                 <div class="card card-black" id="card-about" onclick="handleCardClick(this, event)">
                     <div class="tape"></div>
                     <div class="card-header-flex">
@@ -507,10 +515,10 @@
                 </div>
             </div>
 
-            <!-- KANANG COLUMN (THINGS I LOVE - 3 ROWS, FUTURE GOALS - 3 ROWS & TESTIMONIALS) -->
+            <!-- KANANG COLUMN -->
             <div class="column col-right">
                 
-                <!-- Things I Love (EXACTLY 3 ROWS) -->
+                <!-- Things I Love (3 ROWS DEFAULT) -->
                 <div class="card card-white" id="card-things" onclick="handleCardClick(this, event)">
                     <div class="tape"></div>
                     <div class="card-header-flex">
@@ -524,7 +532,7 @@
                     </ul>
                 </div>
 
-                <!-- Future Goals (EXACTLY 3 ROWS) -->
+                <!-- Future Goals (3 ROWS DEFAULT) -->
                 <div class="card card-black" id="card-goals" onclick="handleCardClick(this, event)">
                     <div class="tape"></div>
                     <div class="card-header-flex">
@@ -553,6 +561,17 @@
 
             </div>
 
+        </div>
+    </div>
+
+    <!-- CUSTOM MULTILINE LIST EDITOR MODAL (FIXES MOBILE PROMPT BUG) -->
+    <div class="modal-overlay" id="listEditModal" onclick="closeListEditModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeListEditModal()">&times;</button>
+            <h3 style="color:var(--accent-gold); text-align:center; margin-bottom:6px;">✦ Edit List Items</h3>
+            <p style="font-size:0.75rem; opacity:0.8; text-align:center;">Type each item on a new line (Press Enter for line 2, 3, etc.):</p>
+            <textarea id="listEditArea" class="list-edit-textarea" placeholder="Line 1&#10;Line 2&#10;Line 3"></textarea>
+            <button class="nav-btn" style="width:100%; justify-content:center; padding:10px; background:var(--accent-gold); color:#fff; font-weight:bold;" onclick="saveListCardEdit()">Save List Changes ✨</button>
         </div>
     </div>
 
@@ -597,7 +616,7 @@
         </div>
     </div>
 
-    <!-- SETTINGS & ADVANCED CUSTOMIZER MODAL -->
+    <!-- SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal" onclick="closeSettingsModal()">
         <div class="modal-card" onclick="event.stopPropagation()">
             <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
@@ -665,6 +684,7 @@
         let viewingUser = new URLSearchParams(window.location.search).get('user') || currentUser || "zizabelle";
         let isAuthSignUp = true;
         let activeCardId = null;
+        let activeEditListId = null;
         let ytPlayer = null;
         let isYtReady = false;
         let activeMusicType = 'mp3';
@@ -996,18 +1016,31 @@
             });
         }
 
-        /* FIX: BULLET LIST EDITING THAT PRESERVES LI TAGS (3 ROWS DEFAULT ENABLED) */
+        /* NEW CUSTOM MULTILINE MODAL LIST EDITOR (FIXES MOBILE PROMPT SINGLE LINE BUG) */
         function enableListCardEdit(listId, event) {
             if (event) event.stopPropagation();
+            activeEditListId = listId;
             const listEl = document.getElementById(listId);
             const currentLines = Array.from(listEl.querySelectorAll('li')).map(li => li.innerText).join('\n');
-            const newText = prompt("Edit list items (one item per line):", currentLines);
+            
+            document.getElementById('listEditArea').value = currentLines;
+            document.getElementById('listEditModal').style.display = 'flex';
+        }
 
-            if (newText !== null) {
-                const lines = newText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                listEl.innerHTML = lines.map(line => `<li>${line}</li>`).join('');
-                saveBoardData();
-            }
+        function closeListEditModal() {
+            document.getElementById('listEditModal').style.display = 'none';
+        }
+
+        function saveListCardEdit() {
+            if (!activeEditListId) return;
+            const rawText = document.getElementById('listEditArea').value;
+            const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            
+            const listEl = document.getElementById(activeEditListId);
+            listEl.innerHTML = lines.map(line => `<li>${line}</li>`).join('');
+            
+            saveBoardData();
+            closeListEditModal();
         }
 
         function enableHeaderEdit(id, event) {
