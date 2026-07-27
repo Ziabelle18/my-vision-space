@@ -247,7 +247,7 @@
         }
         ul.scrap-list li::before { content: "✦"; position: absolute; left: 0; color: var(--accent-gold); }
 
-        /* CENTER HERO MEDIA WITH AUTOMATIC WHITE BACKGROUND BLENDING (MULTIPLY) */
+        /* CENTER HERO MEDIA WITH AUTOMATIC WHITE BACKGROUND BLENDING ENGINE */
         .hero-wrapper {
             width: 100%; text-align: center; cursor: pointer; position: relative;
             min-height: 250px; display: flex; align-items: center; justify-content: center;
@@ -255,9 +255,8 @@
         
         .hero-girl {
             width: 100%; height: auto; max-height: 480px; object-fit: contain; display: block; margin: 0 auto;
-            /* SEAMLESS WHITE BACKGROUND BLENDING ENGINE */
             mix-blend-mode: multiply !important;
-            filter: drop-shadow(0 10px 20px rgba(180, 170, 150, 0.25));
+            filter: drop-shadow(0 10px 20px rgba(180, 170, 150, 0.2));
             background: transparent !important;
         }
 
@@ -507,7 +506,7 @@
                 </div>
             </div>
 
-            <!-- GITNANG COLUMN (HERO WITH BLENDING & PHILOSOPHY) -->
+            <!-- GITNANG COLUMN (HERO WITH CHROMA KEY BLENDING & PHILOSOPHY) -->
             <div class="column col-center">
                 <div class="hero-wrapper" id="heroMediaContainer">
                     <div id="heroMediaDisplay" style="width:100%">
@@ -1023,7 +1022,7 @@
             });
 
             getMediaFromIDB('heroImg_' + viewingUser, img => {
-                if (img) setHeroMedia(img, false);
+                if (img) processAndSetHeroMedia(img, false);
             });
         }
 
@@ -1081,13 +1080,19 @@
 
         function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
 
-        /* MEDIA UPLOADER & WHITE TRANSPARENTIZER PROCESSOR */
+        /* AUTOMATIC WHITE BACKGROUND REMOVER & CHROMA KEY PROCESSOR */
         function triggerPhotoSelect(e) { if (e) e.stopPropagation(); document.getElementById('heroImageInput').click(); }
         function triggerCoverSelect() { document.getElementById('coverImageInput').click(); }
         function triggerAvatarSelect() { document.getElementById('avatarImageInput').click(); }
 
-        function processAndBlendImage(dataUrl, callback) {
+        function processAndSetHeroMedia(dataUrl, isVideo) {
+            if (isVideo) {
+                setHeroMedia(dataUrl, true);
+                return;
+            }
+
             const img = new Image();
+            img.crossOrigin = "anonymous";
             img.onload = function() {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
@@ -1098,15 +1103,23 @@
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imgData.data;
 
-                // Soft white keying: Converts pure white / light gray backgrounds into clean transparency
+                // Smart White & Near-White Chroma-Key Eraser (Threshold > 200 for R, G, B)
                 for (let i = 0; i < data.length; i += 4) {
-                    if (data[i] > 235 && data[i+1] > 235 && data[i+2] > 235) {
-                        data[i+3] = 0;
+                    const r = data[i];
+                    const g = data[i+1];
+                    const b = data[i+2];
+
+                    if (r > 200 && g > 200 && b > 200) {
+                        data[i+3] = 0; // Pure transparency for white background
                     }
                 }
 
                 ctx.putImageData(imgData, 0, 0);
-                callback(canvas.toDataURL('image/png'));
+                const cleanPng = canvas.toDataURL('image/png');
+                setHeroMedia(cleanPng, false);
+            };
+            img.onerror = function() {
+                setHeroMedia(dataUrl, false);
             };
             img.src = dataUrl;
         }
@@ -1117,15 +1130,9 @@
                 const reader = new FileReader();
                 reader.onload = evt => {
                     const dataUrl = evt.target.result;
-                    if (file.type.startsWith('video/')) {
-                        setHeroMedia(dataUrl, true);
-                        saveMediaToIDB('heroImg_' + viewingUser, dataUrl);
-                    } else {
-                        processAndBlendImage(dataUrl, processedDataUrl => {
-                            setHeroMedia(processedDataUrl, false);
-                            saveMediaToIDB('heroImg_' + viewingUser, processedDataUrl);
-                        });
-                    }
+                    const isVid = file.type.startsWith('video/');
+                    processAndSetHeroMedia(dataUrl, isVid);
+                    saveMediaToIDB('heroImg_' + viewingUser, dataUrl);
                 };
                 reader.readAsDataURL(file);
             }
