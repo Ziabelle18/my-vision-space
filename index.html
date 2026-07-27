@@ -351,10 +351,11 @@
 
         .col-center { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
+        /* PERFECT HERO CONTAINER & PHOTO DISPLAY */
         .hero-wrapper {
             width: 100%; max-width: 320px; margin: 0 auto 10px auto;
             text-align: center; cursor: pointer; position: relative; user-select: none;
-            display: flex; justify-content: center; align-items: center;
+            display: flex; justify-content: center; align-items: center; min-height: 280px;
         }
 
         .hero-girl, .hero-canvas {
@@ -614,10 +615,10 @@
                     </div>
                 </div>
 
-                <!-- GITNANG COLUMN - REMOVED DEFAULT IMAGE TO PREVENT FLASH/BLINKING -->
+                <!-- GITNANG COLUMN - HERO PHOTO CONTAINER -->
                 <div class="column col-center" id="card-center-col">
                     <div class="hero-wrapper" id="heroMediaContainer">
-                        <img src="" alt="Portrait" class="hero-girl" id="heroImg" style="display:none;">
+                        <img src="girl.png" alt="Portrait" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80';">
                         <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()">✦ Change Photo</div>
                     </div>
 
@@ -805,7 +806,7 @@
         let isSignUpMode = false;
         let testimonials = [];
 
-        /* INSTANT LOCAL STORAGE CHECK TO PREVENT LOGIN FLASH ON REFRESH */
+        /* INSTANT REFRESH CHECK TO PREVENT LOGIN FLASH AND CROSS-USER BLINKING */
         if (loggedInUsername) {
             document.getElementById('authScreen').style.display = 'none';
             document.getElementById('mainAppContainer').style.display = 'block';
@@ -818,7 +819,7 @@
             isSignUpMode = !isSignUpMode;
             document.getElementById('authSubtitle').innerText = isSignUpMode ? "Create your vision board account" : "Sign in to view your vision board";
             document.getElementById('authPrimaryBtn').innerText = isSignUpMode ? "Sign Up" : "Login";
-            document.getElementById('authToggleBtn').innerText = isSignUpMode ? "Already have an account? Login" : "Don't have an account? Sign Up";
+            document.getElementById('authToggleBtn').innerText = isSignUpMode ? "Already have an account? Sign Up" : "Don't have an account? Sign Up";
         }
 
         function handleAuthSubmit() {
@@ -871,7 +872,6 @@
             });
         }
 
-        /* FIREBASE AUTH LISTENER WITH FAST RECOVER */
         auth.onAuthStateChanged(user => {
             if (user && user.email) {
                 loggedInUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '');
@@ -896,7 +896,7 @@
             /* Set user badge */
             document.getElementById('userBadgeLabel').innerText = isOwnerMode ? `@${loggedInUsername} (You)` : `@${loggedInUsername}`;
 
-            /* SHOW/HIDE CUSTOMIZER BUTTONS (THEMES, FONTS, MUSIC, DARK MODE) */
+            /* SHOW/HIDE CUSTOMIZER BUTTONS */
             const ownerControls = document.getElementById('ownerControlsGroup');
             if (ownerControls) {
                 ownerControls.style.display = isOwnerMode ? 'flex' : 'none';
@@ -1131,7 +1131,7 @@
             videoAnimFrame = requestAnimationFrame(() => renderTransparentVideoFrame(videoEl, canvasEl, ctx));
         }
 
-        /* CLEAN SINGLE HERO MEDIA SETTER */
+        /* SAFE SINGLE HERO MEDIA SETTER */
         function setHeroMedia(mediaUrl, isVideo = false) {
             if (videoAnimFrame) {
                 cancelAnimationFrame(videoAnimFrame);
@@ -1158,7 +1158,7 @@
             } else {
                 activeHeroVidUrl = "";
                 container.innerHTML = `
-                    <img src="${mediaUrl}" alt="Portrait" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.style.display='none';">
+                    <img src="${mediaUrl}" alt="Portrait" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80';">
                     <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()" style="display: ${isOwnerMode ? 'flex' : 'none'}">✦ Change Photo</div>
                 `;
             }
@@ -1514,7 +1514,9 @@
                     setHeroMedia(vidData, true);
                 } else {
                     getMediaFromIDB('heroImg_' + currentBoardId, function(imgData) {
-                        if (imgData) setHeroMedia(imgData, false);
+                        if (imgData) {
+                            setHeroMedia(imgData, false);
+                        }
                     });
                 }
             });
