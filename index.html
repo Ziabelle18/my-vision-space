@@ -65,17 +65,31 @@
         .blob-1 { width: 300px; height: 300px; background: #ebdccb; top: -50px; left: -80px; }
         .blob-2 { width: 320px; height: 320px; background: #fae1dd; bottom: 100px; right: -100px; }
 
-        /* STICKY TOP NAVIGATION BAR */
+        /* LOADING OVERLAY TRANSITION */
+        .page-loader {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: var(--bg-color); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 99999;
+            transition: opacity 0.4s ease, visibility 0.4s;
+        }
+        .page-loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .loader-spinner {
+            width: 40px; height: 40px; border: 3px solid rgba(197, 160, 89, 0.2);
+            border-top: 3px solid var(--accent-gold); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin-bottom: 12px;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* STICKY NAVIGATION BAR */
         .top-nav {
             position: fixed; top: 0; left: 0; right: 0; height: 60px;
-            background: rgba(253, 251, 247, 0.85);
+            background: rgba(253, 251, 247, 0.88);
             -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(197, 160, 89, 0.3);
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 15px; z-index: 1000;
         }
-
-        body.dark-mode .top-nav { background: rgba(26, 25, 24, 0.85); }
+        body.dark-mode .top-nav { background: rgba(26, 25, 24, 0.88); }
 
         .nav-logo { font-family: var(--font-main-title); font-size: 1.8rem; font-weight: bold; cursor: pointer; color: var(--text-color); }
         .nav-items { display: flex; align-items: center; gap: 8px; }
@@ -85,24 +99,36 @@
             background: var(--card-white); border: 1px solid var(--accent-gold);
             border-radius: 20px; padding: 2px 10px; box-shadow: var(--shadow-soft);
         }
-        .nav-search input { border: none; background: transparent; padding: 4px; font-size: 0.78rem; color: var(--text-color); width: 110px; transition: width 0.3s; }
-        .nav-search input:focus { width: 160px; }
+        .nav-search input { border: none; background: transparent; padding: 4px; font-size: 0.78rem; color: var(--text-color); width: 120px; transition: width 0.3s; }
+        .nav-search input:focus { width: 170px; }
+
+        /* RICH SEARCH DROPDOWN */
         .search-results-dropdown {
-            position: absolute; top: 38px; left: 0; right: 0; background: var(--card-white);
-            border: 1px solid var(--accent-gold); border-radius: 10px; max-height: 200px;
+            position: absolute; top: 38px; left: 0; right: -50px; background: var(--card-white);
+            border: 1px solid var(--accent-gold); border-radius: 12px; max-height: 280px;
             overflow-y: auto; display: none; box-shadow: var(--shadow-soft); z-index: 1001;
+            padding: 6px;
         }
-        .search-item { padding: 8px; font-size: 0.8rem; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .search-item:hover { background: var(--card-pink); }
+        .search-card {
+            display: flex; align-items: center; gap: 10px; padding: 8px;
+            border-radius: 8px; cursor: pointer; transition: background 0.2s;
+            border-bottom: 1px dashed rgba(197, 160, 89, 0.2);
+        }
+        .search-card:hover { background: var(--card-pink); }
+        .search-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--accent-gold); }
+        .search-info { display: flex; flex-direction: column; }
+        .search-name { font-size: 0.8rem; font-weight: bold; color: var(--text-color); }
+        .search-sub { font-size: 0.68rem; opacity: 0.75; }
 
         .nav-btn {
             background: var(--card-white); border: 1px solid var(--accent-gold);
-            color: var(--text-color); padding: 5px 10px; border-radius: 20px;
+            color: var(--text-color); padding: 5px 12px; border-radius: 20px;
             font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px;
+            transition: transform 0.2s, background 0.2s; white-space: nowrap;
         }
         .nav-btn:hover { transform: scale(1.05); }
 
-        /* AUTHENTICATION OVERLAY (MATCHES SCREENSHOT EXACTLY) */
+        /* AUTH OVERLAY MODAL */
         .auth-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(253, 251, 247, 0.96); display: flex;
@@ -129,33 +155,57 @@
         }
         .auth-toggle { display: inline-block; margin-top: 15px; font-size: 0.82rem; text-decoration: underline; cursor: pointer; }
 
-        /* COVER & HEADER SECTION */
-        .cover-container {
-            width: 100%; max-width: 1200px; margin: 0 auto 15px auto; height: 180px;
-            border-radius: 12px; border: 1px solid var(--accent-gold); position: relative;
-            background-size: cover; background-position: center;
-            background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80');
+        /* UPGRADED PROFILE HEADER & COVER */
+        .profile-header-card {
+            width: 100%; max-width: 1200px; margin: 0 auto 20px auto;
+            background: var(--card-white); border: 1px solid var(--accent-gold);
+            border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-soft);
+            position: relative;
         }
-        .cover-edit-btn { position: absolute; bottom: 10px; right: 10px; }
+        .cover-photo-area {
+            width: 100%; height: 200px; background-size: cover; background-position: center;
+            position: relative; background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80');
+        }
+        .cover-edit-badge {
+            position: absolute; bottom: 12px; right: 12px;
+            background: rgba(255, 253, 251, 0.7); border: 1px solid var(--accent-gold);
+            padding: 5px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+            color: var(--accent-gold); cursor: pointer; backdrop-filter: blur(4px);
+        }
 
+        .profile-details-bar {
+            padding: 0 20px 20px 20px; display: flex; flex-direction: column;
+            align-items: center; text-align: center; margin-top: -50px; position: relative; z-index: 5;
+        }
+        .avatar-wrapper { position: relative; width: 100px; height: 100px; margin-bottom: 10px; }
+        .avatar-img {
+            width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
+            border: 3px solid var(--card-white); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background: var(--card-pink);
+        }
+        .avatar-edit-badge {
+            position: absolute; bottom: 2px; right: 2px;
+            background: var(--accent-gold); color: #fff; border-radius: 50%;
+            width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+            font-size: 0.68rem; cursor: pointer; border: 2px solid #fff;
+        }
+
+        .profile-disp-name { font-family: var(--font-title); font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+        .profile-handle { font-size: 0.85rem; color: var(--accent-gold); font-weight: 600; margin-bottom: 8px; }
+        .profile-meta-info { font-size: 0.75rem; opacity: 0.75; margin-bottom: 15px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+        /* SOCIAL BAR */
+        .social-bar { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .social-chip {
+            background: var(--bg-color); border: 1px solid var(--accent-gold);
+            padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; gap: 6px; transition: transform 0.2s;
+        }
+        .social-chip:hover { transform: scale(1.05); }
+
+        /* BOARD & MASONRY GRID */
         .board-container { max-width: 1200px; width: 100%; margin: 0 auto; position: relative; z-index: 2; }
 
-        .header { text-align: center; margin-bottom: 25px; width: 100%; }
-        .header h1 { font-family: var(--font-main-title); font-size: 4.8rem; line-height: 0.9; transform: rotate(-1.5deg); }
-        .header .quote { font-family: var(--font-main-title); font-size: 1.55rem; color: var(--accent-gold); font-weight: 700; margin-top: 5px; }
-
-        /* SOCIAL BAR (LIKES, FOLLOWERS, TESTIMONIALS COUNTER) */
-        .social-bar {
-            display: flex; justify-content: center; align-items: center; gap: 15px;
-            margin-bottom: 20px; flex-wrap: wrap;
-        }
-        .social-chip {
-            background: var(--card-white); border: 1px solid var(--accent-gold);
-            padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
-            box-shadow: var(--shadow-soft); cursor: pointer; display: flex; align-items: center; gap: 6px;
-        }
-
-        /* 3-COLUMN MASONRY GRID LAYOUT */
         .main-layout { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 18px; align-items: start; width: 100%; }
         .column { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 
@@ -178,16 +228,15 @@
         }
 
         .card-header-flex { display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid rgba(197, 160, 89, 0.3); padding-bottom: 5px; margin-bottom: 10px; }
-        .card-title { font-family: var(--font-title); font-size: 1rem; font-weight: 700; }
+        .card-title { font-family: var(--font-title); font-size: 0.95rem; font-weight: 700; }
         
         ul.scrap-list { list-style: none; }
-        ul.scrap-list li { font-size: 0.86rem; margin-bottom: 6px; padding-left: 18px; position: relative; line-height: 1.35; }
+        ul.scrap-list li { font-size: 0.85rem; margin-bottom: 6px; padding-left: 18px; position: relative; line-height: 1.35; }
         ul.scrap-list li::before { content: "✦"; position: absolute; left: 0; color: var(--accent-gold); }
 
-        /* CENTER HERO & DYNAMIC TRANSPARENT MEDIA */
+        /* CENTER HERO MEDIA */
         .hero-wrapper { width: 100%; text-align: center; cursor: pointer; position: relative; min-height: 250px; display: flex; align-items: center; justify-content: center; }
-        .hero-girl, .hero-canvas { width: 100%; height: auto; max-height: 480px; object-fit: contain; display: block; margin: 0 auto; }
-        .hero-video-hidden { display: none !important; position: absolute; opacity: 0; pointer-events: none; }
+        .hero-girl { width: 100%; height: auto; max-height: 480px; object-fit: contain; display: block; margin: 0 auto; }
         
         .photo-upload-badge {
             position: absolute; bottom: 15px; right: 15px; background: rgba(255, 253, 251, 0.4);
@@ -212,18 +261,15 @@
         .vinyl-record.spinning { animation: spinVinyl 3s linear infinite; }
         @keyframes spinVinyl { 100% { transform: rotate(360deg); } }
 
-        /* CALENDAR & TODO */
-        .calendar-header { font-family: var(--font-main-title); font-size: 1.4rem; color: var(--accent-gold); text-align: center; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 0.75rem; }
-        .cal-day-head { font-weight: bold; color: var(--accent-gold); }
-        .cal-date.today { background: var(--accent-gold); color: #000; font-weight: bold; border-radius: 4px; }
+        /* MINI POLAROID GALLERY IN LEFT COLUMN */
+        .mini-gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
+        .polaroid-frame {
+            background: #fff; padding: 6px 6px 14px 6px; border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; font-size: 0.65rem; color: #333;
+        }
+        .polaroid-frame img { width: 100%; height: 75px; object-fit: cover; border-radius: 2px; }
 
-        .todo-input-box { display: flex; gap: 6px; margin-bottom: 10px; }
-        .todo-input-box input { flex: 1; padding: 6px 10px; border: 1px solid rgba(197, 160, 89, 0.4); border-radius: 4px; font-size: 0.8rem; background: transparent; color: inherit; }
-        .todo-input-box button { background: var(--accent-gold); border: none; color: #000; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .todo-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-bottom: 6px; cursor: pointer; }
-
-        /* TESTIMONIALS & COMMENTS */
+        /* TESTIMONIALS */
         .testi-box { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
         .testi-box textarea { width: 100%; height: 60px; padding: 8px; border: 1px solid var(--accent-gold); border-radius: 6px; font-size: 0.8rem; background: transparent; color: inherit; }
         .testi-item { border-bottom: 1px dashed rgba(197, 160, 89, 0.3); padding: 8px 0; font-size: 0.82rem; }
@@ -256,13 +302,19 @@
 
         @media (max-width: 850px) {
             .main-layout { display: flex; flex-direction: column; gap: 18px; }
-            .header h1 { font-size: 3.4rem; }
             .top-nav { padding: 0 8px; }
             .nav-search input { width: 80px; }
+            .profile-header-card { margin-top: 10px; }
         }
     </style>
 </head>
 <body>
+
+    <!-- PAGE TRANSITION LOADER -->
+    <div class="page-loader" id="pageLoader">
+        <div class="loader-spinner"></div>
+        <div style="font-family:var(--font-main-title); font-size:1.6rem; color:var(--accent-gold);">Loading Vision Space...</div>
+    </div>
 
     <div class="bg-blob blob-1"></div>
     <div class="bg-blob blob-2"></div>
@@ -271,14 +323,16 @@
     <audio id="bgMusic" loop src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"></audio>
     <div id="ytPlayerContainer"></div>
 
-    <!-- FILE INPUTS -->
+    <!-- HIDDEN FILE INPUTS FOR UPLOADS -->
     <input type="file" id="heroImageInput" accept="image/*,.gif,video/mp4,video/webm" style="display: none;" onchange="handleImageUpload(event)">
     <input type="file" id="coverImageInput" accept="image/*" style="display: none;" onchange="handleCoverUpload(event)">
+    <input type="file" id="avatarImageInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
 
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
         <div class="nav-logo" onclick="goHome()">my vision space</div>
 
+        <!-- SEARCH ENGINE BAR -->
         <div class="nav-search">
             <span>🔍</span>
             <input type="text" id="friendSearch" placeholder="Search friends..." onkeyup="searchUsers(this.value)">
@@ -316,43 +370,85 @@
         </div>
     </div>
 
-    <!-- MAIN PROFILE & VISION BOARD CONTAINER -->
-    <div class="board-container">
-
-        <!-- COVER PHOTO SECTION -->
-        <div class="cover-container" id="coverDisplay">
-            <button class="nav-btn cover-edit-btn owner-only" onclick="triggerCoverSelect()">📷 Change Cover</button>
+    <!-- PROFILE HEADER CARD (COVER + AVATAR + SOCIALS) -->
+    <div class="profile-header-card">
+        <div class="cover-photo-area" id="coverDisplay">
+            <button class="cover-edit-badge owner-only" onclick="triggerCoverSelect()">📷 Change Cover</button>
         </div>
 
-        <!-- PROFILE HEADER -->
-        <header class="header">
+        <div class="profile-details-bar">
+            <div class="avatar-wrapper">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Avatar" class="avatar-img" id="avatarImg">
+                <div class="avatar-edit-badge owner-only" onclick="triggerAvatarSelect()">📷</div>
+            </div>
+
+            <div class="profile-disp-name" id="dispNameText">Zizabelle</div>
+            <div class="profile-handle" id="userHandleText">@zizabelle</div>
+            <div class="profile-meta-info">
+                <span>✦ Member since <span id="joinedDateText">2026</span></span>
+                <span>✦ <span id="viewsCountText">0</span> Profile Views</span>
+            </div>
+
+            <div class="social-bar">
+                <div class="social-chip" onclick="likeProfile()">❤️ <span id="likesCount">0</span> Likes</div>
+                <div class="social-chip" id="followBtn" onclick="toggleFollow()">👤 Follow</div>
+                <div class="social-chip"><span id="followersCount">0</span> Followers</div>
+                <div class="social-chip owner-only" onclick="openVisitorsModal()">👀 Visitors</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN VISION BOARD MASONRY CONTAINER -->
+    <div class="board-container">
+
+        <header class="header" style="margin-bottom:15px;">
             <h1><span id="mainTitleText">my vision board</span> <span class="edit-btn owner-only" onclick="enableHeaderEdit('mainTitleText')">✦</span></h1>
             <p class="quote"><span id="mainQuoteText">"Type your favorite quote here..."</span> <span class="edit-btn owner-only" onclick="enableHeaderEdit('mainQuoteText')">✦</span></p>
         </header>
 
-        <!-- SOCIAL INTERACTION BAR -->
-        <div class="social-bar">
-            <div class="social-chip" onclick="likeProfile()">❤️ <span id="likesCount">0</span> Likes</div>
-            <div class="social-chip" id="followBtn" onclick="toggleFollow()">👤 Follow</div>
-            <div class="social-chip"><span id="followersCount">0</span> Followers</div>
-            <div class="social-chip owner-only" onclick="openVisitorsModal()">👀 Recent Visitors</div>
-        </div>
-
-        <!-- MASONRY 3-COLUMN GRID -->
         <div class="main-layout">
 
-            <!-- KALIWANG COLUMN -->
+            <!-- KALIWANG COLUMN (REPLACED CALENDAR/TODO WITH RECENT VISITORS, FOLLOWERS & MINI GALLERY) -->
             <div class="column col-left">
                 
-                <!-- Today's Calendar -->
-                <div class="card card-white" id="card-calendar">
+                <!-- Recent Visitors Card -->
+                <div class="card card-white" id="card-visitors">
                     <div class="tape"></div>
-                    <div class="card-header-flex"><div class="card-title">✦ TODAY'S CALENDAR</div></div>
-                    <div class="calendar-header" id="calMonthYear">July 2026</div>
-                    <div class="calendar-grid" id="calendarDays"></div>
+                    <div class="card-header-flex"><div class="card-title">✦ RECENT VISITORS</div></div>
+                    <div id="visitorsMiniList" style="font-size:0.8rem; line-height:1.4;">
+                        <div style="opacity:0.6;">Loading visitors...</div>
+                    </div>
                 </div>
 
-                <!-- About Me -->
+                <!-- Latest Followers Card -->
+                <div class="card card-pink" id="card-followers">
+                    <div class="tape"></div>
+                    <div class="card-header-flex"><div class="card-title">✦ LATEST FOLLOWERS</div></div>
+                    <div id="followersMiniList" style="font-size:0.8rem; line-height:1.4;">
+                        <div style="opacity:0.6;">No followers yet.</div>
+                    </div>
+                </div>
+
+                <!-- Mini Polaroid Gallery -->
+                <div class="card card-white" id="card-gallery">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ PINNED MEMORIES</div>
+                        <span class="edit-btn owner-only" onclick="enableCardEdit(this, event)">✦</span>
+                    </div>
+                    <div class="mini-gallery-grid">
+                        <div class="polaroid-frame">
+                            <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80" alt="Memory">
+                            <div>Dream Big ✨</div>
+                        </div>
+                        <div class="polaroid-frame">
+                            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=300&q=80" alt="Memory">
+                            <div>Good Vibes ✦</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- About Me Card -->
                 <div class="card card-black" id="card-about" onclick="handleCardClick(this, event)">
                     <div class="tape"></div>
                     <div class="card-header-flex">
@@ -361,20 +457,7 @@
                     </div>
                     <ul class="scrap-list" id="aboutList">
                         <li>Welcome to my personal vision space!</li>
-                        <li>Click edit to add your bio and traits</li>
-                    </ul>
-                </div>
-
-                <!-- Things I Love -->
-                <div class="card card-white" id="card-things" onclick="handleCardClick(this, event)">
-                    <div class="tape"></div>
-                    <div class="card-header-flex">
-                        <div class="card-title">✦ THINGS I LOVE</div>
-                        <span class="edit-btn owner-only" onclick="enableCardEdit(this, event)">✦</span>
-                    </div>
-                    <ul class="scrap-list" id="thingsList">
-                        <li>Singing & Performances 🎵</li>
-                        <li>Cozy Lofi Vibes & Coffee ☕</li>
+                        <li>Click edit button to write your story</li>
                     </ul>
                 </div>
             </div>
@@ -385,7 +468,7 @@
                     <div id="heroMediaDisplay" style="width:100%">
                         <img src="girl.png" alt="Character" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80';">
                     </div>
-                    <div class="photo-upload-badge owner-only" onclick="triggerPhotoSelect(event)">✦ Change Photo</div>
+                    <div class="photo-upload-badge owner-only" onclick="triggerPhotoSelect(event)">✦ Change Media</div>
                 </div>
 
                 <div class="card card-white" id="card-philosophy" onclick="handleCardClick(this, event)" style="text-align:center;">
@@ -398,18 +481,33 @@
                 </div>
             </div>
 
-            <!-- KANANG COLUMN (TO-DO & FRIENDSTER TESTIMONIALS) -->
+            <!-- KANANG COLUMN (THINGS I LOVE, FUTURE GOALS & FRIENDSTER TESTIMONIALS) -->
             <div class="column col-right">
                 
-                <!-- Daily To-Do List -->
-                <div class="card card-pink" id="card-todo">
+                <!-- Things I Love -->
+                <div class="card card-white" id="card-things" onclick="handleCardClick(this, event)">
                     <div class="tape"></div>
-                    <div class="card-header-flex"><div class="card-title">✦ DAILY TO-DO LIST</div></div>
-                    <div class="todo-input-box owner-only" onclick="event.stopPropagation()">
-                        <input type="text" id="todoInput" placeholder="Add task...">
-                        <button onclick="addTodo()">+</button>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ THINGS I LOVE</div>
+                        <span class="edit-btn owner-only" onclick="enableCardEdit(this, event)">✦</span>
                     </div>
-                    <div id="todoContainer" onclick="event.stopPropagation()"></div>
+                    <ul class="scrap-list" id="thingsList">
+                        <li>Singing & Live Performances 🎵</li>
+                        <li>Cozy Lofi Vibes & Coffee ☕</li>
+                    </ul>
+                </div>
+
+                <!-- Future Goals -->
+                <div class="card card-black" id="card-goals" onclick="handleCardClick(this, event)">
+                    <div class="tape"></div>
+                    <div class="card-header-flex">
+                        <div class="card-title">✦ FUTURE GOALS</div>
+                        <span class="edit-btn owner-only" onclick="enableCardEdit(this, event)">✦</span>
+                    </div>
+                    <ul class="scrap-list" id="goalsList">
+                        <li>Travel the world ✈️</li>
+                        <li>Build my dream creative space ✨</li>
+                    </ul>
                 </div>
 
                 <!-- Friendster Testimonials / Guestbook -->
@@ -493,7 +591,7 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT ENGINE WITH INDEXEDDB & REALTIME FIREBASE MULTI-USER SYSTEM -->
+    <!-- JAVASCRIPT ENGINE WITH FIREBASE REALTIME MULTI-USER SYSTEM -->
     <script>
         /* FIREBASE INITIALIZATION */
         const firebaseConfig = { databaseURL: "https://pettags-36165-default-rtdb.firebaseio.com" };
@@ -505,7 +603,7 @@
         let isAuthSignUp = true;
         let activeCardId = null;
 
-        /* INDEXEDDB MEDIA VAULT FOR HEAVY PHOTOS/VIDEOS */
+        /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
         let idb = null;
         idbReq.onupgradeneeded = e => { idb = e.target.result; if (!idb.objectStoreNames.contains("media")) idb.createObjectStore("media"); };
@@ -555,13 +653,22 @@
             localStorage.setItem('vspace_user', u);
             document.getElementById('authGate').style.display = 'none';
             document.getElementById('logoutBtn').style.display = 'flex';
-            if (viewingUser !== u) { window.location.href = "?user=" + u; } else { initProfile(); }
+            if (viewingUser !== u) { navigateToUser(u); } else { initProfile(); }
         }
 
         function logout() { localStorage.removeItem('vspace_user'); window.location.reload(); }
-        function goHome() { if (currentUser) window.location.href = "?user=" + currentUser; else document.getElementById('authGate').style.display = 'flex'; }
+        function goHome() { if (currentUser) navigateToUser(currentUser); else document.getElementById('authGate').style.display = 'flex'; }
 
-        /* SEARCH ENGINE */
+        /* SMOOTH PROFILE PAGE TRANSITION */
+        function navigateToUser(u) {
+            const loader = document.getElementById('pageLoader');
+            loader.classList.remove('hidden');
+            setTimeout(() => {
+                window.location.href = "?user=" + u;
+            }, 300);
+        }
+
+        /* SEARCH ENGINE WITH LIVE PROFILE CARDS */
         function searchUsers(q) {
             const dropdown = document.getElementById('searchResults');
             if (!q.trim()) { dropdown.style.display = 'none'; return; }
@@ -573,7 +680,15 @@
                     Object.keys(snap.val()).forEach(u => {
                         if (u.includes(q.toLowerCase())) {
                             count++;
-                            dropdown.innerHTML += `<div class="search-item" onclick="window.location.href='?user=${u}'">👤 @${u}</div>`;
+                            dropdown.innerHTML += `
+                                <div class="search-card" onclick="navigateToUser('${u}')">
+                                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" class="search-avatar">
+                                    <div class="search-info">
+                                        <span class="search-name">${u}</span>
+                                        <span class="search-sub">@${u}</span>
+                                    </div>
+                                </div>
+                            `;
                         }
                     });
                     dropdown.style.display = count > 0 ? 'block' : 'none';
@@ -581,19 +696,32 @@
             });
         }
 
-        /* PROFILE INITIALIZATION & PERMISSIONS */
+        /* PROFILE INITIALIZATION */
         function initProfile() {
             const isOwner = (currentUser === viewingUser);
             document.querySelectorAll('.owner-only').forEach(el => el.style.display = isOwner ? 'inline-flex' : 'none');
 
+            document.getElementById('userHandleText').innerText = `@${viewingUser}`;
+            document.getElementById('dispNameText').innerText = viewingUser;
+
             if (!isOwner && currentUser) {
                 recordVisitor();
+                incrementProfileViews();
                 sendNotification(viewingUser, `${currentUser} visited your vision board!`, 'visit');
             }
 
             loadSocialStats();
             loadTestimonials();
             loadNotifications();
+            loadVisitors();
+            
+            setTimeout(() => {
+                document.getElementById('pageLoader').classList.add('hidden');
+            }, 400);
+        }
+
+        function incrementProfileViews() {
+            db.ref(`profiles/${viewingUser}/views`).transaction(views => (views || 0) + 1);
         }
 
         function recordVisitor() {
@@ -607,7 +735,7 @@
             db.ref(`notifications/${targetUser}`).push({ from: currentUser, message: msg, type: type, timestamp: Date.now() });
         }
 
-        /* SOCIAL FEATURES (LIKES, FOLLOWS, VISITORS) */
+        /* SOCIAL STATS (LIKES, FOLLOWS, VISITORS) */
         function loadSocialStats() {
             db.ref(`likes/${viewingUser}`).on('value', snap => {
                 document.getElementById('likesCount').innerText = snap.exists() ? snap.numChildren() : 0;
@@ -616,11 +744,27 @@
             db.ref(`followers/${viewingUser}`).on('value', snap => {
                 const count = snap.exists() ? snap.numChildren() : 0;
                 document.getElementById('followersCount').innerText = count;
+                const followBtn = document.getElementById('followBtn');
                 if (currentUser && snap.hasChild(currentUser)) {
-                    document.getElementById('followBtn').innerText = "✓ Following";
+                    followBtn.innerText = "✓ Following";
                 } else {
-                    document.getElementById('followBtn').innerText = "👤 Follow";
+                    followBtn.innerText = "👤 Follow";
                 }
+
+                // Render Followers Mini List
+                const fList = document.getElementById('followersMiniList');
+                fList.innerHTML = '';
+                if (snap.exists()) {
+                    Object.keys(snap.val()).forEach(f => {
+                        fList.innerHTML += `<div style="padding:2px 0;">👤 <b>@${f}</b></div>`;
+                    });
+                } else {
+                    fList.innerHTML = '<div style="opacity:0.6;">No followers yet.</div>';
+                }
+            });
+
+            db.ref(`profiles/${viewingUser}/views`).on('value', snap => {
+                document.getElementById('viewsCountText').innerText = snap.val() || 0;
             });
         }
 
@@ -685,6 +829,7 @@
                 mainQuote: document.getElementById('mainQuoteText').innerText,
                 aboutHTML: document.getElementById('aboutList').innerHTML,
                 thingsHTML: document.getElementById('thingsList').innerHTML,
+                goalsHTML: document.getElementById('goalsList').innerHTML,
                 philosophyText: document.getElementById('philosophyText').innerText
             };
             db.ref('boards/' + viewingUser).update(data);
@@ -698,8 +843,10 @@
                     if (d.mainQuote) document.getElementById('mainQuoteText').innerText = d.mainQuote;
                     if (d.aboutHTML) document.getElementById('aboutList').innerHTML = d.aboutHTML;
                     if (d.thingsHTML) document.getElementById('thingsList').innerHTML = d.thingsHTML;
+                    if (d.goalsHTML) document.getElementById('goalsList').innerHTML = d.goalsHTML;
                     if (d.philosophyText) document.getElementById('philosophyText').innerText = d.philosophyText;
                     if (d.coverImg) document.getElementById('coverDisplay').style.backgroundImage = `url('${d.coverImg}')`;
+                    if (d.avatarImg) document.getElementById('avatarImg').src = d.avatarImg;
                 }
             });
 
@@ -708,9 +855,10 @@
             });
         }
 
-        /* MEDIA & TRANSPARENT RENDER ENGINE */
+        /* MEDIA UPLOAD HANDLERS */
         function triggerPhotoSelect(e) { if (e) e.stopPropagation(); document.getElementById('heroImageInput').click(); }
         function triggerCoverSelect() { document.getElementById('coverImageInput').click(); }
+        function triggerAvatarSelect() { document.getElementById('avatarImageInput').click(); }
 
         function handleImageUpload(e) {
             const file = e.target.files[0];
@@ -732,6 +880,18 @@
                 reader.onload = evt => {
                     document.getElementById('coverDisplay').style.backgroundImage = `url('${evt.target.result}')`;
                     db.ref('boards/' + viewingUser).update({ coverImg: evt.target.result });
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleAvatarUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = evt => {
+                    document.getElementById('avatarImg').src = evt.target.result;
+                    db.ref('boards/' + viewingUser).update({ avatarImg: evt.target.result });
                 };
                 reader.readAsDataURL(file);
             }
@@ -825,7 +985,22 @@
             });
         }
 
-        /* RECENT VISITORS */
+        /* VISITORS CONTROLLER */
+        function loadVisitors() {
+            db.ref(`visits/${viewingUser}`).on('value', snap => {
+                const vList = document.getElementById('visitorsMiniList');
+                vList.innerHTML = '';
+                if (snap.exists()) {
+                    Object.keys(snap.val()).forEach(k => {
+                        const v = snap.val()[k];
+                        vList.innerHTML += `<div style="padding:2px 0;">👀 <b>@${v.user}</b> (${v.date})</div>`;
+                    });
+                } else {
+                    vList.innerHTML = '<div style="opacity:0.6;">No visitors recorded yet.</div>';
+                }
+            });
+        }
+
         function openVisitorsModal() {
             document.getElementById('visitorsModal').style.display = 'flex';
             db.ref(`visits/${currentUser}`).once('value', snap => {
@@ -856,7 +1031,6 @@
         function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
 
         /* MUSIC & LOFI PLAYER */
-        let activeMusic = false;
         function toggleMusic() {
             const audio = document.getElementById('bgMusic');
             const disk = document.getElementById('vinylDisk');
@@ -864,42 +1038,15 @@
             else { audio.pause(); disk.classList.remove('spinning'); }
         }
 
-        /* CALENDAR & TODO ENGINE */
-        let todos = ["Create your vision board ✦"];
-        function renderCalendar() {
-            const now = new Date();
-            const year = now.getFullYear(); const month = now.getMonth(); const today = now.getDate();
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            document.getElementById('calMonthYear').innerText = `${monthNames[month]} ${year}`;
-            const grid = document.getElementById('calendarDays'); grid.innerHTML = '';
-            ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div class="cal-day-head">${d}</div>`);
-            const firstDay = new Date(year, month, 1).getDay();
-            const totalDays = new Date(year, month + 1, 0).getDate();
-            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
-            for (let d = 1; d <= totalDays; d++) grid.innerHTML += `<div class="cal-date ${d === today ? 'today' : ''}">${d}</div>`;
-        }
-
-        function renderTodos() {
-            const c = document.getElementById('todoContainer'); c.innerHTML = '';
-            todos.forEach((t, i) => c.innerHTML += `<div class="todo-item" onclick="toggleTodo(${i})">✦ ${t}</div>`);
-        }
-        function addTodo() {
-            const inp = document.getElementById('todoInput');
-            if (inp.value.trim()) { todos.push(inp.value.trim()); inp.value = ''; renderTodos(); }
-        }
-        function toggleTodo(i) { todos.splice(i, 1); renderTodos(); }
-
         /* STARTUP ENGINE */
         document.addEventListener('DOMContentLoaded', () => {
-            renderCalendar();
-            renderTodos();
-
             if (currentUser) {
                 document.getElementById('authGate').style.display = 'none';
                 document.getElementById('logoutBtn').style.display = 'flex';
                 initProfile();
             } else {
                 document.getElementById('authGate').style.display = 'flex';
+                document.getElementById('pageLoader').classList.add('hidden');
             }
         });
     </script>
