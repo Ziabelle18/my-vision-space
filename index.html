@@ -351,29 +351,30 @@
 
         .col-center { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
-        /* FIXED HERO IMAGE WRAPPER */
+        /* PERFECT SIZED HERO IMAGE CONTAINER - NO CROPPING */
         .hero-wrapper {
             width: 100%; text-align: center; cursor: pointer; position: relative;
-            max-height: 480px; overflow: hidden; border-radius: 16px;
             display: flex; justify-content: center; align-items: center;
+            margin-bottom: 10px;
         }
 
         .hero-girl, .hero-canvas {
-            width: 100%; height: auto; max-height: 480px; object-fit: contain;
+            max-width: 100%; height: auto; max-height: 380px;
+            object-fit: contain; border-radius: 12px;
             filter: drop-shadow(0 15px 30px rgba(180, 170, 150, 0.25));
             transition: transform 0.25s ease; display: block; margin: 0 auto;
         }
 
         .photo-upload-badge {
-            position: absolute; bottom: 18px; right: 18px;
-            background: rgba(255, 253, 251, 0.7); border: 1px solid rgba(197, 160, 89, 0.5);
+            position: absolute; bottom: 12px; right: 12px;
+            background: rgba(255, 253, 251, 0.8); border: 1px solid rgba(197, 160, 89, 0.5);
             backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; color: var(--accent-gold);
-            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: transform 0.2s;
+            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.12); transition: transform 0.2s;
             display: flex; align-items: center; gap: 5px; z-index: 10;
         }
 
-        .photo-upload-badge:hover { transform: scale(1.08); background: rgba(255, 253, 251, 0.9); }
+        .photo-upload-badge:hover { transform: scale(1.08); background: rgba(255, 253, 251, 0.95); }
 
         .center-quote-card { width: 100%; text-align: center; margin-top: 12px; }
         .handwritten-quote { font-family: var(--font-main-title); font-size: 1.55rem; line-height: 1.35; }
@@ -477,8 +478,7 @@
             .main-layout { display: flex; flex-direction: column; gap: 20px; }
             .column { display: contents; }
 
-            .hero-wrapper { max-height: 380px; }
-            .hero-girl, .hero-canvas { max-height: 380px; }
+            .hero-girl, .hero-canvas { max-height: 320px; }
 
             #card-center-col { order: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
             #card-about      { order: 2; width: 100%; }
