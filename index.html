@@ -213,7 +213,7 @@
         /* AUTH SCREEN */
         .auth-container {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: var(--bg-color); display: flex; flex-direction: column;
+            background: var(--bg-color); display: none; flex-direction: column;
             justify-content: center; align-items: center; z-index: 9999; padding: 20px;
         }
 
@@ -255,7 +255,7 @@
             color: var(--text-color); text-decoration: underline; opacity: 0.8;
         }
 
-        #mainAppContainer { display: none; }
+        #mainAppContainer { display: block; }
 
         .board-container {
             max-width: 1240px; width: 100%; margin: 0 auto;
@@ -505,7 +505,8 @@
                 <button onclick="searchUser()">🔍</button>
             </div>
 
-            <button class="control-btn" title="Logged in user"><span class="gold-icon">✦</span> <span id="userBadgeLabel">@User</span></button>
+            <!-- CLICKABLE USER PROFILE BADGE -->
+            <button class="control-btn" onclick="goHome()" title="Go to my profile"><span class="gold-icon">✦</span> <span id="userBadgeLabel">@User</span></button>
 
             <!-- OWNER-ONLY CUSTOMIZER CONTROLS (HIDDEN WHEN VISITING OTHERS) -->
             <div id="ownerControlsGroup" style="display: none; align-items: center; gap: 8px;">
@@ -613,10 +614,10 @@
                     </div>
                 </div>
 
-                <!-- GITNANG COLUMN -->
+                <!-- GITNANG COLUMN - REMOVED DEFAULT IMAGE TO PREVENT FLASH/BLINKING -->
                 <div class="column col-center" id="card-center-col">
                     <div class="hero-wrapper" id="heroMediaContainer">
-                        <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80" alt="Minimalist Portrait" class="hero-girl" id="heroImg">
+                        <img src="" alt="Portrait" class="hero-girl" id="heroImg" style="display:none;">
                         <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()">✦ Change Photo</div>
                     </div>
 
@@ -798,11 +799,20 @@
         const db = firebase.database();
         const auth = firebase.auth();
 
-        let loggedInUsername = "";
+        let loggedInUsername = localStorage.getItem('vb_logged_user') || "";
         let currentBoardId = "";
         let isOwnerMode = false;
         let isSignUpMode = false;
         let testimonials = [];
+
+        /* INSTANT LOCAL STORAGE CHECK TO PREVENT LOGIN FLASH ON REFRESH */
+        if (loggedInUsername) {
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('mainAppContainer').style.display = 'block';
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetUser = urlParams.get('u') || urlParams.get('user') || loggedInUsername;
+            setupViewMode(targetUser);
+        }
 
         function toggleAuthMode() {
             isSignUpMode = !isSignUpMode;
@@ -861,25 +871,16 @@
             });
         }
 
-        /* PERSISTENT AUTH STATE LISTENER WITH LOCALSTORAGE FALLBACK FOR SMOOTH REFRESH */
+        /* FIREBASE AUTH LISTENER WITH FAST RECOVER */
         auth.onAuthStateChanged(user => {
-            const cachedUser = localStorage.getItem('vb_logged_user');
-
-            if (user || cachedUser) {
-                if (user && user.email) {
-                    loggedInUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '');
-                } else if (cachedUser) {
-                    loggedInUsername = cachedUser;
-                } else {
-                    loggedInUsername = "user";
-                }
-                
+            if (user && user.email) {
+                loggedInUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '');
                 localStorage.setItem('vb_logged_user', loggedInUsername);
 
                 const urlParams = new URLSearchParams(window.location.search);
                 const targetUser = urlParams.get('u') || urlParams.get('user') || loggedInUsername;
                 setupViewMode(targetUser);
-            } else {
+            } else if (!localStorage.getItem('vb_logged_user')) {
                 document.getElementById('authScreen').style.display = 'flex';
                 document.getElementById('mainAppContainer').style.display = 'none';
             }
@@ -1130,6 +1131,7 @@
             videoAnimFrame = requestAnimationFrame(() => renderTransparentVideoFrame(videoEl, canvasEl, ctx));
         }
 
+        /* CLEAN SINGLE HERO MEDIA SETTER */
         function setHeroMedia(mediaUrl, isVideo = false) {
             if (videoAnimFrame) {
                 cancelAnimationFrame(videoAnimFrame);
@@ -1156,7 +1158,7 @@
             } else {
                 activeHeroVidUrl = "";
                 container.innerHTML = `
-                    <img src="${mediaUrl}" alt="Portrait" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80';">
+                    <img src="${mediaUrl}" alt="Portrait" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.style.display='none';">
                     <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()" style="display: ${isOwnerMode ? 'flex' : 'none'}">✦ Change Photo</div>
                 `;
             }
