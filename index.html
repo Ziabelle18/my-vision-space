@@ -1090,12 +1090,10 @@
             }
         }
 
-        /* RESET FILE INPUT BEFORE SELECTING TO GUARANTEE FILE PICKER FIRES */
+        /* NATURAL AND DIRECT FILE PICKER TRIGGER */
         function triggerPhotoSelect() {
             if (isOwnerMode) {
-                const input = document.getElementById('heroImageInput');
-                input.value = '';
-                input.click();
+                document.getElementById('heroImageInput').click();
             }
         }
 
@@ -1168,7 +1166,6 @@
             }
         }
 
-        /* RELIABLE PHOTO UPLOAD & IMMEDIATE CLOUD/LOCAL SAVE */
         function handleImageUpload(event) {
             if (!isOwnerMode) return;
             const file = event.target.files[0];
