@@ -971,25 +971,31 @@
 
         function saveMediaToIDB(key, val) {
             if (!idb) return;
-            const tx = idb.transaction("media", "readwrite");
-            const store = tx.objectStore("media");
-            store.put(val, key);
+            try {
+                const tx = idb.transaction("media", "readwrite");
+                const store = tx.objectStore("media");
+                store.put(val, key);
+            } catch(e) {}
         }
 
         function clearMediaFromIDB(key) {
             if (!idb) return;
-            const tx = idb.transaction("media", "readwrite");
-            const store = tx.objectStore("media");
-            store.delete(key);
+            try {
+                const tx = idb.transaction("media", "readwrite");
+                const store = tx.objectStore("media");
+                store.delete(key);
+            } catch(e) {}
         }
 
         function getMediaFromIDB(key, callback) {
             if (!idb) return callback(null);
-            const tx = idb.transaction("media", "readonly");
-            const store = tx.objectStore("media");
-            const req = store.get(key);
-            req.onsuccess = function() { callback(req.result); };
-            req.onerror = function() { callback(null); };
+            try {
+                const tx = idb.transaction("media", "readonly");
+                const store = tx.objectStore("media");
+                const req = store.get(key);
+                req.onsuccess = function() { callback(req.result); };
+                req.onerror = function() { callback(null); };
+            } catch(e) { callback(null); }
         }
 
         /* YOUTUBE IFRAME API */
@@ -1090,7 +1096,6 @@
             }
         }
 
-        /* NATURAL AND DIRECT FILE PICKER TRIGGER */
         function triggerPhotoSelect() {
             if (isOwnerMode) {
                 document.getElementById('heroImageInput').click();
@@ -1166,67 +1171,43 @@
             }
         }
 
+        /* DIRECT FAST FILE UPLOAD */
         function handleImageUpload(event) {
             if (!isOwnerMode) return;
             const file = event.target.files[0];
             if (!file) return;
 
-            if (file.size > 8 * 1024 * 1024) {
-                alert("Please select a file smaller than 8MB to keep your board fast!");
-                return;
-            }
-
             const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                const isVideo = file.type.startsWith('video/');
 
-            if (file.type.startsWith('video/')) {
-                reader.onload = function(e) {
-                    const dataUrl = e.target.result;
-                    setHeroMedia(dataUrl, true);
+                /* INSTANT RENDER */
+                setHeroMedia(dataUrl, isVideo);
+
+                /* SAVE LOCALLY TO PHONE STORAGE */
+                if (isVideo) {
                     saveMediaToIDB('heroVid_' + currentBoardId, dataUrl);
                     clearMediaFromIDB('heroImg_' + currentBoardId);
-                    if (db) db.ref('visionboards/' + currentBoardId + '/heroVid').set(dataUrl);
-                };
-                reader.readAsDataURL(file);
-            } 
-            else if (file.type === "image/gif") {
-                reader.onload = function(e) {
-                    const dataUrl = e.target.result;
-                    setHeroMedia(dataUrl, false);
+                } else {
                     saveMediaToIDB('heroImg_' + currentBoardId, dataUrl);
                     clearMediaFromIDB('heroVid_' + currentBoardId);
-                    if (db) db.ref('visionboards/' + currentBoardId + '/heroImg').set(dataUrl);
-                };
-                reader.readAsDataURL(file);
-            } 
-            else {
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const maxWidth = 800;
-                        let width = img.width;
-                        let height = img.height;
+                }
 
-                        if (width > maxWidth) {
-                            height = Math.round((height * maxWidth) / width);
-                            width = maxWidth;
-                        }
-
-                        canvas.width = width; canvas.height = height;
-                        ctx.clearRect(0, 0, width, height);
-                        ctx.drawImage(img, 0, 0, width, height);
-
-                        const compressedDataUrl = canvas.toDataURL('image/png');
-                        setHeroMedia(compressedDataUrl, false);
-                        saveMediaToIDB('heroImg_' + currentBoardId, compressedDataUrl);
-                        clearMediaFromIDB('heroVid_' + currentBoardId);
-                        if (db) db.ref('visionboards/' + currentBoardId + '/heroImg').set(compressedDataUrl);
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
+                /* ATTEMPT CLOUD SYNC */
+                if (db) {
+                    const updateObj = {};
+                    if (isVideo) {
+                        updateObj.heroVid = dataUrl;
+                        updateObj.heroImg = "";
+                    } else {
+                        updateObj.heroImg = dataUrl;
+                        updateObj.heroVid = "";
+                    }
+                    db.ref('visionboards/' + currentBoardId).update(updateObj).catch(() => {});
+                }
+            };
+            reader.readAsDataURL(file);
         }
 
         function openThemeModal() { if(isOwnerMode) document.getElementById('themeModal').style.display = 'flex'; }
@@ -1394,13 +1375,9 @@
                 }
             });
 
-            const heroImgEl = document.getElementById('heroImg');
-
             return {
                 mainTitle: document.getElementById('mainTitleText').innerText,
                 mainQuote: document.getElementById('mainQuoteText').innerText,
-                heroImg: heroImgEl ? heroImgEl.src : "",
-                heroVid: activeHeroVidUrl,
                 themeClass: document.body.className,
                 isDarkMode: document.body.classList.contains('dark-mode'),
                 mainTitleFont: getComputedStyle(document.documentElement).getPropertyValue('--font-main-title'),
@@ -1416,26 +1393,12 @@
             if (!isOwnerMode || !currentBoardId) return;
 
             const data = getVisionBoardData();
-            const lightData = Object.assign({}, data);
-            delete lightData.heroVid; delete lightData.heroImg;
-
             try {
-                localStorage.setItem('visionBoard_' + currentBoardId, JSON.stringify(lightData));
+                localStorage.setItem('visionBoard_' + currentBoardId, JSON.stringify(data));
             } catch (e) {}
 
             if (db) {
-                db.ref('visionboards/' + currentBoardId).update({
-                    mainTitle: data.mainTitle,
-                    mainQuote: data.mainQuote,
-                    themeClass: data.themeClass,
-                    isDarkMode: data.isDarkMode,
-                    mainTitleFont: data.mainTitleFont,
-                    headerFont: data.headerFont,
-                    bodyFont: data.bodyFont,
-                    musicUrl: data.musicUrl,
-                    testimonials: data.testimonials,
-                    cards: data.cards
-                });
+                db.ref('visionboards/' + currentBoardId).update(data);
             }
         }
 
@@ -1515,6 +1478,7 @@
         function loadVisionBoardFromCloud() {
             if (!currentBoardId) return;
 
+            /* LOAD MEDIA FROM LOCAL STORAGE VAULT FIRST */
             getMediaFromIDB('heroVid_' + currentBoardId, function(vidData) {
                 if (vidData) {
                     setHeroMedia(vidData, true);
