@@ -351,29 +351,30 @@
 
         .col-center { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
-        /* RESTORED ORIGINAL HERO WRAPPER & PHOTO STYLING */
+        /* STRICTLY CONSTRAINED PHOTO WRAPPER - PREVENTS OVERFLOW & DUPLICATION */
         .hero-wrapper {
-            width: 100%; text-align: center; cursor: pointer; position: relative; user-select: none;
+            width: 100%; max-width: 320px; margin: 0 auto 10px auto;
+            text-align: center; cursor: pointer; position: relative; user-select: none;
+            display: flex; justify-content: center; align-items: center;
         }
 
         .hero-girl, .hero-canvas {
-            width: 100%; height: auto; max-height: 500px; object-fit: contain;
-            filter: drop-shadow(0 15px 30px rgba(180, 170, 150, 0.2));
+            width: 100%; max-width: 320px; height: auto; max-height: 380px;
+            object-fit: contain; border-radius: 12px;
+            filter: drop-shadow(0 10px 25px rgba(180, 170, 150, 0.25));
             transition: transform 0.2s ease; display: block; margin: 0 auto;
-            background: transparent !important; mix-blend-mode: normal !important;
         }
 
         .photo-upload-badge {
-            position: absolute; bottom: 15px; right: 15px;
-            background: rgba(255, 253, 251, 0.35); border: 1px solid rgba(197, 160, 89, 0.45);
-            -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+            position: absolute; bottom: 12px; right: 12px;
+            background: rgba(255, 253, 251, 0.85); border: 1px solid rgba(197, 160, 89, 0.5);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
             padding: 5px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; color: var(--accent-gold);
-            cursor: pointer; box-shadow: 0 4px 10px rgba(180, 170, 150, 0.1);
-            transition: transform 0.2s, background 0.2s, opacity 0.2s;
-            display: flex; align-items: center; gap: 4px; opacity: 0.85; z-index: 10;
+            cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.12); transition: transform 0.2s;
+            display: flex; align-items: center; gap: 4px; z-index: 10;
         }
 
-        .photo-upload-badge:hover { transform: scale(1.08); background: rgba(255, 253, 251, 0.7); opacity: 1; }
+        .photo-upload-badge:hover { transform: scale(1.08); background: rgba(255, 253, 251, 0.95); }
 
         .center-quote-card { width: 100%; text-align: center; margin-top: 10px; z-index: 5; }
         .handwritten-quote { font-family: var(--font-main-title); font-size: 1.45rem; line-height: 1.3; }
@@ -477,7 +478,8 @@
             .main-layout { display: flex; flex-direction: column; gap: 20px; }
             .column { display: contents; }
 
-            .hero-girl, .hero-canvas { width: 100%; max-height: 440px; }
+            .hero-wrapper { max-width: 280px; }
+            .hero-girl, .hero-canvas { max-width: 280px; max-height: 340px; }
 
             #card-center-col { order: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
             #card-about      { order: 2; width: 100%; }
@@ -611,7 +613,7 @@
                 <!-- GITNANG COLUMN -->
                 <div class="column col-center" id="card-center-col">
                     <div class="hero-wrapper" id="heroMediaContainer">
-                        <img src="girl.png" alt="Character" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80';">
+                        <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80" alt="Minimalist Portrait" class="hero-girl" id="heroImg">
                         <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()">✦ Change Photo</div>
                     </div>
 
@@ -1109,6 +1111,7 @@
             videoAnimFrame = requestAnimationFrame(() => renderTransparentVideoFrame(videoEl, canvasEl, ctx));
         }
 
+        /* CLEAN SINGLE HERO MEDIA SETTER */
         function setHeroMedia(mediaUrl, isVideo = false) {
             if (videoAnimFrame) {
                 cancelAnimationFrame(videoAnimFrame);
@@ -1121,7 +1124,7 @@
             if (isVideo) {
                 activeHeroVidUrl = mediaUrl;
                 container.innerHTML = `
-                    <video src="${mediaUrl}" id="heroVidSrc" class="hero-video-hidden" autoplay loop muted playsinline crossorigin="anonymous"></video>
+                    <video src="${mediaUrl}" id="heroVidSrc" style="display:none;" autoplay loop muted playsinline crossorigin="anonymous"></video>
                     <canvas id="heroCanvas" class="hero-canvas"></canvas>
                     <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()" style="display: ${isOwnerMode ? 'flex' : 'none'}">✦ Change Photo</div>
                 `;
@@ -1135,7 +1138,7 @@
             } else {
                 activeHeroVidUrl = "";
                 container.innerHTML = `
-                    <img src="${mediaUrl}" alt="Character" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80';">
+                    <img src="${mediaUrl}" alt="Portrait" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80';">
                     <div class="photo-upload-badge" id="photoBadge" onclick="triggerPhotoSelect()" style="display: ${isOwnerMode ? 'flex' : 'none'}">✦ Change Photo</div>
                 `;
             }
@@ -1466,8 +1469,6 @@
                                 const quoteEl = cardElem.querySelector('.handwritten-quote');
                                 if (quoteEl) quoteEl.innerText = cData.quote;
                             }
-                        } else if (typeof cData === 'string') {
-                            cardElem.innerHTML = cData;
                         }
                     }
                 });
