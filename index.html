@@ -351,24 +351,29 @@
 
         .col-center { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
-        .hero-wrapper { width: 100%; text-align: center; cursor: pointer; position: relative; }
+        /* FIXED HERO IMAGE WRAPPER */
+        .hero-wrapper {
+            width: 100%; text-align: center; cursor: pointer; position: relative;
+            max-height: 480px; overflow: hidden; border-radius: 16px;
+            display: flex; justify-content: center; align-items: center;
+        }
 
         .hero-girl, .hero-canvas {
-            width: 100%; height: auto; max-height: 520px; object-fit: contain;
+            width: 100%; height: auto; max-height: 480px; object-fit: contain;
             filter: drop-shadow(0 15px 30px rgba(180, 170, 150, 0.25));
             transition: transform 0.25s ease; display: block; margin: 0 auto;
         }
 
         .photo-upload-badge {
             position: absolute; bottom: 18px; right: 18px;
-            background: rgba(255, 253, 251, 0.6); border: 1px solid rgba(197, 160, 89, 0.5);
+            background: rgba(255, 253, 251, 0.7); border: 1px solid rgba(197, 160, 89, 0.5);
             backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; color: var(--accent-gold);
             cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: transform 0.2s;
             display: flex; align-items: center; gap: 5px; z-index: 10;
         }
 
-        .photo-upload-badge:hover { transform: scale(1.08); background: rgba(255, 253, 251, 0.85); }
+        .photo-upload-badge:hover { transform: scale(1.08); background: rgba(255, 253, 251, 0.9); }
 
         .center-quote-card { width: 100%; text-align: center; margin-top: 12px; }
         .handwritten-quote { font-family: var(--font-main-title); font-size: 1.55rem; line-height: 1.35; }
@@ -471,6 +476,9 @@
             .header .quote { font-size: 1.4rem; }
             .main-layout { display: flex; flex-direction: column; gap: 20px; }
             .column { display: contents; }
+
+            .hero-wrapper { max-height: 380px; }
+            .hero-girl, .hero-canvas { max-height: 380px; }
 
             #card-center-col { order: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
             #card-about      { order: 2; width: 100%; }
@@ -1109,6 +1117,7 @@
             }
 
             const container = document.getElementById('heroMediaContainer');
+            if (!container) return;
 
             if (isVideo) {
                 activeHeroVidUrl = mediaUrl;
@@ -1280,6 +1289,7 @@
         /* FRIENDSTER TESTIMONIALS LOGIC */
         function renderTestimonials() {
             const container = document.getElementById('testiContainer');
+            if (!container) return;
             container.innerHTML = '';
             if (!testimonials || testimonials.length === 0) {
                 container.innerHTML = '<p style="font-size:0.8rem; opacity:0.6; font-style:italic;">No testimonials yet. Be the first to leave one!</p>';
