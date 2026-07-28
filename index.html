@@ -1590,15 +1590,24 @@
                     return username.includes(query) || publicHandle.includes(query);
                 })
                 .slice(0, 12);
-            const profileSnaps = await Promise.all(
-                matches.map(username => db.ref(`boards/${username}`).once('value'))
+            const profiles = await Promise.all(
+                matches.map(async username => {
+                    const [displayNameSnap, avatarSnap] = await Promise.all([
+                        db.ref(`boards/${username}/displayName`).once('value'),
+                        db.ref(`boards/${username}/avatarImg`).once('value')
+                    ]);
+                    return {
+                        displayName: displayNameSnap.val() || '',
+                        avatarImg: avatarSnap.val() || ''
+                    };
+                })
             );
             if (requestId !== userSearchSequence) return;
 
             dropdown.innerHTML = '';
             matches.forEach((username, index) => {
-                const profile = profileSnaps[index].val() || {};
-                const publicHandle = users[username]?.publicHandle || profile.profileHandle || username;
+                const profile = profiles[index] || {};
+                const publicHandle = users[username]?.publicHandle || username;
                 const card = document.createElement('div');
                 card.className = 'search-card';
                 card.onclick = () => navigateToUser(username);
@@ -2023,6 +2032,7 @@
 
         function loadBoardData() {
             db.ref('boards/' + viewingUser).once('value', snap => {
+                let cloudHeroMedia = null;
                 if (snap.exists()) {
                     const d = snap.val();
                     if (d.mainTitle) document.getElementById('mainTitleText').innerText = d.mainTitle;
@@ -2050,21 +2060,30 @@
                         document.getElementById('avatarImg').src = d.avatarImg;
                         saveMediaToIDB('avatarImg_' + viewingUser, d.avatarImg);
                     }
+                    if (d.heroMedia && d.heroMedia.dataUrl && !d.heroMedia.isVideo) cloudHeroMedia = d.heroMedia;
                     if (d.musicTrack) applyMusicTrack(d.musicTrack);
                     if (d.theme) setTheme(d.theme, true);
                     if (d.fonts) {
                         Object.entries(d.fonts).forEach(([name, value]) => applyFont(name, value, true));
                     }
                 }
-            });
-
-            getMediaFromIDB('heroImg_' + viewingUser, media => {
-                if (!media) return;
-                if (typeof media === 'string') {
-                    processAndSetHeroMedia(media, media.startsWith('data:video/'));
-                } else {
-                    processAndSetHeroMedia(media.dataUrl, !!media.isVideo);
-                }
+                getMediaFromIDB('heroImg_' + viewingUser, localMedia => {
+                    const normalizedLocal = typeof localMedia === 'string'
+                        ? { dataUrl: localMedia, isVideo: localMedia.startsWith('data:video/'), updatedAt: 0 }
+                        : localMedia;
+                    const localVideoIsNewer = normalizedLocal && normalizedLocal.isVideo &&
+                        Number(normalizedLocal.updatedAt || 0) > Number(cloudHeroMedia?.updatedAt || 0);
+                    const selectedMedia = localVideoIsNewer ? normalizedLocal : (cloudHeroMedia || normalizedLocal);
+                    if (!selectedMedia || !selectedMedia.dataUrl) return;
+                    processAndSetHeroMedia(selectedMedia.dataUrl, !!selectedMedia.isVideo);
+                    if (cloudHeroMedia && !localVideoIsNewer) {
+                        saveMediaToIDB('heroImg_' + viewingUser, {
+                            dataUrl: cloudHeroMedia.dataUrl,
+                            isVideo: false,
+                            updatedAt: Number(cloudHeroMedia.updatedAt || 0)
+                        });
+                    }
+                });
             });
         }
 
@@ -2227,17 +2246,113 @@
             img.src = dataUrl;
         }
 
-        function handleImageUpload(e) {
-            const file = e.target.files[0];
-            if (file) {
+        function readMediaFileAsDataUrl(file) {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = evt => {
-                    const dataUrl = evt.target.result;
-                    const isVid = file.type.startsWith('video/');
-                    processAndSetHeroMedia(dataUrl, isVid);
-                    saveMediaToIDB('heroImg_' + viewingUser, { dataUrl, isVideo: isVid });
-                };
+                reader.onload = event => resolve(event.target.result);
+                reader.onerror = () => reject(new Error('The selected media could not be read.'));
                 reader.readAsDataURL(file);
+            });
+        }
+
+        function optimizeHeroPhoto(file) {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    const originalDataUrl = await readMediaFileAsDataUrl(file);
+                    const image = new Image();
+                    image.onload = () => {
+                        const maxWidth = 1000;
+                        const maxHeight = 1500;
+                        const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+                        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                        const context = canvas.getContext('2d');
+                        context.clearRect(0, 0, canvas.width, canvas.height);
+                        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+                        let optimized = canvas.toDataURL('image/webp', 0.82);
+                        if (optimized.length > 2500000) {
+                            const smaller = document.createElement('canvas');
+                            const downscale = Math.min(1, 760 / canvas.width, 1140 / canvas.height);
+                            smaller.width = Math.max(1, Math.round(canvas.width * downscale));
+                            smaller.height = Math.max(1, Math.round(canvas.height * downscale));
+                            smaller.getContext('2d').drawImage(canvas, 0, 0, smaller.width, smaller.height);
+                            optimized = smaller.toDataURL('image/webp', 0.72);
+                        }
+                        if (optimized.length > 3500000) {
+                            reject(new Error('This photo is still too large after optimization. Please choose a smaller image.'));
+                            return;
+                        }
+                        resolve(optimized);
+                    };
+                    image.onerror = () => reject(new Error('This photo format could not be opened.'));
+                    image.src = originalDataUrl;
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        async function saveHeroPhotoAcrossDevices(dataUrl, mediaType = 'image') {
+            const updatedAt = Date.now();
+            const media = { dataUrl, isVideo: false, mediaType, updatedAt };
+            processAndSetHeroMedia(dataUrl, false);
+            saveMediaToIDB('heroImg_' + viewingUser, media);
+            await db.ref(`boards/${viewingUser}/heroMedia`).set(media);
+        }
+
+        async function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const badge = document.querySelector('.photo-upload-badge');
+            const previousBadgeText = badge ? badge.textContent : '';
+            if (badge) badge.textContent = '✦ Saving...';
+
+            try {
+                const isVideo = file.type.startsWith('video/');
+                const isGif = file.type === 'image/gif';
+
+                if (isVideo) {
+                    if (file.size > 25 * 1024 * 1024) {
+                        throw new Error('Please choose a video smaller than 25 MB.');
+                    }
+                    const dataUrl = await readMediaFileAsDataUrl(file);
+                    const localMedia = { dataUrl, isVideo: true, updatedAt: Date.now() };
+                    processAndSetHeroMedia(dataUrl, true);
+                    saveMediaToIDB('heroImg_' + viewingUser, localMedia);
+                    alert('Video saved on this device only. Cross-device video sync needs cloud file storage.');
+                    return;
+                }
+
+                if (isGif) {
+                    const dataUrl = await readMediaFileAsDataUrl(file);
+                    if (file.size <= 2 * 1024 * 1024) {
+                        await saveHeroPhotoAcrossDevices(dataUrl, 'gif');
+                    } else {
+                        processAndSetHeroMedia(dataUrl, false);
+                        saveMediaToIDB('heroImg_' + viewingUser, {
+                            dataUrl, isVideo: false, mediaType: 'gif', updatedAt: Date.now()
+                        });
+                        alert('This GIF is larger than 2 MB, so it was saved on this device only.');
+                    }
+                    return;
+                }
+
+                if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                    throw new Error('Please choose a JPG, PNG, WebP, GIF, or supported video.');
+                }
+                if (file.size > 12 * 1024 * 1024) {
+                    throw new Error('Please choose a photo smaller than 12 MB.');
+                }
+
+                const optimizedDataUrl = await optimizeHeroPhoto(file);
+                await saveHeroPhotoAcrossDevices(optimizedDataUrl, 'image');
+            } catch (error) {
+                alert(error.message || 'The media could not be saved.');
+            } finally {
+                if (badge) badge.textContent = previousBadgeText || '✦ Change Media';
+                e.target.value = '';
             }
         }
 
