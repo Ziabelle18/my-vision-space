@@ -1053,9 +1053,10 @@
                 <label>Display Name
                     <input type="text" id="editDisplayName" maxlength="40" placeholder="Your display name">
                 </label>
-                <label>Profile Username
+                <label>Public @ Handle
                     <input type="text" id="editProfileHandle" maxlength="30" placeholder="@username">
                 </label>
+                <p style="font-size:0.68rem; opacity:0.68; margin-top:-5px;">This is the @name friends see. Your private email remains your secure login.</p>
                 <button class="nav-btn" style="width:100%; justify-content:center; padding:10px; background:var(--accent-gold); color:#fff; font-weight:bold;" onclick="saveProfileEdits()">Save Profile ✦</button>
             </div>
         </div>
@@ -1505,14 +1506,16 @@
                 if (snap.exists()) {
                     let count = 0;
                     Object.keys(snap.val()).forEach(u => {
-                        if (u.includes(q.toLowerCase())) {
+                        const userData = snap.val()[u] || {};
+                        const publicHandle = userData.publicHandle || u;
+                        if (u.includes(q.toLowerCase()) || publicHandle.includes(q.toLowerCase())) {
                             count++;
                             dropdown.innerHTML += `
                                 <div class="search-card" onclick="navigateToUser('${u}')">
                                     <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" class="search-avatar">
                                     <div class="search-info">
-                                        <span class="search-name">${u}</span>
-                                        <span class="search-sub">@${u}</span>
+                                        <span class="search-name">@${publicHandle}</span>
+                                        <span class="search-sub">Boardly profile</span>
                                     </div>
                                 </div>
                             `;
@@ -1868,6 +1871,7 @@
             document.getElementById('userHandleText').innerText = `@${profileHandle}`;
             localStorage.setItem('vspace_profile_' + viewingUser, JSON.stringify(profileData));
             db.ref('boards/' + viewingUser).update(profileData);
+            db.ref(`users/${viewingUser}/publicHandle`).set(profileHandle);
             closeEditProfileModal();
         }
 
@@ -1902,6 +1906,9 @@
                             displayName: d.displayName || viewingUser,
                             profileHandle: d.profileHandle || viewingUser
                         }));
+                        if (currentUser === viewingUser && d.profileHandle) {
+                            db.ref('users/' + viewingUser + '/publicHandle').set(d.profileHandle);
+                        }
                     }
                     if (d.coverImg) {
                         document.getElementById('coverDisplay').style.backgroundImage = `url('${d.coverImg}')`;
@@ -2628,6 +2635,9 @@
             db.ref(`presence/${safeChatKey(user)}/state`).on('value', snap => {
                 dot.classList.toggle('online', snap.val() === 'online');
             });
+            db.ref(`users/${user}/publicHandle`).once('value', snap => {
+                if (snap.exists()) name.textContent = `✦ @${snap.val()}`;
+            });
             button.onclick = () => startChatWith(user);
             container.appendChild(button);
         }
@@ -2868,8 +2878,8 @@
             if (savedFonts['--font-body'] && document.getElementById('bodyFontSelect')) {
                 document.getElementById('bodyFontSelect').value = savedFonts['--font-body'];
             }
-            document.getElementById('authGate').style.display = 'flex';
-            document.getElementById('pageLoader').classList.add('hidden');
+            document.getElementById('authGate').style.display = 'none';
+            document.getElementById('pageLoader').classList.remove('hidden');
             auth.onAuthStateChanged(async firebaseUser => {
                 if (firebaseUser) {
                     try {
@@ -2884,11 +2894,9 @@
                     localStorage.removeItem('vspace_user');
                     document.getElementById('logoutBtn').style.display = 'none';
                     document.getElementById('authGate').style.display = 'flex';
+                    document.getElementById('pageLoader').classList.add('hidden');
                 }
             });
-            if (!auth.currentUser) {
-                document.getElementById('authGate').style.display = 'flex';
-            }
         });
         window.addEventListener('hashchange', () => {
             if (location.hash !== '#chat') {
