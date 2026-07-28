@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>my vision space — aesthetic social scrapbook</title>
+    <title>The Muse Society — aesthetic social scrapbook</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -93,9 +93,9 @@
         body.dark-mode .top-nav { background: rgba(26, 25, 24, 0.88); }
 
         .nav-logo {
-            font-family: 'Caveat', cursive; font-size: 1.75rem; line-height: 1;
-            font-weight: 700; cursor: pointer; color: var(--text-color);
-            white-space: nowrap; flex: 0 0 auto;
+            font-family: 'Cinzel', serif; font-size: 1.3rem; line-height: 1;
+            font-weight: 700; cursor: pointer; color: var(--accent-gold);
+            letter-spacing: 0.11em; white-space: nowrap; flex: 0 0 auto;
         }
         .home-nav-btn {
             display: none; align-items: center; justify-content: center;
@@ -152,7 +152,10 @@
             border-radius: 20px; padding: 35px 25px; width: 90%; max-width: 380px;
             text-align: center; box-shadow: var(--shadow-soft);
         }
-        .auth-card h2 { font-family: var(--font-main-title); font-size: 3.4rem; line-height: 1; margin-bottom: 4px; }
+        .auth-card h2 {
+            font-family: 'Cinzel', serif; font-size: 2rem; line-height: 1.15;
+            letter-spacing: 0.1em; color: var(--accent-gold); margin-bottom: 8px;
+        }
         .auth-card p.sub { font-size: 0.85rem; color: var(--accent-gold); font-weight: 600; margin-bottom: 22px; }
         
         .auth-inputs { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
@@ -359,6 +362,82 @@
         .testi-box textarea { width: 100%; height: 60px; padding: 8px; border: 1px solid var(--accent-gold); border-radius: 6px; font-size: 0.8rem; background: transparent; color: inherit; }
         .testi-item { border-bottom: 1px dashed rgba(197, 160, 89, 0.3); padding: 8px 0; font-size: 0.82rem; }
         .testi-meta { font-weight: bold; color: var(--accent-gold); font-size: 0.75rem; display: flex; justify-content: space-between; }
+
+        /* MEMORY GUESTBOOK */
+        .guestbook-intro {
+            margin: -2px 0 12px; font-size: 0.7rem; opacity: 0.7;
+            line-height: 1.45; font-style: italic;
+        }
+        .guestbook-create {
+            display: grid; grid-template-columns: 1fr auto; gap: 8px;
+            align-items: end; margin-bottom: 12px;
+        }
+        .guestbook-create textarea {
+            width: 100%; min-height: 68px; padding: 10px; resize: vertical;
+            border: 1px solid var(--accent-gold); border-radius: 10px;
+            background: var(--bg-color); color: var(--text-color);
+            font: 500 0.8rem var(--font-body); line-height: 1.45;
+        }
+        .guestbook-tools { display: flex; flex-direction: column; gap: 7px; }
+        .guestbook-tools select { min-height: 36px; }
+        .guestbook-entry {
+            position: relative; overflow: hidden; margin-top: 12px; padding: 12px;
+            display: grid; grid-template-columns: 112px 1fr; gap: 13px;
+            border-radius: 13px; background: var(--bg-color);
+            border: 1px solid rgba(197,160,89,0.24);
+        }
+        .guestbook-polaroid {
+            position: relative; z-index: 2; padding: 5px 5px 13px;
+            background: #fff; color: #333; border-radius: 4px;
+            box-shadow: 0 5px 14px rgba(0,0,0,0.13);
+            transform: rotate(-1.2deg); text-align: center;
+        }
+        .guestbook-polaroid img {
+            display: block; width: 100%; aspect-ratio: 1 / 1;
+            object-fit: cover; border-radius: 2px;
+        }
+        .guestbook-polaroid span { display: block; margin-top: 6px; font: 700 0.68rem 'Caveat', cursive; }
+        .guestbook-story {
+            position: relative; z-index: 2; min-width: 0; padding: 8px 9px 9px;
+            border-radius: 8px; background:
+                repeating-linear-gradient(transparent, transparent 23px, rgba(197,160,89,0.17) 24px);
+        }
+        .guestbook-story-meta {
+            display: flex; justify-content: space-between; gap: 8px;
+            margin-bottom: 8px; color: var(--accent-gold);
+            font-size: 0.64rem; font-weight: 700;
+        }
+        .guestbook-story-text {
+            min-height: 48px; font-size: 0.8rem; line-height: 1.55; word-break: break-word;
+        }
+        .guestbook-delete {
+            position: absolute; top: 7px; right: 7px; z-index: 4;
+            width: 23px; height: 23px; border-radius: 50%;
+            border: 1px solid var(--accent-gold); background: var(--card-white);
+            color: var(--accent-gold); cursor: pointer;
+        }
+        .guestbook-deco {
+            position: absolute; z-index: 1; color: var(--accent-gold);
+            opacity: 0; pointer-events: none; font-size: 0.8rem;
+            animation: guestbookDrift 3.4s ease-out forwards;
+        }
+        @keyframes guestbookDrift {
+            0% { opacity: 0; transform: translateY(20px) rotate(0deg) scale(0.7); }
+            22% { opacity: 0.72; }
+            100% { opacity: 0; transform: translateY(-90px) rotate(24deg) scale(1.05); }
+        }
+        .guestbook-static-deco {
+            position: absolute; right: 12px; bottom: 8px; z-index: 1;
+            color: var(--accent-gold); opacity: 0.28; font-size: 1.15rem;
+        }
+        body.body-font-script .guestbook-story-text,
+        body.body-font-script .guestbook-create textarea { font-size: 0.96rem; font-weight: 600; }
+        @media (max-width: 480px) {
+            .guestbook-create { grid-template-columns: 1fr; }
+            .guestbook-tools { flex-direction: row; }
+            .guestbook-tools > * { flex: 1; }
+            .guestbook-entry { grid-template-columns: 98px 1fr; gap: 10px; padding: 10px; }
+        }
 
         /* LITTLE CHAOS — CUTE DUMP NOTES WALL */
         .chaos-subtitle {
@@ -613,9 +692,9 @@
             }
             .nav-logo {
                 grid-area: logo; grid-column: 1 / -1; width: 100%;
-                font-family: 'Caveat', cursive; font-size: 1.8rem;
+                font-family: 'Cinzel', serif; font-size: 1.16rem;
                 overflow: visible; text-overflow: clip; max-width: none;
-                text-align: center;
+                text-align: center; color: var(--accent-gold); letter-spacing: 0.1em;
             }
             .home-nav-btn {
                 grid-area: logo; justify-self: start; align-self: center;
@@ -634,7 +713,7 @@
 
         @media (max-width: 430px) {
             .top-nav { grid-template-columns: minmax(0, 1fr) auto; }
-            .nav-logo { font-size: 1.75rem; }
+            .nav-logo { font-size: 1.05rem; }
             .nav-search { max-width: none; }
             .top-nav .nav-btn { font-size: 0.72rem; width: 38px; padding: 6px; }
             .top-nav .nav-btn span { font-size: 0.72rem; }
@@ -679,7 +758,7 @@
     <!-- PAGE TRANSITION LOADER -->
     <div class="page-loader" id="pageLoader">
         <div class="loader-spinner"></div>
-        <div style="font-family:var(--font-main-title); font-size:1.6rem; color:var(--accent-gold);">Loading Vision Space...</div>
+        <div style="font-family:'Cinzel',serif; font-size:1.15rem; letter-spacing:0.08em; color:var(--accent-gold);">Loading The Muse Society...</div>
     </div>
 
     <div class="bg-blob blob-1"></div>
@@ -694,10 +773,11 @@
     <input type="file" id="coverImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleCoverUpload(event)">
     <input type="file" id="avatarImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleAvatarUpload(event)">
     <input type="file" id="galleryImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleGalleryUpload(event)">
+    <input type="file" id="guestbookImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleGuestbookUpload(event)">
 
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
-        <div class="nav-logo" onclick="goHome()">MY VISION SPACE</div>
+        <div class="nav-logo" onclick="goHome()">THE MUSE SOCIETY</div>
         <button class="home-nav-btn" id="homeNavBtn" onclick="goHome()">✦ HOME</button>
 
         <!-- SEARCH ENGINE BAR -->
@@ -724,7 +804,7 @@
     <!-- AUTHENTICATION OVERLAY MODAL -->
     <div class="auth-overlay" id="authGate">
         <div class="auth-card">
-            <h2>my vision space</h2>
+            <h2>THE MUSE SOCIETY</h2>
             <p class="sub" id="authSubTitle">Create your vision board account</p>
             
             <div class="auth-inputs">
@@ -876,17 +956,24 @@
                     </ul>
                 </div>
 
-                <!-- Friendster Testimonials / Guestbook -->
-                <div class="card card-pink" id="card-testimonials" onclick="triggerCardWiggle(this)">
+                <!-- MEMORY GUESTBOOK -->
+                <div class="card card-pink" id="card-memory-guestbook" onclick="triggerCardWiggle(this)">
                     <div class="tape"></div>
-                    <div class="card-header-flex"><div class="card-title">✦ TESTIMONIALS</div></div>
-                    
-                    <div class="testi-box">
-                        <textarea id="testiInput" placeholder="Leave a testimonial for this board owner..."></textarea>
-                        <button class="nav-btn" onclick="postTestimonial()" style="align-self:flex-end;">Post Testimonial ✨</button>
+                    <div class="card-header-flex"><div class="card-title">✦ MEMORY GUESTBOOK</div></div>
+                    <div class="guestbook-intro">One little photo story per friend, per day. A tiny memory left on this page. ✦</div>
+                    <div class="guestbook-create">
+                        <textarea id="guestbookNoteInput" maxlength="220" placeholder="Write the tiny story behind your photo..." onclick="event.stopPropagation()"></textarea>
+                        <div class="guestbook-tools">
+                            <select class="nav-btn" id="guestbookEffectSelect" onclick="event.stopPropagation()">
+                                <option value="stars">Stars ✦</option>
+                                <option value="hearts">Hearts ♡</option>
+                                <option value="sparkles">Sparkles ⋆</option>
+                                <option value="none">No Effect</option>
+                            </select>
+                            <button class="nav-btn" style="padding:9px 11px;" onclick="startGuestbookEntry(event)">Add Photo ✦</button>
+                        </div>
                     </div>
-
-                    <div id="testiList"></div>
+                    <div id="guestbookEntries"></div>
                 </div>
 
                 <!-- LITTLE CHAOS: DUMP NOTES, JOKES & HARUTAN -->
@@ -1158,6 +1245,8 @@
             minScale: 1, scale: 1, x: 0, y: 0,
             dragging: false, startX: 0, startY: 0, originX: 0, originY: 0
         };
+        let pendingGuestbookNote = '';
+        let pendingGuestbookEffect = 'stars';
 
         /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
@@ -1210,7 +1299,7 @@
         /* AUTHENTICATION SYSTEM */
         function toggleAuthMode() {
             isAuthSignUp = !isAuthSignUp;
-            document.getElementById('authSubTitle').innerText = isAuthSignUp ? "Create your vision board account" : "Log in to your vision space";
+            document.getElementById('authSubTitle').innerText = isAuthSignUp ? "Create your vision board account" : "Log in to The Muse Society";
             document.getElementById('authSubmitBtn').innerText = isAuthSignUp ? "Sign Up" : "Login";
             document.getElementById('authToggleLink').innerText = isAuthSignUp ? "Already have an account? Login" : "Need an account? Sign Up";
         }
@@ -1308,7 +1397,7 @@
             }
 
             loadSocialStats();
-            loadTestimonials();
+            loadGuestbook();
             loadChaosNotes();
             loadNotifications();
             loadVisitors();
@@ -1383,38 +1472,113 @@
             });
         }
 
-        /* TESTIMONIALS ENGINE */
-        function postTestimonial() {
-            if (!currentUser) { alert("Please login to post a testimonial!"); return; }
-            const msg = document.getElementById('testiInput').value.trim();
-            if (!msg) return;
+        /* MEMORY GUESTBOOK */
+        function getLocalDateKey() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
 
-            db.ref(`testimonials/${viewingUser}`).push({
-                author: currentUser, message: msg, date: new Date().toLocaleDateString()
-            }, () => {
-                document.getElementById('testiInput').value = '';
-                sendNotification(viewingUser, `${currentUser} left a testimonial on your board! ✨`, 'testimonial');
+        function startGuestbookEntry(event) {
+            if (event) event.stopPropagation();
+            if (!currentUser) { alert("Please login to leave a memory!"); return; }
+            const note = document.getElementById('guestbookNoteInput').value.trim();
+            if (!note) { alert("Please write a small story for your Polaroid."); return; }
+            const entryKey = `${safeChatKey(currentUser)}_${getLocalDateKey()}`;
+            db.ref(`memoryGuestbook/${viewingUser}/${entryKey}`).once('value', snap => {
+                if (snap.exists()) {
+                    alert("You already left one Memory Guestbook entry today. Come back tomorrow for another! ✦");
+                    return;
+                }
+                pendingGuestbookNote = note;
+                pendingGuestbookEffect = document.getElementById('guestbookEffectSelect').value;
+                document.getElementById('guestbookImageInput').click();
             });
         }
 
-        function loadTestimonials() {
-            db.ref(`testimonials/${viewingUser}`).on('value', snap => {
-                const container = document.getElementById('testiList');
+        function handleGuestbookUpload(event) {
+            const file = event.target.files[0];
+            if (file) openImageCropper(file, 'guestbook');
+            event.target.value = '';
+        }
+
+        function loadGuestbook() {
+            db.ref(`memoryGuestbook/${viewingUser}`).limitToLast(12).on('value', snap => {
+                const container = document.getElementById('guestbookEntries');
                 container.innerHTML = '';
-                if (snap.exists()) {
-                    Object.keys(snap.val()).reverse().forEach(key => {
-                        const t = snap.val()[key];
-                        container.innerHTML += `
-                            <div class="testi-item">
-                                <div class="testi-meta"><span>@${t.author}</span><span>${t.date}</span></div>
-                                <div>"${t.message}"</div>
-                            </div>
-                        `;
-                    });
-                } else {
-                    container.innerHTML = '<div style="font-size:0.75rem; opacity:0.6; padding:10px 0;">No testimonials yet.</div>';
+                if (!snap.exists()) {
+                    container.innerHTML = '<div style="font-size:0.72rem; opacity:0.6; padding:8px 2px 2px;">No Polaroid stories yet. Be the first memory. ✦</div>';
+                    return;
                 }
+                const entries = [];
+                snap.forEach(child => entries.push([child.key, child.val()]));
+                entries.reverse().forEach(([key, entry], index) => {
+                    const row = document.createElement('div');
+                    row.className = 'guestbook-entry';
+
+                    const polaroid = document.createElement('div');
+                    polaroid.className = 'guestbook-polaroid';
+                    const image = document.createElement('img');
+                    image.src = entry.imgUrl;
+                    image.alt = `Memory left by ${entry.author}`;
+                    const signature = document.createElement('span');
+                    signature.textContent = `@${entry.author}`;
+                    polaroid.append(image, signature);
+
+                    const story = document.createElement('div');
+                    story.className = 'guestbook-story';
+                    const meta = document.createElement('div');
+                    meta.className = 'guestbook-story-meta';
+                    const author = document.createElement('span');
+                    author.textContent = `✦ @${entry.author}`;
+                    const date = document.createElement('span');
+                    date.textContent = new Date(entry.timestamp || Date.now()).toLocaleDateString();
+                    meta.append(author, date);
+                    const note = document.createElement('div');
+                    note.className = 'guestbook-story-text';
+                    note.textContent = entry.note;
+                    story.append(meta, note);
+                    row.append(polaroid, story);
+
+                    const effectChars = { hearts: '♡', stars: '✦', sparkles: '⋆' };
+                    const effectChar = effectChars[entry.effect];
+                    if (effectChar) {
+                        const staticDeco = document.createElement('span');
+                        staticDeco.className = 'guestbook-static-deco';
+                        staticDeco.textContent = `${effectChar} ${effectChar}`;
+                        row.appendChild(staticDeco);
+                        if (index < 3) {
+                            for (let i = 0; i < 5; i++) {
+                                const deco = document.createElement('span');
+                                deco.className = 'guestbook-deco';
+                                deco.textContent = effectChar;
+                                deco.style.left = `${18 + i * 17}%`;
+                                deco.style.bottom = `${4 + (i % 2) * 9}px`;
+                                deco.style.animationDelay = `${i * 0.18}s`;
+                                row.appendChild(deco);
+                            }
+                        }
+                    }
+
+                    if (currentUser === viewingUser || currentUser === entry.author) {
+                        const deleteButton = document.createElement('button');
+                        deleteButton.className = 'guestbook-delete';
+                        deleteButton.type = 'button';
+                        deleteButton.title = 'Delete memory';
+                        deleteButton.textContent = '×';
+                        deleteButton.onclick = event => {
+                            event.stopPropagation();
+                            deleteGuestbookEntry(key);
+                        };
+                        row.appendChild(deleteButton);
+                    }
+                    container.appendChild(row);
+                });
             });
+        }
+
+        function deleteGuestbookEntry(entryKey) {
+            if (!entryKey || !confirm("Delete this Memory Guestbook entry?")) return;
+            db.ref(`memoryGuestbook/${viewingUser}/${entryKey}`).remove();
         }
 
         /* LITTLE CHAOS NOTES WALL */
@@ -1832,6 +1996,7 @@
             document.getElementById('cropModalTitle').innerText =
                 target === 'cover' ? '✦ Position Cover Photo' :
                 target === 'avatar' ? '✦ Position Profile Photo' :
+                target === 'guestbook' ? '✦ Crop Guestbook Polaroid' :
                 '✦ Crop Pinned Memory';
 
             image.onload = () => {
@@ -1918,6 +2083,25 @@
                 document.getElementById('avatarImg').src = croppedDataUrl;
                 saveMediaToIDB('avatarImg_' + viewingUser, croppedDataUrl);
                 db.ref('boards/' + viewingUser).update({ avatarImg: croppedDataUrl });
+            } else if (target === 'guestbook') {
+                const entryKey = `${safeChatKey(currentUser)}_${getLocalDateKey()}`;
+                const entryRef = db.ref(`memoryGuestbook/${viewingUser}/${entryKey}`);
+                entryRef.once('value', snap => {
+                    if (snap.exists()) {
+                        alert("You already left one Memory Guestbook entry today. ✦");
+                        return;
+                    }
+                    entryRef.set({
+                        author: currentUser,
+                        imgUrl: croppedDataUrl,
+                        note: pendingGuestbookNote,
+                        effect: pendingGuestbookEffect,
+                        timestamp: Date.now()
+                    }, () => {
+                        document.getElementById('guestbookNoteInput').value = '';
+                        sendNotification(viewingUser, `${currentUser} left a Polaroid story in your Memory Guestbook! ✦`, 'memory-guestbook');
+                    });
+                });
             } else {
                 const caption = prompt("Enter a short caption for this photo:", "Memories ✨") || "";
                 db.ref(`gallery/${viewingUser}`).push({
