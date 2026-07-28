@@ -8,7 +8,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel+Decorative:wght@600;700&family=Cinzel:wght@600;700&family=Fira+Code:wght@400;500&family=Montserrat:wght@400;500;600&family=Pacifico&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Allura&family=Anton&family=Bebas+Neue&family=Caveat:wght@600;700&family=Cinzel+Decorative:wght@600;700&family=Cinzel:wght@600;700&family=Clicker+Script&family=Fira+Code:wght@400;500&family=Great+Vibes&family=Inter:wght@400;500;600&family=Josefin+Sans:wght@400;500;600&family=Montserrat:wght@400;500;600&family=Oswald:wght@400;500;600&family=Pacifico&family=Parisienne&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Quicksand:wght@500;600;700&family=Righteous&family=Roboto+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -56,7 +56,7 @@
             background-color: var(--bg-color);
             font-family: var(--font-body);
             color: var(--text-color);
-            padding: 70px 10px 80px 10px;
+            padding: 76px 10px 80px 10px;
             transition: background-color 0.3s, color 0.3s;
             background-image: radial-gradient(rgba(200, 200, 180, 0.2) 1px, transparent 0);
             background-size: 24px 24px;
@@ -83,25 +83,29 @@
 
         /* STICKY TOP NAVIGATION BAR */
         .top-nav {
-            position: fixed; top: 0; left: 0; right: 0; height: 60px;
+            position: fixed; top: 0; left: 0; right: 0; min-height: 64px;
             background: rgba(253, 251, 247, 0.88);
             -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(197, 160, 89, 0.3);
             display: flex; align-items: center; justify-content: space-between;
-            padding: 0 15px; z-index: 1000;
+            padding: 10px 15px; z-index: 1000; gap: 14px;
         }
         body.dark-mode .top-nav { background: rgba(26, 25, 24, 0.88); }
 
-        .nav-logo { font-family: var(--font-main-title); font-size: 1.8rem; font-weight: bold; cursor: pointer; color: var(--text-color); }
-        .nav-items { display: flex; align-items: center; gap: 8px; }
+        .nav-logo {
+            font-family: 'Caveat', cursive; font-size: 1.75rem; line-height: 1;
+            font-weight: 700; cursor: pointer; color: var(--text-color);
+            white-space: nowrap; flex: 0 0 auto;
+        }
+        .nav-items { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 
         .nav-search {
             position: relative; display: flex; align-items: center;
             background: var(--card-white); border: 1px solid var(--accent-gold);
             border-radius: 20px; padding: 2px 10px; box-shadow: var(--shadow-soft);
         }
-        .nav-search input { border: none; background: transparent; padding: 4px; font-size: 0.78rem; color: var(--text-color); width: 120px; transition: width 0.3s; }
-        .nav-search input:focus { width: 170px; }
+        .nav-search input { border: none; background: transparent; padding: 4px; font-size: 0.78rem; color: var(--text-color); width: 120px; }
+        .nav-search input:focus { width: 150px; }
 
         /* SEARCH DROPDOWN */
         .search-results-dropdown {
@@ -187,8 +191,13 @@
             font-size: 0.68rem; cursor: pointer; border: 2px solid #fff;
         }
 
-        .profile-disp-name { font-family: var(--font-title); font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
-        .profile-handle { font-size: 0.85rem; color: var(--accent-gold); font-weight: 600; margin-bottom: 8px; }
+        .profile-disp-name {
+            font-family: 'Caveat', cursive; font-size: 2rem; font-weight: 700; line-height: 1.1;
+        }
+        .profile-handle {
+            font-family: 'Caveat', cursive; font-size: 1.05rem;
+            color: var(--accent-gold); font-weight: 700; margin-bottom: 8px;
+        }
         .profile-meta-info { font-size: 0.75rem; opacity: 0.75; margin-bottom: 15px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
         /* SOCIAL BAR */
@@ -222,7 +231,7 @@
         .card {
             padding: 18px; border-radius: 6px; box-shadow: var(--shadow-soft); position: relative;
             border: 1px solid rgba(180, 170, 150, 0.15); transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer; width: 100%; animation: floatSubtle 6s ease-in-out infinite;
+            cursor: pointer; width: 100%;
         }
         .card.wiggle-effect { animation: tapWiggle 0.4s ease forwards !important; }
         .card:hover { transform: translateY(-5px) scale(1.01) !important; box-shadow: 0 12px 24px rgba(197, 160, 89, 0.22); }
@@ -310,10 +319,17 @@
         .polaroid-frame:hover { transform: scale(1.05) rotate(1deg); }
         .polaroid-frame img { width: 100%; height: 75px; object-fit: cover; border-radius: 2px; }
         .polaroid-del-btn {
-            position: absolute; top: -5px; right: -5px; background: #e74c3c; color: #fff;
+            position: absolute; top: -5px; right: -5px; background: var(--accent-gold); color: #fff;
             border-radius: 50%; width: 18px; height: 18px; font-size: 0.6rem; display: flex;
             align-items: center; justify-content: center; cursor: pointer; border: 1px solid #fff;
         }
+
+        .gallery-add-control {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--accent-gold); font-size: 0.72rem; font-weight: 700;
+            cursor: pointer; white-space: nowrap;
+        }
+        .gallery-add-control .edit-btn { opacity: 0.9; flex: 0 0 auto; }
 
         /* LIGHTBOX IMAGE MODAL */
         .lightbox-overlay {
@@ -365,13 +381,63 @@
 
         @media (max-width: 850px) {
             .main-layout { display: flex; flex-direction: column; gap: 18px; }
-            .top-nav { padding: 0 8px; }
-            .nav-search input { width: 80px; }
-            .profile-header-card { margin-top: 10px; }
+            body { padding-top: 132px; }
+            .top-nav {
+                min-height: 118px; padding: 10px 12px 12px;
+                display: grid; grid-template-columns: 1fr auto;
+                grid-template-areas: "logo theme" "search actions";
+                align-content: center; gap: 10px 8px;
+            }
+            .nav-logo {
+                grid-area: logo; grid-column: 1 / -1; width: 100%;
+                font-family: 'Caveat', cursive; font-size: 1.8rem;
+                overflow: visible; text-overflow: clip; max-width: none;
+                text-align: center;
+            }
+            .nav-search { grid-area: search; min-width: 0; width: 100%; }
+            .nav-search input, .nav-search input:focus {
+                width: 100%; min-width: 0; font-size: 0.8rem;
+            }
+            .nav-items { grid-area: actions; gap: 6px; }
+            .nav-btn { min-width: 38px; min-height: 36px; padding: 6px 9px; justify-content: center; }
+            .nav-items .nav-btn:last-of-type { grid-area: theme; }
+            .profile-header-card { margin-top: 0; }
+            .vinyl-container { padding: 4px 6px; }
+        }
+
+        @media (max-width: 430px) {
+            .top-nav { grid-template-columns: minmax(0, 1fr) auto; }
+            .nav-logo { font-size: 1.75rem; }
+            .nav-search { max-width: none; }
+            .top-nav .nav-btn { font-size: 0.72rem; width: 38px; padding: 6px; }
+            .top-nav .nav-btn span { font-size: 0.72rem; }
+            .top-nav .nav-btn[onclick="toggleDarkMode()"] { width: auto; padding-inline: 10px; }
+            .top-nav #logoutBtn { width: auto; padding-inline: 10px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
 <body>
+    <script>
+        (() => {
+            const startupUser = new URLSearchParams(location.search).get('user') || localStorage.getItem('vspace_user') || 'zizabelle';
+            const savedTheme = localStorage.getItem('vspace_theme_' + startupUser);
+            const savedDarkMode = localStorage.getItem('vspace_dark_mode') === 'true';
+            const savedFonts = JSON.parse(localStorage.getItem('vspace_fonts_' + startupUser) || '{}');
+            if (savedTheme) document.body.classList.add(savedTheme);
+            if (savedDarkMode) document.body.classList.add('dark-mode');
+            Object.entries(savedFonts).forEach(([name, value]) => {
+                document.documentElement.style.setProperty(name, value);
+            });
+        })();
+    </script>
 
     <!-- PAGE TRANSITION LOADER -->
     <div class="page-loader" id="pageLoader">
@@ -394,7 +460,7 @@
 
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
-        <div class="nav-logo" onclick="goHome()">my vision space</div>
+        <div class="nav-logo" onclick="goHome()">MY VISION SPACE</div>
 
         <!-- SEARCH ENGINE BAR -->
         <div class="nav-search">
@@ -437,13 +503,13 @@
     <!-- PROFILE HEADER CARD (COVER + AVATAR + SOCIALS) -->
     <div class="profile-header-card">
         <div class="cover-photo-area" id="coverDisplay">
-            <button class="cover-edit-badge owner-only" onclick="triggerCoverSelect()">📷 Change Cover</button>
+            <button class="cover-edit-badge owner-only" onclick="triggerCoverSelect()">✦ Change Cover</button>
         </div>
 
         <div class="profile-details-bar">
             <div class="avatar-wrapper">
                 <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Avatar" class="avatar-img" id="avatarImg">
-                <div class="avatar-edit-badge owner-only" onclick="triggerAvatarSelect()">📷</div>
+                <div class="avatar-edit-badge owner-only" onclick="triggerAvatarSelect()">✦</div>
             </div>
 
             <div class="profile-disp-name" id="dispNameText">Zizabelle</div>
@@ -498,7 +564,9 @@
                     <div class="tape"></div>
                     <div class="card-header-flex">
                         <div class="card-title">✦ PINNED MEMORIES</div>
-                        <span class="edit-btn owner-only" onclick="triggerGallerySelect(event)">+ Add Photo</span>
+                        <span class="gallery-add-control owner-only" onclick="triggerGallerySelect(event)">
+                            <span class="edit-btn">✦</span><span>Add Photo</span>
+                        </span>
                     </div>
                     <div class="mini-gallery-grid" id="galleryContainer"></div>
                 </div>
@@ -646,7 +714,7 @@
             
             <div style="margin-bottom:12px;">
                 <label style="font-size:0.8rem; font-weight:bold;">Color Theme:</label>
-                <select class="nav-btn" style="width:100%; margin-top:4px;" onchange="setTheme(this.value)">
+                <select class="nav-btn" id="themeSelect" style="width:100%; margin-top:4px;" onchange="setTheme(this.value)">
                     <option value="theme-cream-white">Cream White</option>
                     <option value="theme-pastel-pink">Pastel Pink</option>
                     <option value="theme-pastel-blue">Pastel Blue</option>
@@ -657,32 +725,55 @@
             </div>
 
             <div style="margin-bottom:12px;">
-                <label style="font-size:0.8rem; font-weight:bold;">Main Title Font:</label>
-                <select class="nav-btn" style="width:100%; margin-top:4px;" onchange="applyFont('--font-main-title', this.value)">
-                    <option value="'Caveat', cursive">Caveat (Handwritten)</option>
-                    <option value="'Cinzel Decorative', serif">Vienna Heritage</option>
-                    <option value="'Playfair Display', serif">Playfair Serif</option>
-                    <option value="'Montserrat', sans-serif">Montserrat Clean</option>
-                    <option value="'Pacifico', cursive">Pacifico Retro</option>
-                </select>
-            </div>
-
-            <div style="margin-bottom:12px;">
                 <label style="font-size:0.8rem; font-weight:bold;">Section Headers Font:</label>
-                <select class="nav-btn" style="width:100%; margin-top:4px;" onchange="applyFont('--font-title', this.value)">
+                <select class="nav-btn" id="sectionFontSelect" style="width:100%; margin-top:4px;" onchange="applyFont('--font-title', this.value)">
                     <option value="'Playfair Display', serif">Playfair Serif</option>
                     <option value="'Cinzel Decorative', serif">Vienna Heritage</option>
                     <option value="'Montserrat', sans-serif">Montserrat Clean</option>
                     <option value="'Quicksand', sans-serif">Quicksand Soft</option>
+                    <option value="'Bebas Neue', sans-serif">Bebas Neue (Bold Punch)</option>
+                    <option value="'Oswald', sans-serif">Oswald (Strong Condensed)</option>
+                    <option value="'Roboto Mono', monospace">Roboto Mono (Tech Monospace)</option>
+                    <option value="'Inter', sans-serif">Inter (Modern Minimalist)</option>
+                    <option value="'Cinzel', serif">Cinzel (Luxury Classical)</option>
+                    <option value="'Anton', sans-serif">Anton (Heavy Impact)</option>
+                    <option value="'Space Grotesk', sans-serif">Space Grotesk (Modern Tech)</option>
+                    <option value="'Righteous', sans-serif">Righteous (Bold Geometric)</option>
+                    <option value="'Fira Code', monospace">Fira Code (Developer Sleek)</option>
+                    <option value="'Great Vibes', cursive">Great Vibes (Elegant Script)</option>
+                    <option value="'Clicker Script', cursive">Clicker Script (Playful Vintage)</option>
+                    <option value="'Parisienne', cursive">Parisienne (Romantic Flow)</option>
+                    <option value="'Alex Brush', cursive">Alex Brush (Flowing Brush)</option>
+                    <option value="'Caveat', cursive">Caveat (Handwritten Script)</option>
+                    <option value="'Josefin Sans', sans-serif">Josefin Sans (Vintage Geometric)</option>
+                    <option value="'Allura', cursive">Allura (Monoline Script)</option>
+                    <option value="'Pacifico', cursive">Pacifico (Fun Cursive)</option>
                 </select>
             </div>
 
             <div style="margin-bottom:12px;">
                 <label style="font-size:0.8rem; font-weight:bold;">Body Text Font:</label>
-                <select class="nav-btn" style="width:100%; margin-top:4px;" onchange="applyFont('--font-body', this.value)">
+                <select class="nav-btn" id="bodyFontSelect" style="width:100%; margin-top:4px;" onchange="applyFont('--font-body', this.value)">
                     <option value="'Montserrat', sans-serif">Montserrat Clean</option>
                     <option value="'Quicksand', sans-serif">Quicksand Soft</option>
                     <option value="'Fira Code', monospace">Fira Tech</option>
+                    <option value="'Bebas Neue', sans-serif">Bebas Neue (Bold Punch)</option>
+                    <option value="'Oswald', sans-serif">Oswald (Strong Condensed)</option>
+                    <option value="'Roboto Mono', monospace">Roboto Mono (Tech Monospace)</option>
+                    <option value="'Inter', sans-serif">Inter (Modern Minimalist)</option>
+                    <option value="'Cinzel', serif">Cinzel (Luxury Classical)</option>
+                    <option value="'Anton', sans-serif">Anton (Heavy Impact)</option>
+                    <option value="'Space Grotesk', sans-serif">Space Grotesk (Modern Tech)</option>
+                    <option value="'Righteous', sans-serif">Righteous (Bold Geometric)</option>
+                    <option value="'Great Vibes', cursive">Great Vibes (Elegant Script)</option>
+                    <option value="'Playfair Display', serif">Playfair Display (Chic Serif)</option>
+                    <option value="'Clicker Script', cursive">Clicker Script (Playful Vintage)</option>
+                    <option value="'Parisienne', cursive">Parisienne (Romantic Flow)</option>
+                    <option value="'Alex Brush', cursive">Alex Brush (Flowing Brush)</option>
+                    <option value="'Caveat', cursive">Caveat (Handwritten Script)</option>
+                    <option value="'Josefin Sans', sans-serif">Josefin Sans (Vintage Geometric)</option>
+                    <option value="'Allura', cursive">Allura (Monoline Script)</option>
+                    <option value="'Pacifico', cursive">Pacifico (Fun Cursive)</option>
                 </select>
             </div>
 
@@ -716,10 +807,23 @@
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
         let idb = null;
         idbReq.onupgradeneeded = e => { idb = e.target.result; if (!idb.objectStoreNames.contains("media")) idb.createObjectStore("media"); };
-        idbReq.onsuccess = e => { idb = e.target.result; loadBoardData(); };
+        idbReq.onsuccess = e => {
+            idb = e.target.result;
+            loadCachedProfileMedia();
+            loadBoardData();
+        };
 
         function saveMediaToIDB(key, val) { if (idb) { const tx = idb.transaction("media", "readwrite"); tx.objectStore("media").put(val, key); } }
         function getMediaFromIDB(key, cb) { if (!idb) return cb(null); const tx = idb.transaction("media", "readonly"); const req = tx.objectStore("media").get(key); req.onsuccess = () => cb(req.result); }
+
+        function loadCachedProfileMedia() {
+            getMediaFromIDB('coverImg_' + viewingUser, cachedCover => {
+                if (cachedCover) document.getElementById('coverDisplay').style.backgroundImage = `url('${cachedCover}')`;
+            });
+            getMediaFromIDB('avatarImg_' + viewingUser, cachedAvatar => {
+                if (cachedAvatar) document.getElementById('avatarImg').src = cachedAvatar;
+            });
+        }
 
         /* YOUTUBE IFRAME API */
         const tag = document.createElement('script');
@@ -1028,9 +1132,19 @@
                     if (d.thingsHTML) document.getElementById('thingsList').innerHTML = d.thingsHTML;
                     if (d.goalsHTML) document.getElementById('goalsList').innerHTML = d.goalsHTML;
                     if (d.philosophyText) document.getElementById('philosophyText').innerText = d.philosophyText;
-                    if (d.coverImg) document.getElementById('coverDisplay').style.backgroundImage = `url('${d.coverImg}')`;
-                    if (d.avatarImg) document.getElementById('avatarImg').src = d.avatarImg;
+                    if (d.coverImg) {
+                        document.getElementById('coverDisplay').style.backgroundImage = `url('${d.coverImg}')`;
+                        saveMediaToIDB('coverImg_' + viewingUser, d.coverImg);
+                    }
+                    if (d.avatarImg) {
+                        document.getElementById('avatarImg').src = d.avatarImg;
+                        saveMediaToIDB('avatarImg_' + viewingUser, d.avatarImg);
+                    }
                     if (d.musicTrack) applyMusicTrack(d.musicTrack);
+                    if (d.theme) setTheme(d.theme, true);
+                    if (d.fonts) {
+                        Object.entries(d.fonts).forEach(([name, value]) => applyFont(name, value, true));
+                    }
                 }
             });
 
@@ -1083,17 +1197,20 @@
             card.classList.remove('wiggle-effect');
             void card.offsetWidth;
             card.classList.add('wiggle-effect');
+            card.addEventListener('animationend', () => card.classList.remove('wiggle-effect'), { once: true });
         }
 
         function handleCardClick(card, event) {
             triggerCardWiggle(card);
-            activeCardId = card.id;
-            const body = document.getElementById('modalBody');
-            const clone = card.cloneNode(true);
-            clone.querySelectorAll('.edit-btn').forEach(b => b.remove());
-            body.innerHTML = clone.innerHTML;
-            document.getElementById('modalOverlay').style.display = 'flex';
-            loadCardComments();
+            setTimeout(() => {
+                activeCardId = card.id;
+                const body = document.getElementById('modalBody');
+                const clone = card.cloneNode(true);
+                clone.querySelectorAll('.edit-btn, .gallery-add-control').forEach(b => b.remove());
+                body.innerHTML = clone.innerHTML;
+                document.getElementById('modalOverlay').style.display = 'flex';
+                loadCardComments();
+            }, 260);
         }
 
         function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
@@ -1202,6 +1319,7 @@
                 const reader = new FileReader();
                 reader.onload = evt => {
                     document.getElementById('coverDisplay').style.backgroundImage = `url('${evt.target.result}')`;
+                    saveMediaToIDB('coverImg_' + viewingUser, evt.target.result);
                     db.ref('boards/' + viewingUser).update({ coverImg: evt.target.result });
                 };
                 reader.readAsDataURL(file);
@@ -1214,6 +1332,7 @@
                 const reader = new FileReader();
                 reader.onload = evt => {
                     document.getElementById('avatarImg').src = evt.target.result;
+                    saveMediaToIDB('avatarImg_' + viewingUser, evt.target.result);
                     db.ref('boards/' + viewingUser).update({ avatarImg: evt.target.result });
                 };
                 reader.readAsDataURL(file);
@@ -1319,16 +1438,39 @@
         function openSettingsModal() { document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettingsModal() { document.getElementById('settingsModal').style.display = 'none'; }
 
-        function setTheme(cls) {
+        function setTheme(cls, skipCloudSave = false) {
             document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
             if (cls) document.body.classList.add(cls);
+            const themeSelect = document.getElementById('themeSelect');
+            if (themeSelect) themeSelect.value = cls || 'theme-cream-white';
+            localStorage.setItem('vspace_theme_' + viewingUser, cls || 'theme-cream-white');
+            if (!skipCloudSave && currentUser === viewingUser) {
+                db.ref('boards/' + viewingUser).update({ theme: cls || 'theme-cream-white' });
+            }
         }
 
-        function applyFont(varName, fontVal) {
+        function applyFont(varName, fontVal, skipCloudSave = false) {
             document.documentElement.style.setProperty(varName, fontVal);
+            const savedFonts = JSON.parse(localStorage.getItem('vspace_fonts_' + viewingUser) || '{}');
+            savedFonts[varName] = fontVal;
+            localStorage.setItem('vspace_fonts_' + viewingUser, JSON.stringify(savedFonts));
+
+            if (varName === '--font-title' && document.getElementById('sectionFontSelect')) {
+                document.getElementById('sectionFontSelect').value = fontVal;
+            }
+            if (varName === '--font-body' && document.getElementById('bodyFontSelect')) {
+                document.getElementById('bodyFontSelect').value = fontVal;
+            }
+
+            if (!skipCloudSave && currentUser === viewingUser) {
+                db.ref('boards/' + viewingUser).update({ fonts: savedFonts });
+            }
         }
 
-        function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('vspace_dark_mode', document.body.classList.contains('dark-mode'));
+        }
 
         /* HYBRID MUSIC PLAYER */
         function saveCustomMusic() {
@@ -1376,6 +1518,17 @@
 
         /* STARTUP ENGINE */
         document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('vspace_theme_' + viewingUser);
+            if (savedTheme && document.getElementById('themeSelect')) {
+                document.getElementById('themeSelect').value = savedTheme;
+            }
+            const savedFonts = JSON.parse(localStorage.getItem('vspace_fonts_' + viewingUser) || '{}');
+            if (savedFonts['--font-title'] && document.getElementById('sectionFontSelect')) {
+                document.getElementById('sectionFontSelect').value = savedFonts['--font-title'];
+            }
+            if (savedFonts['--font-body'] && document.getElementById('bodyFontSelect')) {
+                document.getElementById('bodyFontSelect').value = savedFonts['--font-body'];
+            }
             if (currentUser) {
                 document.getElementById('authGate').style.display = 'none';
                 document.getElementById('logoutBtn').style.display = 'flex';
