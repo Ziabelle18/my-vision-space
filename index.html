@@ -56,7 +56,7 @@
             background-color: var(--bg-color);
             font-family: var(--font-body);
             color: var(--text-color);
-            padding: 70px 10px 80px 10px;
+            padding: 76px 10px 80px 10px;
             transition: background-color 0.3s, color 0.3s;
             background-image: radial-gradient(rgba(200, 200, 180, 0.2) 1px, transparent 0);
             background-size: 24px 24px;
@@ -83,25 +83,29 @@
 
         /* STICKY TOP NAVIGATION BAR */
         .top-nav {
-            position: fixed; top: 0; left: 0; right: 0; height: 60px;
+            position: fixed; top: 0; left: 0; right: 0; min-height: 64px;
             background: rgba(253, 251, 247, 0.88);
             -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(197, 160, 89, 0.3);
             display: flex; align-items: center; justify-content: space-between;
-            padding: 0 15px; z-index: 1000;
+            padding: 10px 15px; z-index: 1000; gap: 14px;
         }
         body.dark-mode .top-nav { background: rgba(26, 25, 24, 0.88); }
 
-        .nav-logo { font-family: var(--font-main-title); font-size: 1.8rem; font-weight: bold; cursor: pointer; color: var(--text-color); }
-        .nav-items { display: flex; align-items: center; gap: 8px; }
+        .nav-logo {
+            font-family: var(--font-main-title); font-size: 1.75rem; line-height: 1;
+            font-weight: 700; cursor: pointer; color: var(--text-color);
+            white-space: nowrap; flex: 0 0 auto;
+        }
+        .nav-items { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 
         .nav-search {
             position: relative; display: flex; align-items: center;
             background: var(--card-white); border: 1px solid var(--accent-gold);
             border-radius: 20px; padding: 2px 10px; box-shadow: var(--shadow-soft);
         }
-        .nav-search input { border: none; background: transparent; padding: 4px; font-size: 0.78rem; color: var(--text-color); width: 120px; transition: width 0.3s; }
-        .nav-search input:focus { width: 170px; }
+        .nav-search input { border: none; background: transparent; padding: 4px; font-size: 0.78rem; color: var(--text-color); width: 120px; }
+        .nav-search input:focus { width: 150px; }
 
         /* SEARCH DROPDOWN */
         .search-results-dropdown {
@@ -222,7 +226,7 @@
         .card {
             padding: 18px; border-radius: 6px; box-shadow: var(--shadow-soft); position: relative;
             border: 1px solid rgba(180, 170, 150, 0.15); transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer; width: 100%; animation: floatSubtle 6s ease-in-out infinite;
+            cursor: pointer; width: 100%;
         }
         .card.wiggle-effect { animation: tapWiggle 0.4s ease forwards !important; }
         .card:hover { transform: translateY(-5px) scale(1.01) !important; box-shadow: 0 12px 24px rgba(197, 160, 89, 0.22); }
@@ -251,18 +255,30 @@
         .hero-wrapper {
             width: 100%; text-align: center; cursor: pointer; position: relative;
             min-height: 250px; display: flex; align-items: center; justify-content: center;
+            isolation: isolate;
         }
         
-        .hero-girl {
+        .hero-girl, .hero-canvas {
             width: 100%; height: auto; max-height: 480px; object-fit: contain; display: block; margin: 0 auto;
-            mix-blend-mode: multiply !important;
             filter: drop-shadow(0 10px 20px rgba(180, 170, 150, 0.2));
             background: transparent !important;
         }
 
-        body.dark-mode .hero-girl {
-            mix-blend-mode: lighten !important;
+        .hero-canvas {
+            object-fit: contain;
+        }
+
+        body.dark-mode .hero-girl,
+        body.dark-mode .hero-canvas {
             filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.6));
+        }
+
+        .hero-media-source {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
         
         .photo-upload-badge {
@@ -353,9 +369,43 @@
 
         @media (max-width: 850px) {
             .main-layout { display: flex; flex-direction: column; gap: 18px; }
-            .top-nav { padding: 0 8px; }
-            .nav-search input { width: 80px; }
-            .profile-header-card { margin-top: 10px; }
+            body { padding-top: 132px; }
+            .top-nav {
+                min-height: 118px; padding: 10px 12px 12px;
+                display: grid; grid-template-columns: 1fr auto;
+                grid-template-areas: "logo theme" "search actions";
+                align-content: center; gap: 10px 8px;
+            }
+            .nav-logo {
+                grid-area: logo; font-size: 1.8rem; overflow: hidden;
+                text-overflow: ellipsis; max-width: calc(100vw - 110px);
+            }
+            .nav-search { grid-area: search; min-width: 0; width: 100%; }
+            .nav-search input, .nav-search input:focus {
+                width: 100%; min-width: 0; font-size: 0.8rem;
+            }
+            .nav-items { grid-area: actions; gap: 6px; }
+            .nav-btn { min-width: 38px; min-height: 36px; padding: 6px 9px; justify-content: center; }
+            .nav-items .nav-btn:last-of-type { grid-area: theme; }
+            .profile-header-card { margin-top: 0; }
+            .vinyl-container { padding: 4px 6px; }
+        }
+
+        @media (max-width: 430px) {
+            .top-nav { grid-template-columns: minmax(0, 1fr) auto; }
+            .nav-logo { font-size: 1.65rem; }
+            .nav-search { max-width: none; }
+            .nav-btn { font-size: 0; width: 38px; padding: 6px; }
+            .nav-btn span { font-size: 0.72rem; }
+            .nav-btn[onclick="toggleDarkMode()"] { font-size: 0.72rem; width: auto; padding-inline: 10px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
@@ -698,15 +748,29 @@
         let ytPlayer = null;
         let isYtReady = false;
         let activeMusicType = 'mp3';
+        let heroRenderFrame = null;
 
         /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
         let idb = null;
         idbReq.onupgradeneeded = e => { idb = e.target.result; if (!idb.objectStoreNames.contains("media")) idb.createObjectStore("media"); };
-        idbReq.onsuccess = e => { idb = e.target.result; loadBoardData(); };
+        idbReq.onsuccess = e => {
+            idb = e.target.result;
+            loadCachedProfileMedia();
+            loadBoardData();
+        };
 
         function saveMediaToIDB(key, val) { if (idb) { const tx = idb.transaction("media", "readwrite"); tx.objectStore("media").put(val, key); } }
         function getMediaFromIDB(key, cb) { if (!idb) return cb(null); const tx = idb.transaction("media", "readonly"); const req = tx.objectStore("media").get(key); req.onsuccess = () => cb(req.result); }
+
+        function loadCachedProfileMedia() {
+            getMediaFromIDB('coverImg_' + viewingUser, cachedCover => {
+                if (cachedCover) document.getElementById('coverDisplay').style.backgroundImage = `url('${cachedCover}')`;
+            });
+            getMediaFromIDB('avatarImg_' + viewingUser, cachedAvatar => {
+                if (cachedAvatar) document.getElementById('avatarImg').src = cachedAvatar;
+            });
+        }
 
         /* YOUTUBE IFRAME API */
         const tag = document.createElement('script');
@@ -1015,14 +1079,25 @@
                     if (d.thingsHTML) document.getElementById('thingsList').innerHTML = d.thingsHTML;
                     if (d.goalsHTML) document.getElementById('goalsList').innerHTML = d.goalsHTML;
                     if (d.philosophyText) document.getElementById('philosophyText').innerText = d.philosophyText;
-                    if (d.coverImg) document.getElementById('coverDisplay').style.backgroundImage = `url('${d.coverImg}')`;
-                    if (d.avatarImg) document.getElementById('avatarImg').src = d.avatarImg;
+                    if (d.coverImg) {
+                        document.getElementById('coverDisplay').style.backgroundImage = `url('${d.coverImg}')`;
+                        saveMediaToIDB('coverImg_' + viewingUser, d.coverImg);
+                    }
+                    if (d.avatarImg) {
+                        document.getElementById('avatarImg').src = d.avatarImg;
+                        saveMediaToIDB('avatarImg_' + viewingUser, d.avatarImg);
+                    }
                     if (d.musicTrack) applyMusicTrack(d.musicTrack);
                 }
             });
 
-            getMediaFromIDB('heroImg_' + viewingUser, img => {
-                if (img) processAndSetHeroMedia(img, false);
+            getMediaFromIDB('heroImg_' + viewingUser, media => {
+                if (!media) return;
+                if (typeof media === 'string') {
+                    processAndSetHeroMedia(media, media.startsWith('data:video/'));
+                } else {
+                    processAndSetHeroMedia(media.dataUrl, !!media.isVideo);
+                }
             });
         }
 
@@ -1085,38 +1160,78 @@
         function triggerCoverSelect() { document.getElementById('coverImageInput').click(); }
         function triggerAvatarSelect() { document.getElementById('avatarImageInput').click(); }
 
+        function removeWhitePixels(ctx, width, height) {
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const brightest = Math.max(r, g, b);
+                const darkest = Math.min(r, g, b);
+                const whiteness = (r + g + b) / 3;
+                const isNeutral = brightest - darkest < 42;
+
+                if (isNeutral && whiteness > 245) {
+                    data[i + 3] = 0;
+                } else if (isNeutral && whiteness > 205) {
+                    data[i + 3] = Math.round(data[i + 3] * ((245 - whiteness) / 40));
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        function renderTransparentHero(source, animate) {
+            if (heroRenderFrame) cancelAnimationFrame(heroRenderFrame);
+
+            const area = document.getElementById('heroMediaDisplay');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.id = 'heroCanvas';
+            canvas.className = 'hero-canvas';
+
+            const sourceWidth = source.videoWidth || source.naturalWidth || 1;
+            const sourceHeight = source.videoHeight || source.naturalHeight || 1;
+            const maxRenderWidth = 900;
+            const scale = Math.min(1, maxRenderWidth / sourceWidth);
+            canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+            canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+
+            source.classList.add('hero-media-source');
+            area.replaceChildren(canvas, source);
+
+            const drawFrame = () => {
+                if (!source.isConnected) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+                removeWhitePixels(ctx, canvas.width, canvas.height);
+                if (animate) heroRenderFrame = requestAnimationFrame(drawFrame);
+            };
+
+            drawFrame();
+        }
+
         function processAndSetHeroMedia(dataUrl, isVideo) {
             if (isVideo) {
-                setHeroMedia(dataUrl, true);
+                const video = document.createElement('video');
+                video.src = dataUrl;
+                video.autoplay = true;
+                video.loop = true;
+                video.muted = true;
+                video.playsInline = true;
+                video.onloadeddata = () => {
+                    video.play().catch(() => {});
+                    renderTransparentHero(video, true);
+                };
                 return;
             }
 
             const img = new Image();
-            img.crossOrigin = "anonymous";
             img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-
-                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imgData.data;
-
-                // Smart White & Near-White Chroma-Key Eraser (Threshold > 200 for R, G, B)
-                for (let i = 0; i < data.length; i += 4) {
-                    const r = data[i];
-                    const g = data[i+1];
-                    const b = data[i+2];
-
-                    if (r > 200 && g > 200 && b > 200) {
-                        data[i+3] = 0; // Pure transparency for white background
-                    }
-                }
-
-                ctx.putImageData(imgData, 0, 0);
-                const cleanPng = canvas.toDataURL('image/png');
-                setHeroMedia(cleanPng, false);
+                const isAnimatedGif = dataUrl.startsWith('data:image/gif');
+                renderTransparentHero(img, isAnimatedGif);
             };
             img.onerror = function() {
                 setHeroMedia(dataUrl, false);
@@ -1132,7 +1247,7 @@
                     const dataUrl = evt.target.result;
                     const isVid = file.type.startsWith('video/');
                     processAndSetHeroMedia(dataUrl, isVid);
-                    saveMediaToIDB('heroImg_' + viewingUser, dataUrl);
+                    saveMediaToIDB('heroImg_' + viewingUser, { dataUrl, isVideo: isVid });
                 };
                 reader.readAsDataURL(file);
             }
@@ -1144,6 +1259,7 @@
                 const reader = new FileReader();
                 reader.onload = evt => {
                     document.getElementById('coverDisplay').style.backgroundImage = `url('${evt.target.result}')`;
+                    saveMediaToIDB('coverImg_' + viewingUser, evt.target.result);
                     db.ref('boards/' + viewingUser).update({ coverImg: evt.target.result });
                 };
                 reader.readAsDataURL(file);
@@ -1156,6 +1272,7 @@
                 const reader = new FileReader();
                 reader.onload = evt => {
                     document.getElementById('avatarImg').src = evt.target.result;
+                    saveMediaToIDB('avatarImg_' + viewingUser, evt.target.result);
                     db.ref('boards/' + viewingUser).update({ avatarImg: evt.target.result });
                 };
                 reader.readAsDataURL(file);
@@ -1163,9 +1280,10 @@
         }
 
         function setHeroMedia(url, isVideo) {
+            if (heroRenderFrame) cancelAnimationFrame(heroRenderFrame);
             const area = document.getElementById('heroMediaDisplay');
             if (isVideo) {
-                area.innerHTML = `<video src="${url}" id="heroVid" class="hero-girl" autoplay loop muted></video>`;
+                area.innerHTML = `<video src="${url}" id="heroVid" class="hero-girl" autoplay loop muted playsinline></video>`;
             } else {
                 area.innerHTML = `<img src="${url}" id="heroImg" class="hero-girl">`;
             }
