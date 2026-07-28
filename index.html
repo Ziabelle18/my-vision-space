@@ -1497,33 +1497,53 @@
         }
 
         /* SEARCH ENGINE WITH LIVE CARDS */
-        function searchUsers(q) {
+        let userSearchSequence = 0;
+        async function searchUsers(q) {
             const dropdown = document.getElementById('searchResults');
-            if (!q.trim()) { dropdown.style.display = 'none'; return; }
+            const query = q.trim().toLowerCase();
+            const requestId = ++userSearchSequence;
+            if (!query) { dropdown.style.display = 'none'; return; }
 
-            db.ref('users').once('value', snap => {
-                dropdown.innerHTML = '';
-                if (snap.exists()) {
-                    let count = 0;
-                    Object.keys(snap.val()).forEach(u => {
-                        const userData = snap.val()[u] || {};
-                        const publicHandle = userData.publicHandle || u;
-                        if (u.includes(q.toLowerCase()) || publicHandle.includes(q.toLowerCase())) {
-                            count++;
-                            dropdown.innerHTML += `
-                                <div class="search-card" onclick="navigateToUser('${u}')">
-                                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" class="search-avatar">
-                                    <div class="search-info">
-                                        <span class="search-name">@${publicHandle}</span>
-                                        <span class="search-sub">Boardly profile</span>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                    });
-                    dropdown.style.display = count > 0 ? 'block' : 'none';
-                }
+            const usersSnap = await db.ref('users').once('value');
+            if (requestId !== userSearchSequence) return;
+            const users = usersSnap.val() || {};
+            const matches = Object.keys(users)
+                .filter(username => {
+                    const publicHandle = String(users[username]?.publicHandle || username).toLowerCase();
+                    return username.includes(query) || publicHandle.includes(query);
+                })
+                .slice(0, 12);
+            const profileSnaps = await Promise.all(
+                matches.map(username => db.ref(`boards/${username}`).once('value'))
+            );
+            if (requestId !== userSearchSequence) return;
+
+            dropdown.innerHTML = '';
+            matches.forEach((username, index) => {
+                const profile = profileSnaps[index].val() || {};
+                const publicHandle = users[username]?.publicHandle || profile.profileHandle || username;
+                const card = document.createElement('div');
+                card.className = 'search-card';
+                card.onclick = () => navigateToUser(username);
+
+                const avatar = document.createElement('img');
+                avatar.className = 'search-avatar';
+                avatar.alt = `@${publicHandle}`;
+                avatar.src = profile.avatarImg || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80';
+
+                const info = document.createElement('div');
+                info.className = 'search-info';
+                const name = document.createElement('span');
+                name.className = 'search-name';
+                name.textContent = `@${publicHandle}`;
+                const sub = document.createElement('span');
+                sub.className = 'search-sub';
+                sub.textContent = profile.displayName || 'Boardly profile';
+                info.append(name, sub);
+                card.append(avatar, info);
+                dropdown.appendChild(card);
             });
+            dropdown.style.display = matches.length ? 'block' : 'none';
         }
 
         /* PROFILE INITIALIZATION */
