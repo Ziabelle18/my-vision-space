@@ -395,9 +395,10 @@
             .top-nav { grid-template-columns: minmax(0, 1fr) auto; }
             .nav-logo { font-size: 1.65rem; }
             .nav-search { max-width: none; }
-            .nav-btn { font-size: 0; width: 38px; padding: 6px; }
-            .nav-btn span { font-size: 0.72rem; }
-            .nav-btn[onclick="toggleDarkMode()"] { font-size: 0.72rem; width: auto; padding-inline: 10px; }
+            .top-nav .nav-btn { font-size: 0.72rem; width: 38px; padding: 6px; }
+            .top-nav .nav-btn span { font-size: 0.72rem; }
+            .top-nav .nav-btn[onclick="toggleDarkMode()"] { width: auto; padding-inline: 10px; }
+            .top-nav #logoutBtn { width: auto; padding-inline: 10px; }
         }
 
         @media (prefers-reduced-motion: reduce) {
