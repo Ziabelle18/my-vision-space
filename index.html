@@ -38,6 +38,10 @@
         body.theme-pastel-blue { --bg-color: #eaf4f8; --card-pink: #d0e8f2; --tape-color: rgba(200, 225, 235, 0.75); }
         body.theme-silver-gray { --bg-color: #f0f2f5; --card-white: #ffffff; --card-pink: #e2e8f0; --text-color: #2d3748; --accent-gold: #94a3b8; }
         body.theme-pastel-beige { --bg-color: #f7f0e6; --card-pink: #ebdccb; --tape-color: rgba(225, 210, 195, 0.75); }
+        body.theme-pastel-yellow { --bg-color: #fff9df; --card-pink: #f8e9a9; --accent-gold: #c7a34b; --tape-color: rgba(244, 222, 145, 0.78); }
+        body.theme-pastel-orange { --bg-color: #fff1e6; --card-pink: #ffd8bf; --accent-gold: #d48b59; --tape-color: rgba(246, 195, 158, 0.76); }
+        body.theme-pastel-red { --bg-color: #fff0f1; --card-pink: #f5c8cc; --accent-gold: #c8757c; --tape-color: rgba(237, 184, 190, 0.76); }
+        body.theme-pastel-purple { --bg-color: #f6f0ff; --card-pink: #dfd0f4; --accent-gold: #9b7cba; --tape-color: rgba(210, 191, 235, 0.78); }
 
         body.dark-mode {
             --bg-color: #1a1918;
@@ -922,7 +926,7 @@
                     <div class="card-header-flex">
                         <div class="card-title">✦ PINNED MEMORIES</div>
                         <span class="gallery-add-control owner-only" onclick="triggerGallerySelect(event)">
-                            <span class="edit-btn">✦</span><span>Add Photo</span>
+                            <span class="edit-btn">✦</span><span id="galleryAddText">Add Photo 0/3</span>
                         </span>
                     </div>
                     <div class="mini-gallery-grid" id="galleryContainer"></div>
@@ -997,7 +1001,7 @@
                 <div class="card card-pink" id="card-memory-guestbook" onclick="triggerCardWiggle(this)">
                     <div class="tape"></div>
                     <div class="card-header-flex"><div class="card-title">✦ MEMORY GUESTBOOK</div></div>
-                    <div class="guestbook-intro">One little photo story per friend, per day. A tiny memory left on this page. ✦</div>
+                    <div class="guestbook-intro">One little photo story per friend, per day. Memories gently fade after 7 days. ✦</div>
                     <div class="guestbook-create">
                         <textarea id="guestbookNoteInput" maxlength="220" placeholder="Write the tiny story behind your photo..." onclick="event.stopPropagation()"></textarea>
                         <div class="guestbook-tools">
@@ -1140,6 +1144,10 @@
                     <option value="theme-pastel-sage">Pastel Sage</option>
                     <option value="theme-silver-gray">Silver Gray</option>
                     <option value="theme-pastel-beige">Pastel Beige</option>
+                    <option value="theme-pastel-yellow">Pastel Yellow</option>
+                    <option value="theme-pastel-orange">Pastel Orange</option>
+                    <option value="theme-pastel-red">Pastel Red</option>
+                    <option value="theme-pastel-purple">Pastel Purple</option>
                 </select>
             </div>
 
@@ -1289,6 +1297,7 @@
         let activeMusicType = 'mp3';
         let heroRenderFrame = null;
         let activeChatUser = null;
+        let activeChatRecipientUid = null;
         let activeChatMessagesRef = null;
         let activeChatTypingRef = null;
         let activeChatPresenceRef = null;
@@ -1642,6 +1651,8 @@
         }
 
         /* MEMORY GUESTBOOK */
+        const GUESTBOOK_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+
         function getLocalDateKey() {
             const now = new Date();
             return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -1671,16 +1682,31 @@
         }
 
         function loadGuestbook() {
-            db.ref(`memoryGuestbook/${viewingUser}`).limitToLast(12).on('value', snap => {
+            db.ref(`memoryGuestbook/${viewingUser}`).on('value', snap => {
                 const container = document.getElementById('guestbookEntries');
                 container.innerHTML = '';
-                if (!snap.exists()) {
+                const now = Date.now();
+                const entries = [];
+                if (snap.exists()) {
+                    snap.forEach(child => {
+                        const entry = child.val() || {};
+                        const expiresAt = Number(entry.expiresAt || 0) ||
+                            (Number(entry.timestamp || 0) + GUESTBOOK_LIFETIME_MS);
+                        if (expiresAt && expiresAt <= now) {
+                            child.ref.remove().catch(() => {});
+                            return;
+                        }
+                        entries.push([child.key, entry]);
+                    });
+                }
+                if (!entries.length) {
                     container.innerHTML = '<div style="font-size:0.72rem; opacity:0.6; padding:8px 2px 2px;">No Polaroid stories yet. Be the first memory. ✦</div>';
                     return;
                 }
-                const entries = [];
-                snap.forEach(child => entries.push([child.key, child.val()]));
-                entries.reverse().forEach(([key, entry], index) => {
+                entries
+                    .sort((a, b) => Number(b[1].timestamp || 0) - Number(a[1].timestamp || 0))
+                    .slice(0, 12)
+                    .forEach(([key, entry], index) => {
                     const row = document.createElement('div');
                     row.className = 'guestbook-entry';
 
@@ -1818,17 +1844,35 @@
         }
 
         /* POLAROID GALLERY WITH LIGHTBOX */
-        function triggerGallerySelect(e) { if (e) e.stopPropagation(); document.getElementById('galleryImageInput').click(); }
+        async function triggerGallerySelect(e) {
+            if (e) e.stopPropagation();
+            const snap = await db.ref(`gallery/${viewingUser}`).once('value');
+            if (snap.numChildren() >= 3) {
+                alert("Pinned Memories is full. Delete one photo before adding another. ✦");
+                return;
+            }
+            document.getElementById('galleryImageInput').click();
+        }
 
-        function handleGalleryUpload(e) {
+        async function handleGalleryUpload(e) {
             const file = e.target.files[0];
-            if (file) openImageCropper(file, 'gallery');
+            if (file) {
+                const snap = await db.ref(`gallery/${viewingUser}`).once('value');
+                if (snap.numChildren() >= 3) {
+                    alert("You can pin a maximum of 3 photos. ✦");
+                } else {
+                    openImageCropper(file, 'gallery');
+                }
+            }
             e.target.value = '';
         }
 
         function loadGallery() {
             db.ref(`gallery/${viewingUser}`).on('value', snap => {
                 const container = document.getElementById('galleryContainer');
+                const count = snap.numChildren();
+                const addText = document.getElementById('galleryAddText');
+                if (addText) addText.textContent = count >= 3 ? '3/3 Pinned' : `Add Photo ${count}/3`;
                 container.innerHTML = '';
                 if (snap.exists()) {
                     const isOwner = (currentUser === viewingUser);
@@ -2269,7 +2313,8 @@
                         imgUrl: croppedDataUrl,
                         note: pendingGuestbookNote,
                         effect: pendingGuestbookEffect,
-                        timestamp: Date.now()
+                        timestamp: Date.now(),
+                        expiresAt: Date.now() + GUESTBOOK_LIFETIME_MS
                     }, () => {
                         document.getElementById('guestbookNoteInput').value = '';
                         sendNotification(viewingUser, `${currentUser} left a Polaroid story in your Memory Guestbook! ✦`, 'memory-guestbook');
@@ -2277,8 +2322,14 @@
                 });
             } else {
                 const caption = prompt("Enter a short caption for this photo:", "Memories ✨") || "";
-                db.ref(`gallery/${viewingUser}`).push({
-                    imgUrl: croppedDataUrl, caption, timestamp: Date.now()
+                db.ref(`gallery/${viewingUser}`).once('value', snap => {
+                    if (snap.numChildren() >= 3) {
+                        alert("Pinned Memories is full. Delete one photo before adding another. ✦");
+                        return;
+                    }
+                    db.ref(`gallery/${viewingUser}`).push({
+                        imgUrl: croppedDataUrl, caption, timestamp: Date.now()
+                    });
                 });
             }
         }
@@ -2764,15 +2815,35 @@
             db.ref().update(updates);
         }
 
-        function startChatWith(username) {
+        async function startChatWith(username) {
             if (!username || username === currentUser) return;
             stopChatTyping();
             activeChatUser = username;
+            activeChatRecipientUid = null;
             document.getElementById('chatWithName').textContent = `Chatting with @${username} ✦`;
             document.getElementById('chatMessages').innerHTML = '<div class="chat-empty">Loading messages...</div>';
 
             if (activeChatMessagesRef) activeChatMessagesRef.off();
             const chatId = getChatId(currentUser, username);
+            try {
+                const recipientSnap = await db.ref(`users/${username}/uid`).once('value');
+                activeChatRecipientUid = recipientSnap.val();
+                if (!auth.currentUser || !activeChatRecipientUid) {
+                    throw new Error('This friend still needs to activate secure Boardly login before chatting.');
+                }
+                const participants = {};
+                participants[auth.currentUser.uid] = true;
+                participants[activeChatRecipientUid] = true;
+                await db.ref(`chats/${chatId}/participantUids`).update(participants);
+            } catch (error) {
+                const container = document.getElementById('chatMessages');
+                container.innerHTML = '';
+                const message = document.createElement('div');
+                message.className = 'chat-empty';
+                message.textContent = error.message || 'Unable to open this secure chat.';
+                container.appendChild(message);
+                return;
+            }
             watchActiveChatPresence(username);
             watchActiveChatTyping(chatId, username);
             activeChatMessagesRef = db.ref(`chats/${chatId}/messages`);
@@ -2810,7 +2881,7 @@
             });
         }
 
-        function sendChatMessage() {
+        async function sendChatMessage() {
             if (!currentUser || !activeChatUser) {
                 alert("Choose a friend first.");
                 return;
@@ -2820,11 +2891,17 @@
             if (!text) return;
             const timestamp = Date.now();
             const chatId = getChatId(currentUser, activeChatUser);
+            if (!auth.currentUser || !activeChatRecipientUid) {
+                alert('This secure conversation is not ready yet. Please reopen the chat.');
+                return;
+            }
             const messageRef = db.ref(`chats/${chatId}/messages`).push();
             const messageId = messageRef.key;
             const senderKey = safeChatKey(currentUser);
             const recipientKey = safeChatKey(activeChatUser);
             const updates = {};
+            updates[`chats/${chatId}/participantUids/${auth.currentUser.uid}`] = true;
+            updates[`chats/${chatId}/participantUids/${activeChatRecipientUid}`] = true;
             updates[`chats/${chatId}/messages/${messageId}`] = { from: currentUser, text, timestamp };
             updates[`chatContacts/${senderKey}/${recipientKey}/username`] = activeChatUser;
             updates[`chatContacts/${senderKey}/${recipientKey}/timestamp`] = timestamp;
