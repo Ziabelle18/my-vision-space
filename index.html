@@ -174,12 +174,15 @@
             background: rgba(255, 253, 251, 0.7); border: 1px solid var(--accent-gold);
             padding: 5px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 600;
             color: var(--accent-gold); cursor: pointer; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+            z-index: 20; pointer-events: auto;
         }
 
         .profile-details-bar {
             padding: 0 20px 20px 20px; display: flex; flex-direction: column;
             align-items: center; text-align: center; margin-top: -50px; position: relative; z-index: 5;
+            pointer-events: none;
         }
+        .profile-details-bar > * { pointer-events: auto; }
         .avatar-wrapper { position: relative; width: 100px; height: 100px; margin-bottom: 10px; }
         .avatar-img {
             width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
@@ -394,6 +397,39 @@
         }
         .profile-edit-form textarea { min-height: 76px; resize: vertical; line-height: 1.45; }
 
+        /* DRAG, ZOOM & CROP EDITOR */
+        .crop-modal-card { max-width: 520px; }
+        .crop-stage {
+            width: 100%; aspect-ratio: 1 / 1; margin: 14px 0 12px;
+            position: relative; overflow: hidden; border-radius: 14px;
+            border: 1px solid var(--accent-gold); background:
+                linear-gradient(45deg, rgba(197,160,89,0.08) 25%, transparent 25%),
+                linear-gradient(-45deg, rgba(197,160,89,0.08) 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, rgba(197,160,89,0.08) 75%),
+                linear-gradient(-45deg, transparent 75%, rgba(197,160,89,0.08) 75%),
+                var(--card-white);
+            background-size: 18px 18px;
+            background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+            touch-action: none; cursor: grab;
+        }
+        .crop-stage.cover-crop { aspect-ratio: 12 / 5; }
+        .crop-stage.profile-crop { border-radius: 50%; }
+        .crop-stage.dragging { cursor: grabbing; }
+        .crop-image {
+            position: absolute; left: 50%; top: 50%; max-width: none;
+            transform-origin: center; user-select: none; -webkit-user-drag: none;
+            pointer-events: none;
+        }
+        .crop-guide {
+            position: absolute; inset: 0; pointer-events: none;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65);
+        }
+        .profile-crop .crop-guide { border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.75); }
+        .crop-controls { display: flex; align-items: center; gap: 10px; }
+        .crop-controls label { color: var(--accent-gold); font-size: 0.74rem; font-weight: 700; }
+        .crop-controls input[type="range"] { flex: 1; accent-color: var(--accent-gold); }
+        .crop-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 14px; }
+
         /* Decorative fonts receive an automatic readability boost. */
         body.body-font-script .profile-meta-info,
         body.body-font-script .social-chip,
@@ -590,9 +626,9 @@
 
     <!-- FILE INPUTS -->
     <input type="file" id="heroImageInput" accept="image/*,.gif,video/mp4,video/webm" style="display: none;" onchange="handleImageUpload(event)">
-    <input type="file" id="coverImageInput" accept="image/*" style="display: none;" onchange="handleCoverUpload(event)">
-    <input type="file" id="avatarImageInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
-    <input type="file" id="galleryImageInput" accept="image/*" style="display: none;" onchange="handleGalleryUpload(event)">
+    <input type="file" id="coverImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleCoverUpload(event)">
+    <input type="file" id="avatarImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleAvatarUpload(event)">
+    <input type="file" id="galleryImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleGalleryUpload(event)">
 
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
@@ -821,6 +857,27 @@
         </div>
     </div>
 
+    <!-- PHOTO POSITION & CROP EDITOR -->
+    <div class="modal-overlay" id="cropModal">
+        <div class="modal-card crop-modal-card">
+            <button class="modal-close" onclick="closeCropModal()">&times;</button>
+            <h3 id="cropModalTitle" style="color:var(--accent-gold); text-align:center;">✦ Position Photo</h3>
+            <p style="font-size:0.74rem; opacity:0.72; text-align:center; margin-top:4px;">Drag the photo to reposition. Use the slider to zoom.</p>
+            <div class="crop-stage" id="cropStage">
+                <img class="crop-image" id="cropImage" alt="Photo to crop">
+                <div class="crop-guide"></div>
+            </div>
+            <div class="crop-controls">
+                <label for="cropZoom">ZOOM</label>
+                <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1">
+            </div>
+            <div class="crop-actions">
+                <button class="nav-btn" style="justify-content:center; padding:10px;" onclick="closeCropModal()">Cancel</button>
+                <button class="nav-btn" style="justify-content:center; padding:10px; background:var(--accent-gold); color:#fff; font-weight:bold;" onclick="applyCroppedPhoto()">Use Photo ✦</button>
+            </div>
+        </div>
+    </div>
+
     <!-- FULLSCREEN LIGHTBOX MODAL -->
     <div class="lightbox-overlay" id="lightboxOverlay" onclick="closeLightbox()">
         <div style="text-align:center;" onclick="event.stopPropagation()">
@@ -1014,6 +1071,11 @@
         let activeChatUser = null;
         let activeChatMessagesRef = null;
         let chatScrollPosition = 0;
+        let cropState = {
+            target: null, image: null, objectUrl: null,
+            minScale: 1, scale: 1, x: 0, y: 0,
+            dragging: false, startX: 0, startY: 0, originX: 0, originY: 0
+        };
 
         /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
@@ -1276,16 +1338,8 @@
 
         function handleGalleryUpload(e) {
             const file = e.target.files[0];
-            if (!file) return;
-            const caption = prompt("Enter a short caption for this photo:", "Memories ✨") || "";
-
-            const reader = new FileReader();
-            reader.onload = evt => {
-                db.ref(`gallery/${viewingUser}`).push({
-                    imgUrl: evt.target.result, caption: caption, timestamp: Date.now()
-                });
-            };
-            reader.readAsDataURL(file);
+            if (file) openImageCropper(file, 'gallery');
+            e.target.value = '';
         }
 
         function loadGallery() {
@@ -1571,28 +1625,170 @@
 
         function handleCoverUpload(e) {
             const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = evt => {
-                    document.getElementById('coverDisplay').style.backgroundImage = `url('${evt.target.result}')`;
-                    saveMediaToIDB('coverImg_' + viewingUser, evt.target.result);
-                    db.ref('boards/' + viewingUser).update({ coverImg: evt.target.result });
-                };
-                reader.readAsDataURL(file);
-            }
+            if (file) openImageCropper(file, 'cover');
+            e.target.value = '';
         }
 
         function handleAvatarUpload(e) {
             const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = evt => {
-                    document.getElementById('avatarImg').src = evt.target.result;
-                    saveMediaToIDB('avatarImg_' + viewingUser, evt.target.result);
-                    db.ref('boards/' + viewingUser).update({ avatarImg: evt.target.result });
-                };
-                reader.readAsDataURL(file);
+            if (file) openImageCropper(file, 'avatar');
+            e.target.value = '';
+        }
+
+        function openImageCropper(file, target) {
+            const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!supportedTypes.includes(file.type)) {
+                alert("This photo format is not supported. Please use a JPG, PNG, or WebP image.");
+                return;
             }
+            if (file.size > 12 * 1024 * 1024) {
+                alert("Please choose a photo smaller than 12 MB.");
+                return;
+            }
+
+            if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
+            const objectUrl = URL.createObjectURL(file);
+            const image = document.getElementById('cropImage');
+            const stage = document.getElementById('cropStage');
+            cropState.target = target;
+            cropState.image = image;
+            cropState.objectUrl = objectUrl;
+            cropState.x = 0;
+            cropState.y = 0;
+            document.getElementById('cropZoom').value = '1';
+
+            stage.classList.remove('cover-crop', 'profile-crop');
+            if (target === 'cover') stage.classList.add('cover-crop');
+            if (target === 'avatar') stage.classList.add('profile-crop');
+            document.getElementById('cropModalTitle').innerText =
+                target === 'cover' ? '✦ Position Cover Photo' :
+                target === 'avatar' ? '✦ Position Profile Photo' :
+                '✦ Crop Pinned Memory';
+
+            image.onload = () => {
+                document.getElementById('cropModal').style.display = 'flex';
+                requestAnimationFrame(() => {
+                    const rect = stage.getBoundingClientRect();
+                    cropState.minScale = Math.max(
+                        rect.width / image.naturalWidth,
+                        rect.height / image.naturalHeight
+                    );
+                    cropState.scale = cropState.minScale;
+                    cropState.x = 0;
+                    cropState.y = 0;
+                    renderCropPosition();
+                });
+            };
+            image.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                cropState.objectUrl = null;
+                alert("This photo could not be opened. It may be an unsupported HEIC/HEIF file. Please convert it to JPG or PNG first.");
+            };
+            image.src = objectUrl;
+        }
+
+        function clampCropPosition() {
+            const stage = document.getElementById('cropStage');
+            const rect = stage.getBoundingClientRect();
+            const image = cropState.image;
+            const maxX = Math.max(0, (image.naturalWidth * cropState.scale - rect.width) / 2);
+            const maxY = Math.max(0, (image.naturalHeight * cropState.scale - rect.height) / 2);
+            cropState.x = Math.max(-maxX, Math.min(maxX, cropState.x));
+            cropState.y = Math.max(-maxY, Math.min(maxY, cropState.y));
+        }
+
+        function renderCropPosition() {
+            if (!cropState.image) return;
+            clampCropPosition();
+            cropState.image.style.width = `${cropState.image.naturalWidth}px`;
+            cropState.image.style.height = `${cropState.image.naturalHeight}px`;
+            cropState.image.style.transform =
+                `translate(calc(-50% + ${cropState.x}px), calc(-50% + ${cropState.y}px)) scale(${cropState.scale})`;
+        }
+
+        function closeCropModal() {
+            document.getElementById('cropModal').style.display = 'none';
+            if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
+            cropState.objectUrl = null;
+            cropState.image = null;
+            document.getElementById('cropImage').removeAttribute('src');
+        }
+
+        function applyCroppedPhoto() {
+            if (!cropState.image) return;
+            const stage = document.getElementById('cropStage');
+            const rect = stage.getBoundingClientRect();
+            const image = cropState.image;
+            const sourceWidth = rect.width / cropState.scale;
+            const sourceHeight = rect.height / cropState.scale;
+            const sourceX = image.naturalWidth / 2 - (rect.width / 2 + cropState.x) / cropState.scale;
+            const sourceY = image.naturalHeight / 2 - (rect.height / 2 + cropState.y) / cropState.scale;
+            const output = cropState.target === 'cover'
+                ? { width: 1440, height: 600 }
+                : cropState.target === 'avatar'
+                    ? { width: 720, height: 720 }
+                    : { width: 1000, height: 1000 };
+            const canvas = document.createElement('canvas');
+            canvas.width = output.width;
+            canvas.height = output.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(
+                image,
+                sourceX, sourceY, sourceWidth, sourceHeight,
+                0, 0, output.width, output.height
+            );
+            const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.86);
+            const target = cropState.target;
+            closeCropModal();
+
+            if (target === 'cover') {
+                document.getElementById('coverDisplay').style.backgroundImage = `url('${croppedDataUrl}')`;
+                saveMediaToIDB('coverImg_' + viewingUser, croppedDataUrl);
+                db.ref('boards/' + viewingUser).update({ coverImg: croppedDataUrl });
+            } else if (target === 'avatar') {
+                document.getElementById('avatarImg').src = croppedDataUrl;
+                saveMediaToIDB('avatarImg_' + viewingUser, croppedDataUrl);
+                db.ref('boards/' + viewingUser).update({ avatarImg: croppedDataUrl });
+            } else {
+                const caption = prompt("Enter a short caption for this photo:", "Memories ✨") || "";
+                db.ref(`gallery/${viewingUser}`).push({
+                    imgUrl: croppedDataUrl, caption, timestamp: Date.now()
+                });
+            }
+        }
+
+        function setupCropEditor() {
+            const stage = document.getElementById('cropStage');
+            const zoom = document.getElementById('cropZoom');
+
+            stage.addEventListener('pointerdown', event => {
+                if (!cropState.image) return;
+                cropState.dragging = true;
+                cropState.startX = event.clientX;
+                cropState.startY = event.clientY;
+                cropState.originX = cropState.x;
+                cropState.originY = cropState.y;
+                stage.classList.add('dragging');
+                stage.setPointerCapture(event.pointerId);
+            });
+            stage.addEventListener('pointermove', event => {
+                if (!cropState.dragging) return;
+                cropState.x = cropState.originX + event.clientX - cropState.startX;
+                cropState.y = cropState.originY + event.clientY - cropState.startY;
+                renderCropPosition();
+            });
+            const endDrag = event => {
+                if (!cropState.dragging) return;
+                cropState.dragging = false;
+                stage.classList.remove('dragging');
+                if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+            };
+            stage.addEventListener('pointerup', endDrag);
+            stage.addEventListener('pointercancel', endDrag);
+            zoom.addEventListener('input', () => {
+                cropState.scale = cropState.minScale * Number(zoom.value);
+                renderCropPosition();
+            });
         }
 
         function setHeroMedia(url, isVideo) {
@@ -1954,6 +2150,7 @@
 
         /* STARTUP ENGINE */
         document.addEventListener('DOMContentLoaded', () => {
+            setupCropEditor();
             const savedTheme = localStorage.getItem('vspace_theme_' + viewingUser);
             if (savedTheme && document.getElementById('themeSelect')) {
                 document.getElementById('themeSelect').value = savedTheme;
