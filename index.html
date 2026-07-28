@@ -97,6 +97,13 @@
             font-weight: 700; cursor: pointer; color: var(--text-color);
             white-space: nowrap; flex: 0 0 auto;
         }
+        .home-nav-btn {
+            display: none; align-items: center; justify-content: center;
+            min-height: 34px; padding: 5px 10px; border-radius: 18px;
+            border: 1px solid var(--accent-gold); background: var(--card-white);
+            color: var(--accent-gold); font: 700 0.68rem var(--font-body);
+            letter-spacing: 0.05em; cursor: pointer; white-space: nowrap;
+        }
         .nav-items { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 
         .nav-search {
@@ -397,6 +404,28 @@
         }
         .profile-edit-form textarea { min-height: 76px; resize: vertical; line-height: 1.45; }
 
+        .comment-target-label {
+            display: none; margin: 8px 0 10px; padding: 8px 10px;
+            border-radius: 10px; background: var(--card-pink);
+            border-left: 3px solid var(--accent-gold);
+            font-size: 0.76rem; line-height: 1.4;
+        }
+        .comment-item {
+            padding: 9px 0; border-bottom: 1px dashed rgba(197,160,89,0.3);
+            display: flex; align-items: flex-start; gap: 8px;
+        }
+        .comment-content { flex: 1; min-width: 0; line-height: 1.45; word-break: break-word; }
+        .comment-specific-tag {
+            display: inline-block; margin-bottom: 3px; padding: 2px 6px;
+            border-radius: 8px; color: var(--accent-gold);
+            background: rgba(197,160,89,0.1); font-size: 0.63rem; font-weight: 700;
+        }
+        .comment-delete-btn {
+            width: 22px; height: 22px; flex: 0 0 auto; border-radius: 50%;
+            border: 1px solid var(--accent-gold); background: transparent;
+            color: var(--accent-gold); cursor: pointer; font-size: 0.7rem;
+        }
+
         /* DRAG, ZOOM & CROP EDITOR */
         .crop-modal-card { max-width: 520px; }
         .crop-stage {
@@ -556,6 +585,10 @@
                 overflow: visible; text-overflow: clip; max-width: none;
                 text-align: center;
             }
+            .home-nav-btn {
+                grid-area: logo; justify-self: start; align-self: center;
+                position: relative; z-index: 2;
+            }
             .nav-search { grid-area: search; min-width: 0; width: 100%; }
             .nav-search input, .nav-search input:focus {
                 width: 100%; min-width: 0; font-size: 0.8rem;
@@ -633,6 +666,7 @@
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
         <div class="nav-logo" onclick="goHome()">MY VISION SPACE</div>
+        <button class="home-nav-btn" id="homeNavBtn" onclick="goHome()">✦ HOME</button>
 
         <!-- SEARCH ENGINE BAR -->
         <div class="nav-search">
@@ -893,6 +927,7 @@
             <div id="modalBody"></div>
             <hr style="margin:15px 0; border:none; border-top:1px dashed var(--accent-gold);">
             <h4>Comments 💬</h4>
+            <div class="comment-target-label" id="commentTargetLabel"></div>
             <div id="cardCommentsList" style="margin:10px 0; font-size:0.8rem;"></div>
             <div style="display:flex; gap:6px;">
                 <input type="text" id="cardCommentInput" placeholder="Write a comment..." style="flex:1; padding:6px; border:1px solid var(--accent-gold); border-radius:4px;">
@@ -1063,6 +1098,7 @@
         let viewingUser = new URLSearchParams(window.location.search).get('user') || currentUser || "zizabelle";
         let isAuthSignUp = true;
         let activeCardId = null;
+        let activeCommentTarget = '';
         let activeEditListId = null;
         let ytPlayer = null;
         let isYtReady = false;
@@ -1210,6 +1246,7 @@
         function initProfile() {
             const isOwner = (currentUser === viewingUser);
             document.querySelectorAll('.owner-only').forEach(el => el.style.display = isOwner ? 'inline-flex' : 'none');
+            document.getElementById('homeNavBtn').style.display = (!isOwner && currentUser) ? 'inline-flex' : 'none';
 
             document.getElementById('userHandleText').innerText = `@${viewingUser}`;
             document.getElementById('dispNameText').innerText = viewingUser;
@@ -1512,12 +1549,30 @@
 
         function handleCardClick(card, event) {
             triggerCardWiggle(card);
+            const clickedItem = event.target.closest ? event.target.closest('li') : null;
+            activeCommentTarget = clickedItem ? clickedItem.innerText.trim() : '';
             setTimeout(() => {
                 activeCardId = card.id;
                 const body = document.getElementById('modalBody');
                 const clone = card.cloneNode(true);
                 clone.querySelectorAll('.edit-btn, .gallery-add-control').forEach(b => b.remove());
+                if (activeCommentTarget) {
+                    Array.from(clone.querySelectorAll('li')).forEach(item => {
+                        if (item.innerText.trim() === activeCommentTarget) {
+                            item.style.background = 'rgba(197,160,89,0.12)';
+                            item.style.borderRadius = '8px';
+                            item.style.paddingTop = '5px';
+                            item.style.paddingBottom = '5px';
+                        }
+                    });
+                }
                 body.innerHTML = clone.innerHTML;
+                const targetLabel = document.getElementById('commentTargetLabel');
+                targetLabel.style.display = activeCommentTarget ? 'block' : 'none';
+                targetLabel.textContent = activeCommentTarget ? `✦ Commenting on: “${activeCommentTarget}”` : '';
+                document.getElementById('cardCommentInput').placeholder = activeCommentTarget
+                    ? `Comment about “${activeCommentTarget}”...`
+                    : 'Write a comment...';
                 document.getElementById('modalOverlay').style.display = 'flex';
                 loadCardComments();
             }, 480);
@@ -1808,11 +1863,16 @@
             if (!txt || !activeCardId) return;
 
             db.ref(`comments/${viewingUser}/${activeCardId}`).push({
-                user: currentUser, text: txt, date: new Date().toLocaleDateString()
+                user: currentUser,
+                text: txt,
+                target: activeCommentTarget || '',
+                date: new Date().toLocaleDateString(),
+                timestamp: Date.now()
             }, () => {
                 document.getElementById('cardCommentInput').value = '';
                 loadCardComments();
-                sendNotification(viewingUser, `${currentUser} commented on your card! 💬`, 'comment');
+                const context = activeCommentTarget ? ` on “${activeCommentTarget}”` : '';
+                sendNotification(viewingUser, `${currentUser} commented${context} on your card! 💬`, 'comment');
             });
         }
 
@@ -1821,13 +1881,56 @@
                 const list = document.getElementById('cardCommentsList');
                 list.innerHTML = '';
                 if (snap.exists()) {
-                    Object.keys(snap.val()).forEach(k => {
-                        const c = snap.val()[k];
-                        list.innerHTML += `<div><b>@${c.user}:</b> ${c.text}</div>`;
+                    const comments = Object.entries(snap.val())
+                        .filter(([, comment]) => !activeCommentTarget || (comment.target || '') === activeCommentTarget)
+                        .sort((a, b) => (a[1].timestamp || 0) - (b[1].timestamp || 0));
+                    if (!comments.length) {
+                        list.innerHTML = '<div style="opacity:0.6;">No comments for this item yet.</div>';
+                        return;
+                    }
+                    comments.forEach(([key, comment]) => {
+                        const row = document.createElement('div');
+                        row.className = 'comment-item';
+                        const content = document.createElement('div');
+                        content.className = 'comment-content';
+                        if (comment.target) {
+                            const tag = document.createElement('span');
+                            tag.className = 'comment-specific-tag';
+                            tag.textContent = `✦ ${comment.target}`;
+                            content.appendChild(tag);
+                            content.appendChild(document.createElement('br'));
+                        }
+                        const author = document.createElement('b');
+                        author.textContent = `@${comment.user}: `;
+                        const message = document.createTextNode(comment.text);
+                        const date = document.createElement('div');
+                        date.style.cssText = 'font-size:0.62rem; opacity:0.6; margin-top:3px;';
+                        date.textContent = comment.date || '';
+                        content.append(author, message, date);
+                        row.appendChild(content);
+
+                        if (currentUser === viewingUser || currentUser === comment.user) {
+                            const deleteButton = document.createElement('button');
+                            deleteButton.className = 'comment-delete-btn';
+                            deleteButton.type = 'button';
+                            deleteButton.title = 'Delete comment';
+                            deleteButton.textContent = '×';
+                            deleteButton.onclick = () => deleteCardComment(key);
+                            row.appendChild(deleteButton);
+                        }
+                        list.appendChild(row);
                     });
                 } else {
                     list.innerHTML = '<div style="opacity:0.6;">No comments yet.</div>';
                 }
+            });
+        }
+
+        function deleteCardComment(commentKey) {
+            if (!commentKey || !activeCardId) return;
+            if (!confirm("Delete this comment?")) return;
+            db.ref(`comments/${viewingUser}/${activeCardId}/${commentKey}`).remove(() => {
+                loadCardComments();
             });
         }
 
