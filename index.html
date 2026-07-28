@@ -198,11 +198,6 @@
             font-family: 'Caveat', cursive; font-size: 1.05rem;
             color: var(--accent-gold); font-weight: 700; margin-bottom: 8px;
         }
-        .profile-vibe {
-            max-width: 520px; margin: -2px auto 10px; padding: 5px 12px;
-            color: var(--text-color); opacity: 0.82; font-size: 0.78rem;
-            line-height: 1.45; font-style: italic;
-        }
         .profile-meta-info { font-size: 0.75rem; opacity: 0.75; margin-bottom: 15px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
         /* SOCIAL BAR */
@@ -407,11 +402,84 @@
         body.body-font-script .testi-box textarea,
         body.body-font-script #visitorsMiniList,
         body.body-font-script #followersMiniList,
-        body.body-font-script .profile-vibe,
         body.body-font-script .polaroid-frame {
             font-size: 0.96rem !important;
             font-weight: 600;
             line-height: 1.5;
+        }
+
+        /* CUTE PRIVATE CHAT PAGE */
+        .chat-launcher {
+            position: fixed; right: 18px; bottom: 22px; z-index: 1200;
+            width: 52px; height: 52px; border-radius: 50%;
+            border: 1px solid var(--accent-gold); background: var(--card-white);
+            color: var(--accent-gold); box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem; cursor: pointer; transition: transform 0.2s ease;
+        }
+        .chat-launcher:hover { transform: translateY(-3px) scale(1.04); }
+        .chat-page {
+            position: fixed; inset: 0; z-index: 5000; display: none;
+            flex-direction: column; background: var(--bg-color); color: var(--text-color);
+            background-image: radial-gradient(rgba(200, 200, 180, 0.2) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+        .chat-topbar {
+            min-height: 68px; padding: 10px 16px; background: var(--card-white);
+            border-bottom: 1px solid rgba(197,160,89,0.35);
+            display: flex; align-items: center; gap: 12px;
+        }
+        .chat-topbar h2 {
+            flex: 1; text-align: center; color: var(--accent-gold);
+            font: 700 1.55rem 'Caveat', cursive; letter-spacing: 0.04em;
+        }
+        .chat-shell {
+            width: min(100%, 980px); flex: 1; min-height: 0; margin: 0 auto;
+            padding: 14px; display: grid; grid-template-columns: 280px 1fr; gap: 14px;
+        }
+        .chat-sidebar, .chat-conversation {
+            min-height: 0; border: 1px solid rgba(197,160,89,0.35);
+            border-radius: 16px; background: var(--card-white); box-shadow: var(--shadow-soft);
+        }
+        .chat-sidebar { padding: 14px; overflow-y: auto; }
+        .chat-search-row { display: flex; gap: 7px; margin-bottom: 12px; }
+        .chat-search-row input {
+            min-width: 0; flex: 1; padding: 9px 11px; border-radius: 18px;
+            border: 1px solid var(--accent-gold); background: var(--bg-color); color: var(--text-color);
+        }
+        .chat-person {
+            width: 100%; padding: 10px; margin-bottom: 7px; border-radius: 12px;
+            border: 1px solid transparent; background: var(--bg-color); color: var(--text-color);
+            text-align: left; cursor: pointer; font: 600 0.82rem var(--font-body);
+        }
+        .chat-person:hover { border-color: var(--accent-gold); }
+        .chat-conversation { display: flex; flex-direction: column; overflow: hidden; }
+        .chat-with {
+            padding: 13px 16px; border-bottom: 1px solid rgba(197,160,89,0.28);
+            color: var(--accent-gold); font-weight: 700;
+        }
+        .chat-messages {
+            flex: 1; min-height: 0; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .chat-empty { margin: auto; opacity: 0.6; text-align: center; line-height: 1.6; }
+        .chat-bubble {
+            max-width: 78%; padding: 9px 12px; border-radius: 15px;
+            font-size: 0.84rem; line-height: 1.45; word-break: break-word;
+        }
+        .chat-bubble.mine { align-self: flex-end; background: var(--accent-gold); color: #fff; border-bottom-right-radius: 4px; }
+        .chat-bubble.theirs { align-self: flex-start; background: var(--card-pink); color: var(--text-color); border-bottom-left-radius: 4px; }
+        .chat-time { display: block; margin-top: 3px; font-size: 0.58rem; opacity: 0.72; }
+        .chat-compose { padding: 12px; display: flex; gap: 8px; border-top: 1px solid rgba(197,160,89,0.28); }
+        .chat-compose input {
+            min-width: 0; flex: 1; padding: 10px 12px; border-radius: 20px;
+            border: 1px solid var(--accent-gold); background: var(--bg-color); color: var(--text-color);
+        }
+        @media (max-width: 700px) {
+            .chat-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; padding: 10px; gap: 10px; }
+            .chat-sidebar { max-height: 190px; }
+            .chat-conversation { min-height: 0; }
+            .chat-launcher { bottom: 76px; }
         }
         body.section-font-script .card-title {
             font-size: 1.12rem;
@@ -573,7 +641,6 @@
 
             <div class="profile-disp-name" id="dispNameText">Zizabelle</div>
             <div class="profile-handle" id="userHandleText">@zizabelle</div>
-            <div class="profile-vibe" id="profileVibeText">✦ Currently creating the life I dream about.</div>
             <div class="profile-meta-info">
                 <span>✦ Member since <span id="joinedDateText">2026</span></span>
                 <span>✦ <span id="viewsCountText">0</span> Profile Views</span>
@@ -585,6 +652,7 @@
                 <div class="social-chip"><span id="followersCount">0</span> Followers</div>
                 <div class="social-chip owner-only" onclick="openVisitorsModal()">👀 Visitors</div>
                 <div class="social-chip owner-only" onclick="openEditProfileModal()">✦ Edit Profile</div>
+                <div class="social-chip" id="pokeBtn" onclick="pokeProfile()">🫶 Poke ✦</div>
             </div>
         </div>
     </div>
@@ -656,7 +724,7 @@
                     <div class="photo-upload-badge owner-only" onclick="triggerPhotoSelect(event)">✦ Change Media</div>
                 </div>
 
-                <div class="card card-white" id="card-philosophy" onclick="handleCardClick(this, event)" style="text-align:center;">
+                <div class="card card-pink" id="card-philosophy" onclick="handleCardClick(this, event)" style="text-align:center;">
                     <div class="tape"></div>
                     <div class="card-header-flex">
                         <div class="card-title">✦ MY PHILOSOPHY</div>
@@ -738,9 +806,6 @@
                 </label>
                 <label>Profile Username
                     <input type="text" id="editProfileHandle" maxlength="30" placeholder="@username">
-                </label>
-                <label>Current Vibe
-                    <textarea id="editProfileVibe" maxlength="120" placeholder="What is your vibe today?"></textarea>
                 </label>
                 <button class="nav-btn" style="width:100%; justify-content:center; padding:10px; background:var(--accent-gold); color:#fff; font-weight:bold;" onclick="saveProfileEdits()">Save Profile ✦</button>
             </div>
@@ -865,8 +930,61 @@
                 <input type="text" id="customMusicInput" placeholder="Paste YouTube link or MP3 URL..." style="width:100%; padding:6px; margin-top:4px; border:1px solid var(--accent-gold); border-radius:4px; font-size:0.8rem;">
                 <button class="nav-btn" style="margin-top:6px; width:100%; justify-content:center;" onclick="saveCustomMusic()">Save Music Track</button>
             </div>
+            <hr style="margin:12px 0; border:none; border-top:1px dashed var(--accent-gold);">
+            <button class="nav-btn" style="width:100%; justify-content:center; padding:10px;" onclick="openChangePasswordModal()">✦ Change Password</button>
         </div>
     </div>
+
+    <!-- ACCOUNT PASSWORD SETTINGS -->
+    <div class="modal-overlay" id="changePasswordModal" onclick="closeChangePasswordModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
+            <h3 style="color:var(--accent-gold); text-align:center;">✦ Change Password</h3>
+            <div class="profile-edit-form">
+                <label>Current Password
+                    <input type="password" id="currentPasswordInput" autocomplete="current-password">
+                </label>
+                <label>New Password
+                    <input type="password" id="newPasswordInput" minlength="6" autocomplete="new-password">
+                </label>
+                <label>Confirm New Password
+                    <input type="password" id="confirmPasswordInput" minlength="6" autocomplete="new-password">
+                </label>
+                <button class="nav-btn" style="width:100%; justify-content:center; padding:10px; background:var(--accent-gold); color:#fff; font-weight:bold;" onclick="changePassword()">Update Password ✦</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRIVATE CHAT: OWN PAGE -->
+    <button class="chat-launcher" onclick="openChatPage()" aria-label="Open private chats">💌</button>
+    <section class="chat-page" id="chatPage" aria-label="Private chats">
+        <div class="chat-topbar">
+            <button class="nav-btn" onclick="closeChatPage()">← Back</button>
+            <h2>PRIVATE CHATS ✦</h2>
+            <span style="width:64px;"></span>
+        </div>
+        <div class="chat-shell">
+            <aside class="chat-sidebar">
+                <div class="chat-search-row">
+                    <input type="text" id="chatFriendSearch" placeholder="Search username...">
+                    <button class="nav-btn" onclick="searchChatFriends()">Search</button>
+                </div>
+                <div id="chatSearchResults"></div>
+                <div style="font-size:0.7rem; color:var(--accent-gold); font-weight:700; margin:14px 0 8px;">RECENT CHATS</div>
+                <div id="chatContacts"><div style="font-size:0.75rem; opacity:0.6;">No chats yet.</div></div>
+            </aside>
+            <main class="chat-conversation">
+                <div class="chat-with" id="chatWithName">Choose a friend to start chatting ✦</div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-empty">Search for a friend or open a recent chat.<br>Private messages will appear here. 💌</div>
+                </div>
+                <div class="chat-compose">
+                    <input type="text" id="chatMessageInput" maxlength="500" placeholder="Write a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage();}">
+                    <button class="nav-btn" onclick="sendChatMessage()">Send ✦</button>
+                </div>
+            </main>
+        </div>
+    </section>
 
     <!-- JAVASCRIPT ENGINE -->
     <script>
@@ -884,6 +1002,8 @@
         let isYtReady = false;
         let activeMusicType = 'mp3';
         let heroRenderFrame = null;
+        let activeChatUser = null;
+        let activeChatMessagesRef = null;
 
         /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
@@ -1024,7 +1144,7 @@
             const cachedProfile = JSON.parse(localStorage.getItem('vspace_profile_' + viewingUser) || '{}');
             if (cachedProfile.displayName) document.getElementById('dispNameText').innerText = cachedProfile.displayName;
             if (cachedProfile.profileHandle) document.getElementById('userHandleText').innerText = `@${cachedProfile.profileHandle}`;
-            if (cachedProfile.profileVibe) document.getElementById('profileVibeText').innerText = `✦ ${cachedProfile.profileVibe}`;
+            document.getElementById('pokeBtn').style.display = (!isOwner && currentUser) ? 'inline-flex' : 'none';
 
             if (!isOwner && currentUser) {
                 recordVisitor();
@@ -1198,8 +1318,14 @@
         function openEditProfileModal() {
             document.getElementById('editDisplayName').value = document.getElementById('dispNameText').innerText;
             document.getElementById('editProfileHandle').value = document.getElementById('userHandleText').innerText;
-            document.getElementById('editProfileVibe').value = document.getElementById('profileVibeText').innerText.replace(/^✦\s*/, '');
             document.getElementById('editProfileModal').style.display = 'flex';
+        }
+
+        function pokeProfile() {
+            if (!currentUser) { alert("Please login first!"); return; }
+            if (currentUser === viewingUser) return;
+            sendNotification(viewingUser, `${currentUser} sent you a cute poke! 🫶✨`, 'poke');
+            alert(`You poked @${viewingUser}! ✦`);
         }
 
         function closeEditProfileModal() {
@@ -1211,12 +1337,10 @@
             const displayName = document.getElementById('editDisplayName').value.trim() || viewingUser;
             const profileHandle = document.getElementById('editProfileHandle').value
                 .trim().replace(/^@+/, '').replace(/\s+/g, '_').replace(/[^\w.-]/g, '') || viewingUser;
-            const profileVibe = document.getElementById('editProfileVibe').value.trim() || 'Currently creating the life I dream about.';
-            const profileData = { displayName, profileHandle, profileVibe };
+            const profileData = { displayName, profileHandle };
 
             document.getElementById('dispNameText').innerText = displayName;
             document.getElementById('userHandleText').innerText = `@${profileHandle}`;
-            document.getElementById('profileVibeText').innerText = `✦ ${profileVibe}`;
             localStorage.setItem('vspace_profile_' + viewingUser, JSON.stringify(profileData));
             db.ref('boards/' + viewingUser).update(profileData);
             closeEditProfileModal();
@@ -1248,12 +1372,10 @@
                     if (d.philosophyText) document.getElementById('philosophyText').innerText = d.philosophyText;
                     if (d.displayName) document.getElementById('dispNameText').innerText = d.displayName;
                     if (d.profileHandle) document.getElementById('userHandleText').innerText = `@${d.profileHandle}`;
-                    if (d.profileVibe) document.getElementById('profileVibeText').innerText = `✦ ${d.profileVibe}`;
-                    if (d.displayName || d.profileHandle || d.profileVibe) {
+                    if (d.displayName || d.profileHandle) {
                         localStorage.setItem('vspace_profile_' + viewingUser, JSON.stringify({
                             displayName: d.displayName || viewingUser,
-                            profileHandle: d.profileHandle || viewingUser,
-                            profileVibe: d.profileVibe || 'Currently creating the life I dream about.'
+                            profileHandle: d.profileHandle || viewingUser
                         }));
                     }
                     if (d.coverImg) {
@@ -1600,6 +1722,164 @@
             localStorage.setItem('vspace_dark_mode', document.body.classList.contains('dark-mode'));
         }
 
+        /* ACCOUNT SETTINGS */
+        function openChangePasswordModal() {
+            if (!currentUser) { alert("Please login first!"); return; }
+            closeSettingsModal();
+            document.getElementById('currentPasswordInput').value = '';
+            document.getElementById('newPasswordInput').value = '';
+            document.getElementById('confirmPasswordInput').value = '';
+            document.getElementById('changePasswordModal').style.display = 'flex';
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('changePasswordModal').style.display = 'none';
+        }
+
+        function changePassword() {
+            const currentPassword = document.getElementById('currentPasswordInput').value;
+            const newPassword = document.getElementById('newPasswordInput').value;
+            const confirmPassword = document.getElementById('confirmPasswordInput').value;
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                alert("Please complete all password fields.");
+                return;
+            }
+            if (newPassword.length < 6) {
+                alert("New password must be at least 6 characters.");
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                alert("New passwords do not match.");
+                return;
+            }
+            db.ref('users/' + currentUser).once('value', snap => {
+                if (!snap.exists() || snap.val().password !== currentPassword) {
+                    alert("Current password is incorrect.");
+                    return;
+                }
+                db.ref('users/' + currentUser + '/password').set(newPassword, () => {
+                    closeChangePasswordModal();
+                    alert("Password updated successfully! ✦");
+                });
+            });
+        }
+
+        /* PRIVATE FRIEND CHAT PAGE */
+        function safeChatKey(value) {
+            return String(value).replace(/[.#$\[\]\/]/g, '_');
+        }
+
+        function getChatId(userA, userB) {
+            return [safeChatKey(userA), safeChatKey(userB)].sort().join('__');
+        }
+
+        function openChatPage() {
+            if (!currentUser) { alert("Please login to use chats!"); return; }
+            document.getElementById('chatPage').style.display = 'flex';
+            if (location.hash !== '#chat') history.pushState(null, '', '#chat');
+            loadChatContacts();
+        }
+
+        function closeChatPage() {
+            document.getElementById('chatPage').style.display = 'none';
+            if (location.hash === '#chat') history.replaceState(null, '', location.pathname + location.search);
+        }
+
+        function makeChatPersonButton(user, container) {
+            const button = document.createElement('button');
+            button.className = 'chat-person';
+            button.type = 'button';
+            button.textContent = `✦ @${user}`;
+            button.onclick = () => startChatWith(user);
+            container.appendChild(button);
+        }
+
+        function searchChatFriends() {
+            const query = document.getElementById('chatFriendSearch').value.trim().toLowerCase();
+            const results = document.getElementById('chatSearchResults');
+            results.innerHTML = '';
+            if (!query) return;
+            db.ref('users').once('value', snap => {
+                const matches = snap.exists()
+                    ? Object.keys(snap.val()).filter(user => user !== currentUser && user.includes(query)).slice(0, 12)
+                    : [];
+                if (!matches.length) {
+                    results.innerHTML = '<div style="font-size:0.75rem; opacity:0.6; padding:6px;">No user found.</div>';
+                    return;
+                }
+                matches.forEach(user => makeChatPersonButton(user, results));
+            });
+        }
+
+        function loadChatContacts() {
+            const contactsRef = db.ref(`chatContacts/${safeChatKey(currentUser)}`);
+            contactsRef.off();
+            contactsRef.on('value', snap => {
+                const container = document.getElementById('chatContacts');
+                container.innerHTML = '';
+                if (!snap.exists()) {
+                    container.innerHTML = '<div style="font-size:0.75rem; opacity:0.6;">No chats yet.</div>';
+                    return;
+                }
+                Object.entries(snap.val())
+                    .sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0))
+                    .forEach(([key, item]) => makeChatPersonButton(item.username || key, container));
+            });
+        }
+
+        function startChatWith(username) {
+            if (!username || username === currentUser) return;
+            activeChatUser = username;
+            document.getElementById('chatWithName').textContent = `Chatting with @${username} ✦`;
+            document.getElementById('chatMessages').innerHTML = '<div class="chat-empty">Loading messages...</div>';
+
+            if (activeChatMessagesRef) activeChatMessagesRef.off();
+            activeChatMessagesRef = db.ref(`chats/${getChatId(currentUser, username)}/messages`);
+            activeChatMessagesRef.limitToLast(100).on('value', snap => {
+                const container = document.getElementById('chatMessages');
+                container.innerHTML = '';
+                if (!snap.exists()) {
+                    container.innerHTML = '<div class="chat-empty">No messages yet.<br>Say hello first! ✦</div>';
+                    return;
+                }
+                snap.forEach(child => {
+                    const message = child.val();
+                    const bubble = document.createElement('div');
+                    bubble.className = `chat-bubble ${message.from === currentUser ? 'mine' : 'theirs'}`;
+                    const text = document.createElement('span');
+                    text.textContent = message.text;
+                    const time = document.createElement('span');
+                    time.className = 'chat-time';
+                    time.textContent = new Date(message.timestamp || Date.now()).toLocaleString();
+                    bubble.append(text, time);
+                    container.appendChild(bubble);
+                });
+                container.scrollTop = container.scrollHeight;
+            });
+        }
+
+        function sendChatMessage() {
+            if (!currentUser || !activeChatUser) {
+                alert("Choose a friend first.");
+                return;
+            }
+            const input = document.getElementById('chatMessageInput');
+            const text = input.value.trim();
+            if (!text) return;
+            const timestamp = Date.now();
+            db.ref(`chats/${getChatId(currentUser, activeChatUser)}/messages`).push({
+                from: currentUser, text, timestamp
+            });
+            db.ref(`chatContacts/${safeChatKey(currentUser)}/${safeChatKey(activeChatUser)}`).set({
+                username: activeChatUser, timestamp
+            });
+            db.ref(`chatContacts/${safeChatKey(activeChatUser)}/${safeChatKey(currentUser)}`).set({
+                username: currentUser, timestamp
+            });
+            sendNotification(activeChatUser, `${currentUser} sent you a private message 💌`, 'chat');
+            input.value = '';
+        }
+
         /* HYBRID MUSIC PLAYER */
         function saveCustomMusic() {
             const url = document.getElementById('customMusicInput').value.trim();
@@ -1661,10 +1941,14 @@
                 document.getElementById('authGate').style.display = 'none';
                 document.getElementById('logoutBtn').style.display = 'flex';
                 initProfile();
+                if (location.hash === '#chat') openChatPage();
             } else {
                 document.getElementById('authGate').style.display = 'flex';
                 document.getElementById('pageLoader').classList.add('hidden');
             }
+        });
+        window.addEventListener('hashchange', () => {
+            if (location.hash !== '#chat') document.getElementById('chatPage').style.display = 'none';
         });
     </script>
 </body>
