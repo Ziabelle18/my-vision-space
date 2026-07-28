@@ -93,7 +93,7 @@
         body.dark-mode .top-nav { background: rgba(26, 25, 24, 0.88); }
 
         .nav-logo {
-            font-family: var(--font-main-title); font-size: 1.75rem; line-height: 1;
+            font-family: 'Caveat', cursive; font-size: 1.75rem; line-height: 1;
             font-weight: 700; cursor: pointer; color: var(--text-color);
             white-space: nowrap; flex: 0 0 auto;
         }
@@ -377,8 +377,10 @@
                 align-content: center; gap: 10px 8px;
             }
             .nav-logo {
-                grid-area: logo; font-size: 1.8rem; overflow: hidden;
-                text-overflow: ellipsis; max-width: calc(100vw - 110px);
+                grid-area: logo; grid-column: 1 / -1; width: 100%;
+                font-family: 'Caveat', cursive; font-size: 1.8rem;
+                overflow: visible; text-overflow: clip; max-width: none;
+                text-align: center;
             }
             .nav-search { grid-area: search; min-width: 0; width: 100%; }
             .nav-search input, .nav-search input:focus {
@@ -393,7 +395,7 @@
 
         @media (max-width: 430px) {
             .top-nav { grid-template-columns: minmax(0, 1fr) auto; }
-            .nav-logo { font-size: 1.65rem; }
+            .nav-logo { font-size: 1.75rem; }
             .nav-search { max-width: none; }
             .top-nav .nav-btn { font-size: 0.72rem; width: 38px; padding: 6px; }
             .top-nav .nav-btn span { font-size: 0.72rem; }
@@ -411,6 +413,15 @@
     </style>
 </head>
 <body>
+    <script>
+        (() => {
+            const startupUser = new URLSearchParams(location.search).get('user') || localStorage.getItem('vspace_user') || 'zizabelle';
+            const savedTheme = localStorage.getItem('vspace_theme_' + startupUser);
+            const savedDarkMode = localStorage.getItem('vspace_dark_mode') === 'true';
+            if (savedTheme) document.body.classList.add(savedTheme);
+            if (savedDarkMode) document.body.classList.add('dark-mode');
+        })();
+    </script>
 
     <!-- PAGE TRANSITION LOADER -->
     <div class="page-loader" id="pageLoader">
@@ -685,24 +696,13 @@
             
             <div style="margin-bottom:12px;">
                 <label style="font-size:0.8rem; font-weight:bold;">Color Theme:</label>
-                <select class="nav-btn" style="width:100%; margin-top:4px;" onchange="setTheme(this.value)">
+                <select class="nav-btn" id="themeSelect" style="width:100%; margin-top:4px;" onchange="setTheme(this.value)">
                     <option value="theme-cream-white">Cream White</option>
                     <option value="theme-pastel-pink">Pastel Pink</option>
                     <option value="theme-pastel-blue">Pastel Blue</option>
                     <option value="theme-pastel-sage">Pastel Sage</option>
                     <option value="theme-silver-gray">Silver Gray</option>
                     <option value="theme-pastel-beige">Pastel Beige</option>
-                </select>
-            </div>
-
-            <div style="margin-bottom:12px;">
-                <label style="font-size:0.8rem; font-weight:bold;">Main Title Font:</label>
-                <select class="nav-btn" style="width:100%; margin-top:4px;" onchange="applyFont('--font-main-title', this.value)">
-                    <option value="'Caveat', cursive">Caveat (Handwritten)</option>
-                    <option value="'Cinzel Decorative', serif">Vienna Heritage</option>
-                    <option value="'Playfair Display', serif">Playfair Serif</option>
-                    <option value="'Montserrat', sans-serif">Montserrat Clean</option>
-                    <option value="'Pacifico', cursive">Pacifico Retro</option>
                 </select>
             </div>
 
@@ -1089,6 +1089,7 @@
                         saveMediaToIDB('avatarImg_' + viewingUser, d.avatarImg);
                     }
                     if (d.musicTrack) applyMusicTrack(d.musicTrack);
+                    if (d.theme) setTheme(d.theme, true);
                 }
             });
 
@@ -1379,16 +1380,25 @@
         function openSettingsModal() { document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettingsModal() { document.getElementById('settingsModal').style.display = 'none'; }
 
-        function setTheme(cls) {
+        function setTheme(cls, skipCloudSave = false) {
             document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
             if (cls) document.body.classList.add(cls);
+            const themeSelect = document.getElementById('themeSelect');
+            if (themeSelect) themeSelect.value = cls || 'theme-cream-white';
+            localStorage.setItem('vspace_theme_' + viewingUser, cls || 'theme-cream-white');
+            if (!skipCloudSave && currentUser === viewingUser) {
+                db.ref('boards/' + viewingUser).update({ theme: cls || 'theme-cream-white' });
+            }
         }
 
         function applyFont(varName, fontVal) {
             document.documentElement.style.setProperty(varName, fontVal);
         }
 
-        function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('vspace_dark_mode', document.body.classList.contains('dark-mode'));
+        }
 
         /* HYBRID MUSIC PLAYER */
         function saveCustomMusic() {
@@ -1436,6 +1446,10 @@
 
         /* STARTUP ENGINE */
         document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('vspace_theme_' + viewingUser);
+            if (savedTheme && document.getElementById('themeSelect')) {
+                document.getElementById('themeSelect').value = savedTheme;
+            }
             if (currentUser) {
                 document.getElementById('authGate').style.display = 'none';
                 document.getElementById('logoutBtn').style.display = 'flex';
