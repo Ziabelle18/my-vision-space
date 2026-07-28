@@ -595,6 +595,12 @@
             cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .chat-launcher .chat-diamond { font-size: 0.9rem; }
+        .chat-unread-badge {
+            display: none; min-width: 19px; height: 19px; padding: 0 5px;
+            border-radius: 10px; align-items: center; justify-content: center;
+            background: #d95c6a; color: #fff; font: 700 0.62rem Arial, sans-serif;
+            box-shadow: 0 2px 7px rgba(0,0,0,0.2);
+        }
         .chat-launcher:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 14px 30px rgba(0,0,0,0.22); }
         html.chat-open, body.chat-open {
             width: 100%; height: 100%; overflow: hidden !important;
@@ -636,13 +642,31 @@
             width: 100%; padding: 10px; margin-bottom: 7px; border-radius: 12px;
             border: 1px solid transparent; background: var(--bg-color); color: var(--text-color);
             text-align: left; cursor: pointer; font: 600 0.82rem var(--font-body);
+            display: flex; align-items: center; gap: 7px;
         }
         .chat-person:hover { border-color: var(--accent-gold); }
+        .chat-person-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+        .presence-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto;
+            background: #aaa; box-shadow: 0 0 0 2px rgba(170,170,170,0.14);
+        }
+        .presence-dot.online { background: #55b982; box-shadow: 0 0 0 2px rgba(85,185,130,0.17); }
+        .contact-unread {
+            display: inline-flex; min-width: 19px; height: 19px; padding: 0 5px;
+            border-radius: 10px; align-items: center; justify-content: center;
+            background: var(--accent-gold); color: #fff; font: 700 0.6rem Arial, sans-serif;
+        }
         .chat-conversation { display: flex; flex-direction: column; overflow: hidden; }
         .chat-with {
             padding: 13px 16px; border-bottom: 1px solid rgba(197,160,89,0.28);
             color: var(--accent-gold); font-weight: 700;
         }
+        .chat-presence-label { display: block; margin-top: 2px; font-size: 0.62rem; opacity: 0.7; }
+        .chat-typing {
+            min-height: 20px; padding: 0 16px 5px; color: var(--accent-gold);
+            font: 600 0.7rem var(--font-body); opacity: 0; transition: opacity 0.2s ease;
+        }
+        .chat-typing.visible { opacity: 0.9; }
         .chat-messages {
             flex: 1; min-height: 0; overflow-y: auto; padding: 16px;
             display: flex; flex-direction: column; gap: 8px;
@@ -655,6 +679,7 @@
         .chat-bubble.mine { align-self: flex-end; background: var(--accent-gold); color: #fff; border-bottom-right-radius: 4px; }
         .chat-bubble.theirs { align-self: flex-start; background: var(--card-pink); color: var(--text-color); border-bottom-left-radius: 4px; }
         .chat-time { display: block; margin-top: 3px; font-size: 0.58rem; opacity: 0.72; }
+        .chat-status { display: block; margin-top: 2px; font-size: 0.55rem; opacity: 0.78; text-align: right; }
         .chat-compose { padding: 12px; display: flex; gap: 8px; border-top: 1px solid rgba(197,160,89,0.28); }
         .chat-compose input {
             min-width: 0; flex: 1; padding: 10px 12px; border-radius: 20px;
@@ -1190,7 +1215,7 @@
     </div>
 
     <!-- PRIVATE CHAT: OWN PAGE -->
-    <button class="chat-launcher" onclick="openChatPage()" aria-label="Open private chats"><span class="chat-diamond">✦</span><span>CHAT</span></button>
+    <button class="chat-launcher" onclick="openChatPage()" aria-label="Open private chats"><span class="chat-diamond">✦</span><span>CHAT</span><span class="chat-unread-badge" id="chatUnreadBadge">0</span></button>
     <section class="chat-page" id="chatPage" aria-label="Private chats">
         <div class="chat-topbar">
             <button class="nav-btn" onclick="closeChatPage()">← Back</button>
@@ -1209,11 +1234,12 @@
             </aside>
             <main class="chat-conversation">
                 <div class="chat-with" id="chatWithName">Choose a friend to start chatting ✦</div>
+                <div class="chat-typing" id="chatTypingIndicator">Typing...</div>
                 <div class="chat-messages" id="chatMessages">
                     <div class="chat-empty">Search for a friend or open a recent chat.<br>Private messages will appear here. ✦</div>
                 </div>
                 <div class="chat-compose">
-                    <input type="text" id="chatMessageInput" maxlength="500" placeholder="Write a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage();}">
+                    <input type="text" id="chatMessageInput" maxlength="500" placeholder="Write a message..." oninput="handleChatTyping()" onblur="stopChatTyping()" onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage();}">
                     <button class="nav-btn" onclick="sendChatMessage()">Send ✦</button>
                 </div>
             </main>
@@ -1239,6 +1265,12 @@
         let heroRenderFrame = null;
         let activeChatUser = null;
         let activeChatMessagesRef = null;
+        let activeChatTypingRef = null;
+        let activeChatPresenceRef = null;
+        let chatContactsRef = null;
+        let inboxRef = null;
+        let typingTimer = null;
+        let presenceRef = null;
         let chatScrollPosition = 0;
         let cropState = {
             target: null, image: null, objectUrl: null,
@@ -1337,10 +1369,15 @@
             localStorage.setItem('vspace_user', u);
             document.getElementById('authGate').style.display = 'none';
             document.getElementById('logoutBtn').style.display = 'flex';
+            setupRealtimeChatAccount();
             if (viewingUser !== u) { navigateToUser(u); } else { initProfile(); }
         }
 
-        function logout() { localStorage.removeItem('vspace_user'); window.location.reload(); }
+        function logout() {
+            if (presenceRef) presenceRef.set({ state: 'offline', lastChanged: firebase.database.ServerValue.TIMESTAMP });
+            localStorage.removeItem('vspace_user');
+            window.location.reload();
+        }
         function goHome() { if (currentUser) navigateToUser(currentUser); else document.getElementById('authGate').style.display = 'flex'; }
 
         function navigateToUser(u) {
@@ -2380,8 +2417,55 @@
             return [safeChatKey(userA), safeChatKey(userB)].sort().join('__');
         }
 
+        function setupRealtimeChatAccount() {
+            if (!currentUser) return;
+
+            const connectedRef = db.ref('.info/connected');
+            presenceRef = db.ref(`presence/${safeChatKey(currentUser)}`);
+            connectedRef.off('value');
+            connectedRef.on('value', snap => {
+                if (snap.val() !== true) return;
+                presenceRef.onDisconnect().set({
+                    state: 'offline',
+                    lastChanged: firebase.database.ServerValue.TIMESTAMP
+                });
+                presenceRef.set({
+                    state: 'online',
+                    lastChanged: firebase.database.ServerValue.TIMESTAMP
+                });
+            });
+
+            if (inboxRef) inboxRef.off();
+            inboxRef = db.ref(`chatInbox/${safeChatKey(currentUser)}`);
+            inboxRef.on('child_added', snap => {
+                const incoming = snap.val() || {};
+                if (!incoming.chatId || !incoming.messageId) {
+                    snap.ref.remove();
+                    return;
+                }
+                db.ref(`chats/${incoming.chatId}/messages/${incoming.messageId}/delivered/${safeChatKey(currentUser)}`)
+                    .set(firebase.database.ServerValue.TIMESTAMP);
+                if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+                    new Notification(`Boardly ✦ @${incoming.from || 'friend'}`, {
+                        body: incoming.preview || 'Sent you a message',
+                        tag: `boardly-${incoming.chatId}`,
+                        icon: 'https://www.gstatic.com/mobilesdk/160503_mobilesdk/logo/2x/firebase_28dp.png'
+                    });
+                }
+                snap.ref.remove();
+            });
+
+            watchUnreadMessages();
+        }
+
+        function askForChatNotifications() {
+            if (!('Notification' in window) || Notification.permission !== 'default') return;
+            Notification.requestPermission().catch(() => {});
+        }
+
         function openChatPage() {
             if (!currentUser) { alert("Please login to use chats!"); return; }
+            askForChatNotifications();
             chatScrollPosition = window.scrollY || 0;
             document.documentElement.classList.add('chat-open');
             document.body.classList.add('chat-open');
@@ -2405,16 +2489,31 @@
         }
 
         function closeChatPage() {
+            stopChatTyping();
             document.getElementById('chatPage').style.display = 'none';
             unlockChatPageScroll();
             if (location.hash === '#chat') history.replaceState(null, '', location.pathname + location.search);
         }
 
-        function makeChatPersonButton(user, container) {
+        function makeChatPersonButton(user, container, contactData = {}) {
             const button = document.createElement('button');
             button.className = 'chat-person';
             button.type = 'button';
-            button.textContent = `✦ @${user}`;
+            const dot = document.createElement('span');
+            dot.className = 'presence-dot';
+            const name = document.createElement('span');
+            name.className = 'chat-person-name';
+            name.textContent = `✦ @${user}`;
+            button.append(dot, name);
+            if ((contactData.unread || 0) > 0) {
+                const unread = document.createElement('span');
+                unread.className = 'contact-unread';
+                unread.textContent = contactData.unread > 99 ? '99+' : contactData.unread;
+                button.appendChild(unread);
+            }
+            db.ref(`presence/${safeChatKey(user)}/state`).on('value', snap => {
+                dot.classList.toggle('online', snap.val() === 'online');
+            });
             button.onclick = () => startChatWith(user);
             container.appendChild(button);
         }
@@ -2437,9 +2536,9 @@
         }
 
         function loadChatContacts() {
-            const contactsRef = db.ref(`chatContacts/${safeChatKey(currentUser)}`);
-            contactsRef.off();
-            contactsRef.on('value', snap => {
+            if (chatContactsRef) chatContactsRef.off();
+            chatContactsRef = db.ref(`chatContacts/${safeChatKey(currentUser)}`);
+            chatContactsRef.on('value', snap => {
                 const container = document.getElementById('chatContacts');
                 container.innerHTML = '';
                 if (!snap.exists()) {
@@ -2448,18 +2547,91 @@
                 }
                 Object.entries(snap.val())
                     .sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0))
-                    .forEach(([key, item]) => makeChatPersonButton(item.username || key, container));
+                    .forEach(([key, item]) => makeChatPersonButton(item.username || key, container, item));
             });
+        }
+
+        function watchUnreadMessages() {
+            const ref = db.ref(`chatContacts/${safeChatKey(currentUser)}`);
+            ref.on('value', snap => {
+                let total = 0;
+                if (snap.exists()) {
+                    Object.values(snap.val()).forEach(item => { total += Number(item.unread || 0); });
+                }
+                const badge = document.getElementById('chatUnreadBadge');
+                badge.textContent = total > 99 ? '99+' : total;
+                badge.style.display = total > 0 ? 'inline-flex' : 'none';
+            });
+        }
+
+        function watchActiveChatPresence(username) {
+            if (activeChatPresenceRef) activeChatPresenceRef.off();
+            activeChatPresenceRef = db.ref(`presence/${safeChatKey(username)}`);
+            activeChatPresenceRef.on('value', snap => {
+                const info = snap.val() || {};
+                const label = info.state === 'online'
+                    ? '● Online now'
+                    : `Offline${info.lastChanged ? ' · last seen ' + new Date(info.lastChanged).toLocaleString() : ''}`;
+                document.getElementById('chatWithName').innerHTML =
+                    `Chatting with @${username} ✦<span class="chat-presence-label">${label}</span>`;
+            });
+        }
+
+        function watchActiveChatTyping(chatId, username) {
+            if (activeChatTypingRef) activeChatTypingRef.off();
+            activeChatTypingRef = db.ref(`chatTyping/${chatId}/${safeChatKey(username)}`);
+            activeChatTypingRef.on('value', snap => {
+                const value = snap.val();
+                const isTyping = value && value.typing && (Date.now() - Number(value.at || 0) < 7000);
+                const indicator = document.getElementById('chatTypingIndicator');
+                indicator.textContent = `@${username} is typing...`;
+                indicator.classList.toggle('visible', Boolean(isTyping));
+            });
+        }
+
+        function handleChatTyping() {
+            if (!currentUser || !activeChatUser) return;
+            const ref = db.ref(`chatTyping/${getChatId(currentUser, activeChatUser)}/${safeChatKey(currentUser)}`);
+            ref.onDisconnect().remove();
+            ref.set({ typing: true, at: firebase.database.ServerValue.TIMESTAMP });
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(stopChatTyping, 1600);
+        }
+
+        function stopChatTyping() {
+            clearTimeout(typingTimer);
+            if (!currentUser || !activeChatUser) return;
+            db.ref(`chatTyping/${getChatId(currentUser, activeChatUser)}/${safeChatKey(currentUser)}`).remove();
+        }
+
+        function markActiveChatSeen(chatId, snapshot) {
+            if (!activeChatUser || !snapshot.exists()) return;
+            const updates = {};
+            snapshot.forEach(child => {
+                const message = child.val() || {};
+                if (message.from === activeChatUser && !(message.seen && message.seen[safeChatKey(currentUser)])) {
+                    updates[`chats/${chatId}/messages/${child.key}/delivered/${safeChatKey(currentUser)}`] =
+                        firebase.database.ServerValue.TIMESTAMP;
+                    updates[`chats/${chatId}/messages/${child.key}/seen/${safeChatKey(currentUser)}`] =
+                        firebase.database.ServerValue.TIMESTAMP;
+                }
+            });
+            updates[`chatContacts/${safeChatKey(currentUser)}/${safeChatKey(activeChatUser)}/unread`] = 0;
+            db.ref().update(updates);
         }
 
         function startChatWith(username) {
             if (!username || username === currentUser) return;
+            stopChatTyping();
             activeChatUser = username;
             document.getElementById('chatWithName').textContent = `Chatting with @${username} ✦`;
             document.getElementById('chatMessages').innerHTML = '<div class="chat-empty">Loading messages...</div>';
 
             if (activeChatMessagesRef) activeChatMessagesRef.off();
-            activeChatMessagesRef = db.ref(`chats/${getChatId(currentUser, username)}/messages`);
+            const chatId = getChatId(currentUser, username);
+            watchActiveChatPresence(username);
+            watchActiveChatTyping(chatId, username);
+            activeChatMessagesRef = db.ref(`chats/${chatId}/messages`);
             activeChatMessagesRef.limitToLast(100).on('value', snap => {
                 const container = document.getElementById('chatMessages');
                 container.innerHTML = '';
@@ -2477,9 +2649,20 @@
                     time.className = 'chat-time';
                     time.textContent = new Date(message.timestamp || Date.now()).toLocaleString();
                     bubble.append(text, time);
+                    if (message.from === currentUser) {
+                        const status = document.createElement('span');
+                        status.className = 'chat-status';
+                        status.textContent = message.seen && message.seen[safeChatKey(username)]
+                            ? '✓✓ Seen'
+                            : message.delivered && message.delivered[safeChatKey(username)]
+                                ? '✓✓ Delivered'
+                                : '✓ Sent';
+                        bubble.appendChild(status);
+                    }
                     container.appendChild(bubble);
                 });
                 container.scrollTop = container.scrollHeight;
+                markActiveChatSeen(chatId, snap);
             });
         }
 
@@ -2492,17 +2675,25 @@
             const text = input.value.trim();
             if (!text) return;
             const timestamp = Date.now();
-            db.ref(`chats/${getChatId(currentUser, activeChatUser)}/messages`).push({
-                from: currentUser, text, timestamp
-            });
-            db.ref(`chatContacts/${safeChatKey(currentUser)}/${safeChatKey(activeChatUser)}`).set({
-                username: activeChatUser, timestamp
-            });
-            db.ref(`chatContacts/${safeChatKey(activeChatUser)}/${safeChatKey(currentUser)}`).set({
-                username: currentUser, timestamp
-            });
+            const chatId = getChatId(currentUser, activeChatUser);
+            const messageRef = db.ref(`chats/${chatId}/messages`).push();
+            const messageId = messageRef.key;
+            const senderKey = safeChatKey(currentUser);
+            const recipientKey = safeChatKey(activeChatUser);
+            const updates = {};
+            updates[`chats/${chatId}/messages/${messageId}`] = { from: currentUser, text, timestamp };
+            updates[`chatContacts/${senderKey}/${recipientKey}/username`] = activeChatUser;
+            updates[`chatContacts/${senderKey}/${recipientKey}/timestamp`] = timestamp;
+            updates[`chatContacts/${recipientKey}/${senderKey}/username`] = currentUser;
+            updates[`chatContacts/${recipientKey}/${senderKey}/timestamp`] = timestamp;
+            updates[`chatInbox/${recipientKey}/${messageId}`] = {
+                chatId, messageId, from: currentUser, preview: text.slice(0, 100), timestamp
+            };
+            db.ref().update(updates);
+            db.ref(`chatContacts/${recipientKey}/${senderKey}/unread`).transaction(value => Number(value || 0) + 1);
             sendNotification(activeChatUser, `${currentUser} sent you a private message ✦`, 'chat');
             input.value = '';
+            stopChatTyping();
         }
 
         /* HYBRID MUSIC PLAYER */
@@ -2566,6 +2757,7 @@
             if (currentUser) {
                 document.getElementById('authGate').style.display = 'none';
                 document.getElementById('logoutBtn').style.display = 'flex';
+                setupRealtimeChatAccount();
                 initProfile();
                 if (location.hash === '#chat') openChatPage();
             } else {
