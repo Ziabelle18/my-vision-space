@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Boardly — aesthetic social scrapbook</title>
+    <meta name="application-name" content="Boardly">
+    <meta name="theme-color" content="#c5a059" id="themeColorMeta">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Boardly">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="./boardly-180.png">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -616,6 +624,40 @@
             box-shadow: 0 2px 7px rgba(0,0,0,0.2);
         }
         .chat-launcher:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 14px 30px rgba(0,0,0,0.22); }
+        .pwa-install-card {
+            position: fixed; left: 50%; bottom: 18px; z-index: 1600;
+            width: min(430px, calc(100vw - 28px)); transform: translateX(-50%);
+            display: none; align-items: center; gap: 10px; padding: 11px 12px;
+            border: 1px solid var(--accent-gold); border-radius: 17px;
+            background: var(--card-white);
+            background: color-mix(in srgb, var(--card-white) 93%, transparent);
+            color: var(--text-color); box-shadow: 0 14px 38px rgba(0,0,0,0.2);
+            -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+            animation: installCardIn 0.35s cubic-bezier(0.2, 0.85, 0.3, 1) both;
+        }
+        .pwa-install-mark {
+            width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px;
+            display: grid; place-items: center; background: var(--card-pink);
+            color: var(--accent-gold); border: 1px solid rgba(197,160,89,0.45);
+            font: 700 1.05rem 'Cinzel', serif;
+        }
+        .pwa-install-copy { flex: 1; min-width: 0; }
+        .pwa-install-copy strong { display: block; color: var(--accent-gold); font-size: 0.78rem; letter-spacing: 0.04em; }
+        .pwa-install-copy small { display: block; margin-top: 2px; font-size: 0.65rem; opacity: 0.72; line-height: 1.35; }
+        .pwa-install-action {
+            min-height: 34px; padding: 6px 12px; border: 1px solid var(--accent-gold);
+            border-radius: 18px; background: var(--accent-gold); color: #fff;
+            font: 700 0.68rem var(--font-body); cursor: pointer;
+        }
+        .pwa-install-dismiss {
+            width: 25px; height: 25px; flex: 0 0 auto; border: 0;
+            background: transparent; color: var(--text-color); opacity: 0.62;
+            font-size: 1.05rem; cursor: pointer;
+        }
+        @keyframes installCardIn {
+            from { opacity: 0; transform: translate(-50%, 14px) scale(0.97); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
         html.chat-open, body.chat-open {
             width: 100%; height: 100%; overflow: hidden !important;
             overscroll-behavior: none;
@@ -704,6 +746,7 @@
             .chat-sidebar { max-height: 190px; }
             .chat-conversation { min-height: 0; }
             .chat-launcher { bottom: 76px; }
+            .pwa-install-card { bottom: 132px; }
         }
         body.section-font-script .card-title {
             font-size: 1.12rem;
@@ -1211,7 +1254,20 @@
                 <button class="nav-btn" style="margin-top:6px; width:100%; justify-content:center;" onclick="saveCustomMusic()">Save Music Track</button>
             </div>
             <hr style="margin:12px 0; border:none; border-top:1px dashed var(--accent-gold);">
+            <button class="nav-btn" id="installSettingsBtn" style="width:100%; justify-content:center; padding:10px; margin-bottom:8px;" onclick="installBoardlyApp()">✦ Install Boardly App</button>
             <button class="nav-btn" style="width:100%; justify-content:center; padding:10px;" onclick="openChangePasswordModal()">✦ Change Password</button>
+        </div>
+    </div>
+
+    <!-- INSTALL BOARDLY APP GUIDE -->
+    <div class="modal-overlay" id="installAppModal" onclick="closeInstallAppModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeInstallAppModal()">&times;</button>
+            <div style="width:74px; height:74px; margin:0 auto 12px; border-radius:20px; overflow:hidden; box-shadow:var(--shadow-soft);">
+                <img src="./boardly-192.png" alt="Boardly app icon" style="width:100%; height:100%; display:block;">
+            </div>
+            <h3 style="color:var(--accent-gold); text-align:center;">✦ Install Boardly</h3>
+            <div id="installAppInstructions" style="margin-top:12px; font-size:0.8rem; line-height:1.65; text-align:center;"></div>
         </div>
     </div>
 
@@ -1236,6 +1292,15 @@
     </div>
 
     <!-- PRIVATE CHAT: OWN PAGE -->
+    <div class="pwa-install-card" id="pwaInstallCard">
+        <div class="pwa-install-mark">B</div>
+        <div class="pwa-install-copy">
+            <strong>INSTALL BOARDLY ✦</strong>
+            <small>Add it to your home screen for an app-like experience.</small>
+        </div>
+        <button class="pwa-install-action" type="button" onclick="installBoardlyApp()">Install</button>
+        <button class="pwa-install-dismiss" type="button" aria-label="Dismiss install suggestion" onclick="dismissInstallCard()">&times;</button>
+    </div>
     <button class="chat-launcher" onclick="openChatPage()" aria-label="Open private chats"><span class="chat-diamond">✦</span><span>CHAT</span><span class="chat-unread-badge" id="chatUnreadBadge">0</span></button>
     <section class="chat-page" id="chatPage" aria-label="Private chats">
         <div class="chat-topbar">
@@ -1313,6 +1378,7 @@
         };
         let pendingGuestbookNote = '';
         let pendingGuestbookEffect = 'stars';
+        let deferredInstallPrompt = null;
 
         /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
@@ -2518,6 +2584,7 @@
         function setTheme(cls, skipCloudSave = false) {
             document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
             if (cls) document.body.classList.add(cls);
+            updateAppThemeColor();
             const themeSelect = document.getElementById('themeSelect');
             if (themeSelect) themeSelect.value = cls || 'theme-cream-white';
             localStorage.setItem('vspace_theme_' + viewingUser, cls || 'theme-cream-white');
@@ -2551,7 +2618,95 @@
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('vspace_dark_mode', document.body.classList.contains('dark-mode'));
+            updateAppThemeColor();
         }
+
+        /* INSTALLABLE BOARDLY APP */
+        function isBoardlyStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+        }
+
+        function isIosDevice() {
+            return /iphone|ipad|ipod/i.test(navigator.userAgent);
+        }
+
+        function updateAppThemeColor() {
+            const meta = document.getElementById('themeColorMeta');
+            if (!meta) return;
+            meta.content = document.body.classList.contains('dark-mode') ? '#1a1918' : '#c5a059';
+        }
+
+        function showInstallCard() {
+            if (isBoardlyStandalone()) return;
+            const dismissedAt = Number(localStorage.getItem('boardly_install_dismissed_at') || 0);
+            const threeDays = 3 * 24 * 60 * 60 * 1000;
+            if (dismissedAt && Date.now() - dismissedAt < threeDays) return;
+            document.getElementById('pwaInstallCard').style.display = 'flex';
+        }
+
+        function hideInstallCard() {
+            const card = document.getElementById('pwaInstallCard');
+            if (card) card.style.display = 'none';
+        }
+
+        function dismissInstallCard() {
+            localStorage.setItem('boardly_install_dismissed_at', String(Date.now()));
+            hideInstallCard();
+        }
+
+        function openInstallInstructions(message) {
+            document.getElementById('installAppInstructions').innerHTML = message;
+            document.getElementById('installAppModal').style.display = 'flex';
+        }
+
+        function closeInstallAppModal() {
+            document.getElementById('installAppModal').style.display = 'none';
+        }
+
+        async function installBoardlyApp() {
+            if (isBoardlyStandalone()) {
+                openInstallInstructions('Boardly is already installed on this device. ✦');
+                return;
+            }
+
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                const choice = await deferredInstallPrompt.userChoice;
+                if (choice.outcome === 'accepted') hideInstallCard();
+                deferredInstallPrompt = null;
+                return;
+            }
+
+            if (isIosDevice()) {
+                openInstallInstructions(
+                    '<b>On iPhone or iPad:</b><br>' +
+                    '1. Open Boardly using <b>Safari</b>.<br>' +
+                    '2. Tap the <b>Share</b> button at the bottom.<br>' +
+                    '3. Choose <b>Add to Home Screen</b>.<br>' +
+                    '4. Tap <b>Add</b>.'
+                );
+                return;
+            }
+
+            openInstallInstructions(
+                '<b>On Android:</b><br>' +
+                'Open your browser menu <b>⋮</b>, then choose ' +
+                '<b>Install app</b> or <b>Add to Home screen</b>.'
+            );
+        }
+
+        window.addEventListener('beforeinstallprompt', event => {
+            event.preventDefault();
+            deferredInstallPrompt = event;
+            showInstallCard();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            localStorage.removeItem('boardly_install_dismissed_at');
+            hideInstallCard();
+        });
 
         /* ACCOUNT SETTINGS */
         function openChangePasswordModal() {
@@ -2641,7 +2796,8 @@
                     new Notification(`Boardly ✦ @${incoming.from || 'friend'}`, {
                         body: incoming.preview || 'Sent you a message',
                         tag: `boardly-${incoming.chatId}`,
-                        icon: 'https://www.gstatic.com/mobilesdk/160503_mobilesdk/logo/2x/firebase_28dp.png'
+                        icon: './boardly-192.png',
+                        badge: './boardly-192.png'
                     });
                 }
                 snap.ref.remove();
@@ -2964,6 +3120,15 @@
         /* STARTUP ENGINE */
         document.addEventListener('DOMContentLoaded', () => {
             setupCropEditor();
+            updateAppThemeColor();
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./service-worker.js').catch(error => {
+                    console.warn('Boardly app service worker could not start:', error);
+                });
+            }
+            if (isIosDevice() && !isBoardlyStandalone()) {
+                setTimeout(showInstallCard, 1800);
+            }
             const savedTheme = localStorage.getItem('vspace_theme_' + viewingUser);
             if (savedTheme && document.getElementById('themeSelect')) {
                 document.getElementById('themeSelect').value = savedTheme;
