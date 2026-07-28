@@ -411,15 +411,23 @@
         /* CUTE PRIVATE CHAT PAGE */
         .chat-launcher {
             position: fixed; right: 18px; bottom: 22px; z-index: 1200;
-            width: 52px; height: 52px; border-radius: 50%;
+            width: 88px; height: 44px; border-radius: 24px;
             border: 1px solid var(--accent-gold); background: var(--card-white);
             color: var(--accent-gold); box-shadow: 0 10px 26px rgba(0,0,0,0.18);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.25rem; cursor: pointer; transition: transform 0.2s ease;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            font: 700 0.72rem var(--font-body); letter-spacing: 0.08em;
+            cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .chat-launcher:hover { transform: translateY(-3px) scale(1.04); }
+        .chat-launcher .chat-diamond { font-size: 0.9rem; }
+        .chat-launcher:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 14px 30px rgba(0,0,0,0.22); }
+        html.chat-open, body.chat-open {
+            width: 100%; height: 100%; overflow: hidden !important;
+            overscroll-behavior: none;
+        }
         .chat-page {
             position: fixed; inset: 0; z-index: 5000; display: none;
+            width: 100vw; height: 100dvh; min-height: 100svh; overflow: hidden;
+            overscroll-behavior: none;
             flex-direction: column; background: var(--bg-color); color: var(--text-color);
             background-image: radial-gradient(rgba(200, 200, 180, 0.2) 1px, transparent 0);
             background-size: 24px 24px;
@@ -436,6 +444,7 @@
         .chat-shell {
             width: min(100%, 980px); flex: 1; min-height: 0; margin: 0 auto;
             padding: 14px; display: grid; grid-template-columns: 280px 1fr; gap: 14px;
+            overflow: hidden;
         }
         .chat-sidebar, .chat-conversation {
             min-height: 0; border: 1px solid rgba(197,160,89,0.35);
@@ -956,7 +965,7 @@
     </div>
 
     <!-- PRIVATE CHAT: OWN PAGE -->
-    <button class="chat-launcher" onclick="openChatPage()" aria-label="Open private chats">💌</button>
+    <button class="chat-launcher" onclick="openChatPage()" aria-label="Open private chats"><span class="chat-diamond">✦</span><span>CHAT</span></button>
     <section class="chat-page" id="chatPage" aria-label="Private chats">
         <div class="chat-topbar">
             <button class="nav-btn" onclick="closeChatPage()">← Back</button>
@@ -976,7 +985,7 @@
             <main class="chat-conversation">
                 <div class="chat-with" id="chatWithName">Choose a friend to start chatting ✦</div>
                 <div class="chat-messages" id="chatMessages">
-                    <div class="chat-empty">Search for a friend or open a recent chat.<br>Private messages will appear here. 💌</div>
+                    <div class="chat-empty">Search for a friend or open a recent chat.<br>Private messages will appear here. ✦</div>
                 </div>
                 <div class="chat-compose">
                     <input type="text" id="chatMessageInput" maxlength="500" placeholder="Write a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage();}">
@@ -1004,6 +1013,7 @@
         let heroRenderFrame = null;
         let activeChatUser = null;
         let activeChatMessagesRef = null;
+        let chatScrollPosition = 0;
 
         /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
@@ -1775,13 +1785,31 @@
 
         function openChatPage() {
             if (!currentUser) { alert("Please login to use chats!"); return; }
+            chatScrollPosition = window.scrollY || 0;
+            document.documentElement.classList.add('chat-open');
+            document.body.classList.add('chat-open');
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${chatScrollPosition}px`;
+            document.body.style.left = '0';
+            document.body.style.right = '0';
             document.getElementById('chatPage').style.display = 'flex';
             if (location.hash !== '#chat') history.pushState(null, '', '#chat');
             loadChatContacts();
         }
 
+        function unlockChatPageScroll() {
+            document.documentElement.classList.remove('chat-open');
+            document.body.classList.remove('chat-open');
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
+            window.scrollTo(0, chatScrollPosition);
+        }
+
         function closeChatPage() {
             document.getElementById('chatPage').style.display = 'none';
+            unlockChatPageScroll();
             if (location.hash === '#chat') history.replaceState(null, '', location.pathname + location.search);
         }
 
@@ -1876,7 +1904,7 @@
             db.ref(`chatContacts/${safeChatKey(activeChatUser)}/${safeChatKey(currentUser)}`).set({
                 username: currentUser, timestamp
             });
-            sendNotification(activeChatUser, `${currentUser} sent you a private message 💌`, 'chat');
+            sendNotification(activeChatUser, `${currentUser} sent you a private message ✦`, 'chat');
             input.value = '';
         }
 
@@ -1948,7 +1976,10 @@
             }
         });
         window.addEventListener('hashchange', () => {
-            if (location.hash !== '#chat') document.getElementById('chatPage').style.display = 'none';
+            if (location.hash !== '#chat') {
+                document.getElementById('chatPage').style.display = 'none';
+                unlockChatPageScroll();
+            }
         });
     </script>
 </body>
