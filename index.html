@@ -12,6 +12,7 @@
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <style>
@@ -166,6 +167,15 @@
         .auth-submit-btn {
             width: 100%; padding: 12px; background: var(--accent-gold); color: #fff;
             border: none; border-radius: 10px; font-weight: bold; font-size: 0.95rem; cursor: pointer;
+        }
+        .auth-google-btn {
+            width: 100%; margin-top: 10px; padding: 11px; background: var(--card-white);
+            color: var(--text-color); border: 1px solid var(--accent-gold); border-radius: 10px;
+            font-weight: 700; font-size: 0.86rem; cursor: pointer;
+        }
+        .auth-forgot {
+            display: none; margin-top: 11px; font-size: 0.76rem;
+            color: var(--accent-gold); text-decoration: underline; cursor: pointer;
         }
         .auth-toggle { display: inline-block; margin-top: 15px; font-size: 0.82rem; text-decoration: underline; cursor: pointer; }
 
@@ -833,12 +843,14 @@
             <p class="sub" id="authSubTitle">Create your vision board account</p>
             
             <div class="auth-inputs">
-                <input type="text" id="authUsername" placeholder="Username (e.g. zizabelle)">
-                <input type="password" id="authPassword" placeholder="Password">
+                <input type="text" id="authUsername" placeholder="Public username (e.g. krizzia)">
+                <input type="email" id="authEmail" placeholder="Private email address" autocomplete="email">
+                <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
             </div>
 
             <button class="auth-submit-btn" id="authSubmitBtn" onclick="handleAuthSubmit()">Sign Up</button>
-            <br>
+            <button class="auth-google-btn" onclick="signInWithGoogle()">G&nbsp; Continue with Google</button>
+            <span class="auth-forgot" id="authForgotLink" onclick="sendPasswordReset()">Forgot password?</span>
             <span class="auth-toggle" id="authToggleLink" onclick="toggleAuthMode()">Already have an account? Login</span>
         </div>
     </div>
@@ -1249,13 +1261,25 @@
     <!-- JAVASCRIPT ENGINE -->
     <script>
         /* FIREBASE INITIALIZATION */
-        const firebaseConfig = { databaseURL: "https://my-vision-space-45872-default-rtdb.firebaseio.com" };
+        const firebaseConfig = {
+            apiKey: "AIzaSyC01CDQx0HtHKmrG2sM0Y5emVOgFJ7aQs0",
+            authDomain: "my-vision-space-45872.firebaseapp.com",
+            databaseURL: "https://my-vision-space-45872-default-rtdb.firebaseio.com",
+            projectId: "my-vision-space-45872",
+            storageBucket: "my-vision-space-45872.firebasestorage.app",
+            messagingSenderId: "619791058814",
+            appId: "1:619791058814:web:e85be838c86ecf604e552f",
+            measurementId: "G-2S24EVY24L"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const auth = firebase.auth();
 
-        let currentUser = localStorage.getItem('vspace_user') || null;
-        let viewingUser = new URLSearchParams(window.location.search).get('user') || currentUser || "zizabelle";
+        let currentUser = null;
+        const cachedBoardlyUser = localStorage.getItem('vspace_user') || null;
+        let viewingUser = new URLSearchParams(window.location.search).get('user') || cachedBoardlyUser || "zizabelle";
         let isAuthSignUp = true;
+        let pendingAuthUsername = null;
         let activeCardId = null;
         let activeCommentTarget = '';
         let activeEditListId = null;
@@ -1334,33 +1358,117 @@
             document.getElementById('authSubTitle').innerText = isAuthSignUp ? "Create your vision board account" : "Log in to Boardly";
             document.getElementById('authSubmitBtn').innerText = isAuthSignUp ? "Sign Up" : "Login";
             document.getElementById('authToggleLink').innerText = isAuthSignUp ? "Already have an account? Login" : "Need an account? Sign Up";
+            document.getElementById('authUsername').style.display = isAuthSignUp ? 'block' : 'none';
+            document.getElementById('authForgotLink').style.display = isAuthSignUp ? 'none' : 'inline-block';
+            document.getElementById('authPassword').setAttribute('autocomplete', isAuthSignUp ? 'new-password' : 'current-password');
         }
 
-        function handleAuthSubmit() {
+        function friendlyAuthError(error) {
+            const code = error && error.code ? error.code : '';
+            const messages = {
+                'auth/email-already-in-use': 'That email already has a Boardly account.',
+                'auth/invalid-email': 'Please enter a valid email address.',
+                'auth/weak-password': 'Password must be at least 6 characters.',
+                'auth/invalid-credential': 'Incorrect email or password.',
+                'auth/user-not-found': 'No Boardly account was found for that email.',
+                'auth/wrong-password': 'Incorrect email or password.',
+                'auth/popup-closed-by-user': 'Google sign-in was closed before completion.',
+                'auth/popup-blocked': 'Please allow the Google sign-in popup and try again.',
+                'auth/unauthorized-domain': 'This Boardly website still needs to be added to Firebase Authorized domains.'
+            };
+            return messages[code] || (error && error.message ? error.message : 'Something went wrong. Please try again.');
+        }
+
+        async function handleAuthSubmit() {
             const u = document.getElementById('authUsername').value.trim().toLowerCase();
+            const email = document.getElementById('authEmail').value.trim();
             const p = document.getElementById('authPassword').value.trim();
+            const button = document.getElementById('authSubmitBtn');
 
-            if (!u || !p) { alert("Please enter username and password!"); return; }
+            if (!email || !p || (isAuthSignUp && !u)) {
+                alert(isAuthSignUp ? 'Please enter a username, email, and password.' : 'Please enter your email and password.');
+                return;
+            }
+            if (isAuthSignUp && !/^[a-z0-9_]{3,24}$/.test(u)) {
+                alert('Username must be 3–24 characters using letters, numbers, or underscore only.');
+                return;
+            }
 
-            const userRef = db.ref('users/' + u);
+            button.disabled = true;
+            button.textContent = isAuthSignUp ? 'Creating account...' : 'Logging in...';
+            try {
+                if (isAuthSignUp) {
+                    const existing = await db.ref('users/' + u).once('value');
+                    if (existing.exists()) throw { message: 'That username is already taken.' };
+                    pendingAuthUsername = u;
+                    const credential = await auth.createUserWithEmailAndPassword(email, p);
+                    const uid = credential.user.uid;
+                    const updates = {};
+                    updates[`users/${u}`] = { uid, created: firebase.database.ServerValue.TIMESTAMP };
+                    updates[`authUsers/${uid}/username`] = u;
+                    await db.ref().update(updates);
+                    pendingAuthUsername = null;
+                    loginUser(u);
+                } else {
+                    await auth.signInWithEmailAndPassword(email, p);
+                }
+            } catch (error) {
+                pendingAuthUsername = null;
+                alert(friendlyAuthError(error));
+            } finally {
+                button.disabled = false;
+                button.textContent = isAuthSignUp ? 'Sign Up' : 'Login';
+            }
+        }
 
-            if (isAuthSignUp) {
-                userRef.once('value', snap => {
-                    if (snap.exists()) {
-                        alert("Username is taken! Choose another one.");
-                    } else {
-                        userRef.set({ password: p, created: Date.now() });
-                        loginUser(u);
-                    }
-                });
-            } else {
-                userRef.once('value', snap => {
-                    if (snap.exists() && snap.val().password === p) {
-                        loginUser(u);
-                    } else {
-                        alert("Invalid username or password!");
-                    }
-                });
+        async function resolveAuthenticatedUser(firebaseUser) {
+            if (!firebaseUser || pendingAuthUsername) return;
+            const mapping = await db.ref(`authUsers/${firebaseUser.uid}/username`).once('value');
+            if (mapping.exists()) {
+                loginUser(mapping.val());
+                return;
+            }
+
+            const requested = prompt('Choose your public Boardly username:');
+            const username = (requested || '').trim().toLowerCase();
+            if (!/^[a-z0-9_]{3,24}$/.test(username)) {
+                alert('A username is required. Use 3–24 letters, numbers, or underscore only.');
+                await auth.signOut();
+                return;
+            }
+            const existing = await db.ref(`users/${username}`).once('value');
+            if (existing.exists() && existing.val().uid !== firebaseUser.uid) {
+                alert('That username is already taken. Please try another one.');
+                await auth.signOut();
+                return;
+            }
+            const updates = {};
+            updates[`users/${username}`] = { uid: firebaseUser.uid, created: existing.val()?.created || firebase.database.ServerValue.TIMESTAMP };
+            updates[`authUsers/${firebaseUser.uid}/username`] = username;
+            await db.ref().update(updates);
+            loginUser(username);
+        }
+
+        async function signInWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                await auth.signInWithPopup(provider);
+            } catch (error) {
+                alert(friendlyAuthError(error));
+            }
+        }
+
+        async function sendPasswordReset() {
+            const email = document.getElementById('authEmail').value.trim();
+            if (!email) {
+                alert('Enter your email first, then tap Forgot password.');
+                return;
+            }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                alert('Password reset email sent! Please check your inbox. ✦');
+            } catch (error) {
+                alert(friendlyAuthError(error));
             }
         }
 
@@ -1373,10 +1481,11 @@
             if (viewingUser !== u) { navigateToUser(u); } else { initProfile(); }
         }
 
-        function logout() {
+        async function logout() {
             if (presenceRef) presenceRef.set({ state: 'offline', lastChanged: firebase.database.ServerValue.TIMESTAMP });
             localStorage.removeItem('vspace_user');
-            window.location.reload();
+            await auth.signOut();
+            window.location.href = window.location.pathname;
         }
         function goHome() { if (currentUser) navigateToUser(currentUser); else document.getElementById('authGate').style.display = 'flex'; }
 
@@ -2380,7 +2489,7 @@
             document.getElementById('changePasswordModal').style.display = 'none';
         }
 
-        function changePassword() {
+        async function changePassword() {
             const currentPassword = document.getElementById('currentPasswordInput').value;
             const newPassword = document.getElementById('newPasswordInput').value;
             const confirmPassword = document.getElementById('confirmPasswordInput').value;
@@ -2396,16 +2505,21 @@
                 alert("New passwords do not match.");
                 return;
             }
-            db.ref('users/' + currentUser).once('value', snap => {
-                if (!snap.exists() || snap.val().password !== currentPassword) {
-                    alert("Current password is incorrect.");
-                    return;
-                }
-                db.ref('users/' + currentUser + '/password').set(newPassword, () => {
-                    closeChangePasswordModal();
-                    alert("Password updated successfully! ✦");
-                });
-            });
+            const firebaseUser = auth.currentUser;
+            if (!firebaseUser || !firebaseUser.email) {
+                alert('Please sign in with email and password to change your password.');
+                return;
+            }
+            try {
+                const credential = firebase.auth.EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+                await firebaseUser.reauthenticateWithCredential(credential);
+                await firebaseUser.updatePassword(newPassword);
+                await db.ref(`users/${currentUser}/password`).remove();
+                closeChangePasswordModal();
+                alert("Password updated securely! ✦");
+            } catch (error) {
+                alert(friendlyAuthError(error));
+            }
         }
 
         /* PRIVATE FRIEND CHAT PAGE */
@@ -2754,15 +2868,26 @@
             if (savedFonts['--font-body'] && document.getElementById('bodyFontSelect')) {
                 document.getElementById('bodyFontSelect').value = savedFonts['--font-body'];
             }
-            if (currentUser) {
-                document.getElementById('authGate').style.display = 'none';
-                document.getElementById('logoutBtn').style.display = 'flex';
-                setupRealtimeChatAccount();
-                initProfile();
-                if (location.hash === '#chat') openChatPage();
-            } else {
+            document.getElementById('authGate').style.display = 'flex';
+            document.getElementById('pageLoader').classList.add('hidden');
+            auth.onAuthStateChanged(async firebaseUser => {
+                if (firebaseUser) {
+                    try {
+                        await resolveAuthenticatedUser(firebaseUser);
+                        if (location.hash === '#chat' && currentUser) openChatPage();
+                    } catch (error) {
+                        alert(friendlyAuthError(error));
+                        await auth.signOut();
+                    }
+                } else {
+                    currentUser = null;
+                    localStorage.removeItem('vspace_user');
+                    document.getElementById('logoutBtn').style.display = 'none';
+                    document.getElementById('authGate').style.display = 'flex';
+                }
+            });
+            if (!auth.currentUser) {
                 document.getElementById('authGate').style.display = 'flex';
-                document.getElementById('pageLoader').classList.add('hidden');
             }
         });
         window.addEventListener('hashchange', () => {
