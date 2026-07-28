@@ -1,0 +1,48 @@
+{
+  "name": "Boardly — Aesthetic Social Scrapbook",
+  "short_name": "Boardly",
+  "description": "Create a personal board, share memories, and connect with friends.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#fdfbf7",
+  "theme_color": "#c5a059",
+  "categories": ["social", "lifestyle"],
+  "icons": [
+    {
+      "src": "./boardly-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./boardly-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./boardly-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Private Chats",
+      "short_name": "Chats",
+      "description": "Open your Boardly private chats",
+      "url": "./#chat",
+      "icons": [
+        {
+          "src": "./boardly-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
