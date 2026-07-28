@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Muse Society — aesthetic social scrapbook</title>
+    <title>Boardly — aesthetic social scrapbook</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -758,7 +758,7 @@
     <!-- PAGE TRANSITION LOADER -->
     <div class="page-loader" id="pageLoader">
         <div class="loader-spinner"></div>
-        <div style="font-family:'Cinzel',serif; font-size:1.15rem; letter-spacing:0.08em; color:var(--accent-gold);">Loading The Muse Society...</div>
+        <div style="font-family:'Cinzel',serif; font-size:1.15rem; letter-spacing:0.08em; color:var(--accent-gold);">Loading Boardly...</div>
     </div>
 
     <div class="bg-blob blob-1"></div>
@@ -777,7 +777,7 @@
 
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
-        <div class="nav-logo" onclick="goHome()">THE MUSE SOCIETY</div>
+        <div class="nav-logo" onclick="goHome()">BOARDLY</div>
         <button class="home-nav-btn" id="homeNavBtn" onclick="goHome()">✦ HOME</button>
 
         <!-- SEARCH ENGINE BAR -->
@@ -804,7 +804,7 @@
     <!-- AUTHENTICATION OVERLAY MODAL -->
     <div class="auth-overlay" id="authGate">
         <div class="auth-card">
-            <h2>THE MUSE SOCIETY</h2>
+            <h2>BOARDLY</h2>
             <p class="sub" id="authSubTitle">Create your vision board account</p>
             
             <div class="auth-inputs">
@@ -976,13 +976,13 @@
                     <div id="guestbookEntries"></div>
                 </div>
 
-                <!-- LITTLE CHAOS: DUMP NOTES, JOKES & HARUTAN -->
+                <!-- LITTLE CHAOS: DUMP NOTES, JOKES & PLAYFUL MESSAGES -->
                 <div class="card card-white" id="card-little-chaos" onclick="triggerCardWiggle(this)">
                     <div class="tape"></div>
                     <div class="card-header-flex">
                         <div class="card-title">✦ LITTLE CHAOS</div>
                     </div>
-                    <div class="chaos-subtitle">For inside jokes, random thoughts, tiny kalokohan, and harmless harutan. ✦</div>
+                    <div class="chaos-subtitle">For inside jokes, random thoughts, tiny mischief, and harmless chaos. ✦</div>
                     <div class="chaos-compose">
                         <textarea id="chaosNoteInput" maxlength="280" placeholder="Drop a silly little note..." onclick="event.stopPropagation()"></textarea>
                         <button class="nav-btn" style="padding:9px 11px;" onclick="postChaosNote(event)">Drop Note ✦</button>
@@ -1299,7 +1299,7 @@
         /* AUTHENTICATION SYSTEM */
         function toggleAuthMode() {
             isAuthSignUp = !isAuthSignUp;
-            document.getElementById('authSubTitle').innerText = isAuthSignUp ? "Create your vision board account" : "Log in to The Muse Society";
+            document.getElementById('authSubTitle').innerText = isAuthSignUp ? "Create your vision board account" : "Log in to Boardly";
             document.getElementById('authSubmitBtn').innerText = isAuthSignUp ? "Sign Up" : "Login";
             document.getElementById('authToggleLink').innerText = isAuthSignUp ? "Already have an account? Login" : "Need an account? Sign Up";
         }
