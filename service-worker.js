@@ -54,8 +54,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v57-guestbook-equal-controls';
-const BOARDLY_VERSION = 'v57';
+const BOARDLY_CACHE = 'boardly-shell-v58-diamond-poke-iphone-effects-comments';
+const BOARDLY_VERSION = 'v58';
 const BOARDLY_SHELL = [
   './',
   './index.html',
