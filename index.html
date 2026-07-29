@@ -112,12 +112,23 @@
             font-weight: 700; cursor: pointer; color: var(--brand-gold);
             letter-spacing: 0.11em; white-space: nowrap; flex: 0 0 auto;
         }
-        .home-nav-btn {
+        .home-nav-btn,
+        .board-chat-nav-btn {
             display: none; align-items: center; justify-content: center;
             min-height: 34px; padding: 5px 10px; border-radius: 18px;
-            border: 1px solid var(--accent-gold); background: var(--card-white);
-            color: var(--accent-gold); font: 700 0.68rem var(--font-body);
-            letter-spacing: 0.05em; cursor: pointer; white-space: nowrap;
+            border: 1px solid var(--brand-gold); background: var(--card-white);
+            color: var(--brand-gold); font: 700 0.68rem 'Cinzel', serif;
+            letter-spacing: 0.04em; cursor: pointer; white-space: nowrap;
+        }
+        .board-chat-nav-btn {
+            display: inline-flex; position: relative;
+        }
+        .primary-page-nav {
+            border-color: var(--brand-gold) !important;
+            color: var(--brand-gold) !important;
+            font-family: 'Cinzel', serif !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.04em;
         }
         .nav-items { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 
@@ -901,7 +912,7 @@
         }
         .timeline-chat-button {
             position: relative; background: var(--card-white);
-            color: var(--accent-gold); font-weight: 700;
+            color: var(--brand-gold); font-weight: 700;
         }
         .timeline-chat-unread {
             display: none; min-width: 18px; height: 18px; padding: 0 5px;
@@ -1086,6 +1097,10 @@
                 grid-area: logo; justify-self: start; align-self: center;
                 position: relative; z-index: 2;
             }
+            .board-chat-nav-btn {
+                grid-area: logo; justify-self: end; align-self: center;
+                position: relative; z-index: 2;
+            }
             .nav-search { grid-area: search; min-width: 0; width: 100%; }
             .nav-search input, .nav-search input:focus {
                 width: 100%; min-width: 0; font-size: 0.8rem;
@@ -1166,7 +1181,8 @@
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
         <div class="nav-logo" onclick="openTimelinePage()">BOARDLY</div>
-        <button class="home-nav-btn" id="homeNavBtn" onclick="openTimelinePage()">✦ TIMELINE</button>
+        <button class="home-nav-btn primary-page-nav" id="homeNavBtn" onclick="openTimelinePage()">✦ TIMELINE</button>
+        <button class="board-chat-nav-btn primary-page-nav" onclick="openChatPage()">✦ CHAT <span class="timeline-chat-unread" id="boardChatUnreadBadge">0</span></button>
 
         <!-- SEARCH ENGINE BAR -->
         <div class="nav-search">
@@ -1602,9 +1618,9 @@
     <!-- BOARDLY HOME TIMELINE -->
     <section class="timeline-page" id="timelinePage" aria-label="Boardly timeline">
         <div class="timeline-topbar">
-            <button class="nav-btn" onclick="goMyBoard()">✦ MY BOARD</button>
+            <button class="nav-btn primary-page-nav" onclick="goMyBoard()">✦ MY BOARD</button>
             <div class="timeline-brand">BOARDLY</div>
-            <button class="nav-btn timeline-chat-button" onclick="openChatPage()">✦ CHAT <span class="timeline-chat-unread" id="timelineChatUnreadBadge">0</span></button>
+            <button class="nav-btn timeline-chat-button primary-page-nav" onclick="openChatPage()">✦ CHAT <span class="timeline-chat-unread" id="timelineChatUnreadBadge">0</span></button>
             <button class="nav-btn" onclick="openNotifModal()">🔔 <span id="timelineNotifBadge">0</span></button>
         </div>
         <div class="timeline-shell">
@@ -1665,7 +1681,6 @@
         <button class="pwa-install-action" type="button" onclick="installBoardlyApp()">Install</button>
         <button class="pwa-install-dismiss" type="button" aria-label="Dismiss install suggestion" onclick="dismissInstallCard()">&times;</button>
     </div>
-    <button class="chat-launcher" onclick="openChatPage()" aria-label="Open private chats"><span class="chat-diamond">✦</span><span>CHAT</span><span class="chat-unread-badge" id="chatUnreadBadge">0</span></button>
     <section class="chat-page" id="chatPage" aria-label="Private chats">
         <div class="chat-topbar">
             <button class="nav-btn" onclick="closeChatPage()">← Back</button>
@@ -3769,14 +3784,12 @@
                 if (snap.exists()) {
                     Object.values(snap.val()).forEach(item => { total += Number(item.unread || 0); });
                 }
-                const badge = document.getElementById('chatUnreadBadge');
-                badge.textContent = total > 99 ? '99+' : total;
-                badge.style.display = total > 0 ? 'inline-flex' : 'none';
-                const timelineBadge = document.getElementById('timelineChatUnreadBadge');
-                if (timelineBadge) {
-                    timelineBadge.textContent = total > 99 ? '99+' : total;
-                    timelineBadge.style.display = total > 0 ? 'inline-flex' : 'none';
-                }
+                ['boardChatUnreadBadge', 'timelineChatUnreadBadge'].forEach(id => {
+                    const badge = document.getElementById(id);
+                    if (!badge) return;
+                    badge.textContent = total > 99 ? '99+' : total;
+                    badge.style.display = total > 0 ? 'inline-flex' : 'none';
+                });
             });
         }
 
