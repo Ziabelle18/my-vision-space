@@ -764,15 +764,29 @@
         .chat-bubble.mine { align-self: flex-end; background: var(--accent-gold); color: #fff; border-bottom-right-radius: 4px; }
         .chat-bubble.theirs { align-self: flex-start; background: var(--card-pink); color: var(--text-color); border-bottom-left-radius: 4px; }
         @keyframes sentMessageWiggle {
-            0% { opacity: 0; transform: translateY(16px) scale(0.9) rotate(0deg); }
-            38% { opacity: 1; transform: translateY(-2px) scale(1.025) rotate(-1.2deg); }
-            58% { transform: translateY(0) scale(1.01) rotate(0.9deg); }
-            76% { transform: scale(1.005) rotate(-0.45deg); }
-            100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+            0% {
+                opacity: 0;
+                transform: translateX(38px) translateY(10px) scale(0.72) rotate(0deg);
+                box-shadow: 0 0 0 rgba(197, 160, 89, 0);
+            }
+            28% {
+                opacity: 1;
+                transform: translateX(-6px) translateY(-2px) scale(1.08) rotate(-3deg);
+                box-shadow: 0 8px 24px rgba(197, 160, 89, 0.42);
+            }
+            44% { transform: translateX(4px) scale(1.04) rotate(2.6deg); }
+            59% { transform: translateX(-3px) scale(1.025) rotate(-2deg); }
+            73% { transform: translateX(2px) scale(1.015) rotate(1.25deg); }
+            86% { transform: translateX(-1px) scale(1.006) rotate(-0.6deg); }
+            100% {
+                opacity: 1;
+                transform: translateX(0) translateY(0) scale(1) rotate(0deg);
+                box-shadow: 0 4px 12px rgba(197, 160, 89, 0.14);
+            }
         }
         .chat-bubble.sent-wiggle {
-            animation: sentMessageWiggle 0.58s cubic-bezier(0.22, 0.8, 0.3, 1) both;
-            will-change: transform, opacity;
+            animation: sentMessageWiggle 1.05s cubic-bezier(0.2, 0.82, 0.28, 1) both !important;
+            will-change: transform, opacity, box-shadow;
         }
         .chat-time { display: block; margin-top: 3px; font-size: 0.58rem; opacity: 0.72; }
         .chat-status { display: block; margin-top: 2px; font-size: 0.55rem; opacity: 0.78; text-align: right; }
@@ -1047,6 +1061,7 @@
             .card.wiggle-effect { animation-duration: 0.52s !important; }
             .modal-overlay { animation-duration: 0.22s !important; }
             .modal-card { animation-duration: 0.3s !important; }
+            .chat-bubble.sent-wiggle { animation-duration: 1.05s !important; }
         }
     </style>
 </head>
@@ -3898,7 +3913,7 @@
             input.value = '';
             if (!pendingDirectMessages.has(chatId)) pendingDirectMessages.set(chatId, new Map());
             pendingDirectMessages.get(chatId).set(messageId, savedMessage);
-            sentMessageAnimationUntil.set(messageId, Date.now() + 900);
+            sentMessageAnimationUntil.set(messageId, Date.now() + 1400);
             renderSavedDirectMessage(messageId, savedMessage, chatId, activeChatUser);
             rememberLocalChat(activeChatUser, timestamp);
             stopChatTyping();
@@ -4050,7 +4065,7 @@
             if (!text) return;
             const timestamp = Date.now();
             const groupMessageRef = db.ref(`groupChats/${activeGroupId}/messages`).push();
-            sentMessageAnimationUntil.set(groupMessageRef.key, Date.now() + 900);
+            sentMessageAnimationUntil.set(groupMessageRef.key, Date.now() + 1400);
             await groupMessageRef.set({ from: currentUser, text, timestamp });
             const updates = {};
             Object.keys(activeGroupData.memberNames || {}).forEach(username => {
