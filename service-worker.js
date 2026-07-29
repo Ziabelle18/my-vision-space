@@ -51,8 +51,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v50-profile-chat';
-const BOARDLY_VERSION = 'v50';
+const BOARDLY_CACHE = 'boardly-shell-v52-performance';
+const BOARDLY_VERSION = 'v52';
 const BOARDLY_SHELL = [
   './',
   './index.html',
@@ -102,15 +102,18 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request, { cache: 'no-store' })
-        .then(response => {
-          if (response && response.ok) {
-            const copy = response.clone();
-            caches.open(BOARDLY_CACHE).then(cache => cache.put('./index.html', copy));
-          }
-          return response;
-        })
-        .catch(() => caches.match('./index.html'))
+      caches.match('./index.html').then(cached => {
+        const networkUpdate = fetch(request, { cache: 'no-store' })
+          .then(response => {
+            if (response && response.ok) {
+              const copy = response.clone();
+              caches.open(BOARDLY_CACHE).then(cache => cache.put('./index.html', copy));
+            }
+            return response;
+          })
+          .catch(() => cached || caches.match('./index.html'));
+        return cached || networkUpdate;
+      })
     );
     return;
   }
