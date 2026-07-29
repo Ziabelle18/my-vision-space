@@ -1677,6 +1677,7 @@
         let activeChatMessagesQuery = null;
         let activeChatMessagesCallback = null;
         let activeDirectChatId = null;
+        const pendingDirectMessages = new Map();
         let activeChatTypingRef = null;
         let activeChatPresenceRef = null;
         let chatContactsRef = null;
@@ -3734,15 +3735,37 @@
         function renderChatSnapshot(snapshot, scope, otherUsername = '') {
             const container = document.getElementById('chatMessages');
             container.innerHTML = '';
-            if (!snapshot.exists()) {
+            const confirmedIds = new Set();
+            if (snapshot.exists()) {
+                snapshot.forEach(child => {
+                    confirmedIds.add(child.key);
+                    container.appendChild(
+                        buildChatBubble(child.val(), child.key, scope, otherUsername)
+                    );
+                });
+            }
+
+            if (scope.type === 'direct') {
+                const pendingForChat = pendingDirectMessages.get(scope.id);
+                if (pendingForChat) {
+                    confirmedIds.forEach(messageId => pendingForChat.delete(messageId));
+                    pendingForChat.forEach((message, messageId) => {
+                        if (!confirmedIds.has(messageId)) {
+                            container.appendChild(
+                                buildChatBubble(message, messageId, scope, otherUsername)
+                            );
+                        }
+                    });
+                    if (!pendingForChat.size) pendingDirectMessages.delete(scope.id);
+                }
+            }
+
+            if (!container.children.length) {
                 container.innerHTML = scope.type === 'group'
                     ? '<div class="chat-empty">Your group is ready.<br>Start the fun! ✦</div>'
                     : '<div class="chat-empty">No messages yet.<br>Say hello first! ✦</div>';
                 return;
             }
-            snapshot.forEach(child => container.appendChild(
-                buildChatBubble(child.val(), child.key, scope, otherUsername)
-            ));
             container.scrollTop = container.scrollHeight;
             if (scope.type === 'direct') markActiveChatSeen(scope.id, snapshot);
         }
@@ -3844,18 +3867,12 @@
             }
 
             input.value = '';
+            if (!pendingDirectMessages.has(chatId)) pendingDirectMessages.set(chatId, new Map());
+            pendingDirectMessages.get(chatId).set(messageId, savedMessage);
             renderSavedDirectMessage(messageId, savedMessage, chatId, activeChatUser);
             rememberLocalChat(activeChatUser, timestamp);
             stopChatTyping();
             playCuteSound('send');
-
-            if (activeChatMessagesQuery) {
-                activeChatMessagesQuery.once('value').then(snapshot => {
-                    if (activeDirectChatId === chatId && activeChatUser === recipientKey && !activeGroupId) {
-                        renderChatSnapshot(snapshot, { type: 'direct', id: chatId }, recipientKey);
-                    }
-                }).catch(() => {});
-            }
 
             try {
                 const contactUpdates = {};
