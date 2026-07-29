@@ -759,9 +759,21 @@
         .chat-bubble {
             max-width: 78%; padding: 9px 12px; border-radius: 15px;
             font-size: 0.84rem; line-height: 1.45; word-break: break-word;
+            transform-origin: bottom right;
         }
         .chat-bubble.mine { align-self: flex-end; background: var(--accent-gold); color: #fff; border-bottom-right-radius: 4px; }
         .chat-bubble.theirs { align-self: flex-start; background: var(--card-pink); color: var(--text-color); border-bottom-left-radius: 4px; }
+        @keyframes sentMessageWiggle {
+            0% { opacity: 0; transform: translateY(16px) scale(0.9) rotate(0deg); }
+            38% { opacity: 1; transform: translateY(-2px) scale(1.025) rotate(-1.2deg); }
+            58% { transform: translateY(0) scale(1.01) rotate(0.9deg); }
+            76% { transform: scale(1.005) rotate(-0.45deg); }
+            100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+        }
+        .chat-bubble.sent-wiggle {
+            animation: sentMessageWiggle 0.58s cubic-bezier(0.22, 0.8, 0.3, 1) both;
+            will-change: transform, opacity;
+        }
         .chat-time { display: block; margin-top: 3px; font-size: 0.58rem; opacity: 0.72; }
         .chat-status { display: block; margin-top: 2px; font-size: 0.55rem; opacity: 0.78; text-align: right; }
         .chat-reaction-wrap { position: relative; margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
@@ -1678,6 +1690,7 @@
         let activeChatMessagesCallback = null;
         let activeDirectChatId = null;
         const pendingDirectMessages = new Map();
+        const sentMessageAnimationUntil = new Map();
         let activeChatTypingRef = null;
         let activeChatPresenceRef = null;
         let chatContactsRef = null;
@@ -3697,6 +3710,14 @@
             const bubble = document.createElement('div');
             bubble.className = `chat-bubble ${message.from === currentUser ? 'mine' : 'theirs'}`;
             bubble.dataset.messageId = messageId;
+            const animationDeadline = sentMessageAnimationUntil.get(messageId) || 0;
+            if (message.from === currentUser && animationDeadline > Date.now()) {
+                bubble.classList.add('sent-wiggle');
+                setTimeout(() => {
+                    bubble.classList.remove('sent-wiggle');
+                    sentMessageAnimationUntil.delete(messageId);
+                }, Math.max(600, animationDeadline - Date.now()));
+            }
             if (scope.type === 'group' && message.from !== currentUser) {
                 const author = document.createElement('b');
                 author.style.cssText = 'display:block; color:var(--accent-gold); font-size:0.62rem; margin-bottom:3px;';
@@ -3766,7 +3787,13 @@
                     : '<div class="chat-empty">No messages yet.<br>Say hello first! ✦</div>';
                 return;
             }
-            container.scrollTop = container.scrollHeight;
+            if (container.querySelector('.sent-wiggle')) {
+                requestAnimationFrame(() => {
+                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                });
+            } else {
+                container.scrollTop = container.scrollHeight;
+            }
             if (scope.type === 'direct') markActiveChatSeen(scope.id, snapshot);
         }
 
@@ -3778,7 +3805,9 @@
             container.appendChild(
                 buildChatBubble(message, messageId, { type: 'direct', id: chatId }, username)
             );
-            container.scrollTop = container.scrollHeight;
+            requestAnimationFrame(() => {
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            });
         }
 
         async function startChatWith(username) {
@@ -3869,6 +3898,7 @@
             input.value = '';
             if (!pendingDirectMessages.has(chatId)) pendingDirectMessages.set(chatId, new Map());
             pendingDirectMessages.get(chatId).set(messageId, savedMessage);
+            sentMessageAnimationUntil.set(messageId, Date.now() + 900);
             renderSavedDirectMessage(messageId, savedMessage, chatId, activeChatUser);
             rememberLocalChat(activeChatUser, timestamp);
             stopChatTyping();
@@ -4019,9 +4049,9 @@
             const text = input.value.trim();
             if (!text) return;
             const timestamp = Date.now();
-            await db.ref(`groupChats/${activeGroupId}/messages`).push({
-                from: currentUser, text, timestamp
-            });
+            const groupMessageRef = db.ref(`groupChats/${activeGroupId}/messages`).push();
+            sentMessageAnimationUntil.set(groupMessageRef.key, Date.now() + 900);
+            await groupMessageRef.set({ from: currentUser, text, timestamp });
             const updates = {};
             Object.keys(activeGroupData.memberNames || {}).forEach(username => {
                 updates[`userGroups/${username}/${activeGroupId}/timestamp`] = timestamp;
