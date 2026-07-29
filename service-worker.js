@@ -1,4 +1,3 @@
-
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || './#chat';
@@ -55,8 +54,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v60-ios-touch-speed-permissions';
-const BOARDLY_VERSION = 'v60';
+const BOARDLY_CACHE = 'boardly-shell-v61-seen-badge-fast-chat';
+const BOARDLY_VERSION = 'v61';
 const BOARDLY_SHELL = [
   './',
   './index.html',
