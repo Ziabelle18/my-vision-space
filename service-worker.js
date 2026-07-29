@@ -51,8 +51,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v44-free-push';
-const BOARDLY_VERSION = 'v44';
+const BOARDLY_CACHE = 'boardly-shell-v45-gold-alert';
+const BOARDLY_VERSION = 'v45';
 const BOARDLY_SHELL = [
   './',
   './index.html',
