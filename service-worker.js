@@ -1,5 +1,5 @@
-const BOARDLY_CACHE = 'boardly-shell-v40-top-chat-nav';
-const BOARDLY_VERSION = 'v40';
+const BOARDLY_CACHE = 'boardly-shell-v41-nav-spacing';
+const BOARDLY_VERSION = 'v41';
 const BOARDLY_SHELL = [
   './',
   './index.html',
