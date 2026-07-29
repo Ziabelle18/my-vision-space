@@ -53,8 +53,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v53-social-chat';
-const BOARDLY_VERSION = 'v53';
+const BOARDLY_CACHE = 'boardly-shell-v54-comments-wiggle';
+const BOARDLY_VERSION = 'v54';
 const BOARDLY_SHELL = [
   './',
   './index.html',
