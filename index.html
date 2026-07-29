@@ -1674,6 +1674,9 @@
         let activeGroupId = null;
         let activeGroupData = null;
         let activeChatMessagesRef = null;
+        let activeChatMessagesQuery = null;
+        let activeChatMessagesCallback = null;
+        let activeDirectChatId = null;
         let activeChatTypingRef = null;
         let activeChatPresenceRef = null;
         let chatContactsRef = null;
@@ -3692,6 +3695,7 @@
         function buildChatBubble(message, messageId, scope, otherUsername = '') {
             const bubble = document.createElement('div');
             bubble.className = `chat-bubble ${message.from === currentUser ? 'mine' : 'theirs'}`;
+            bubble.dataset.messageId = messageId;
             if (scope.type === 'group' && message.from !== currentUser) {
                 const author = document.createElement('b');
                 author.style.cssText = 'display:block; color:var(--accent-gold); font-size:0.62rem; margin-bottom:3px;';
@@ -3718,6 +3722,42 @@
             return bubble;
         }
 
+        function detachActiveChatMessages() {
+            if (activeChatMessagesQuery && activeChatMessagesCallback) {
+                activeChatMessagesQuery.off('value', activeChatMessagesCallback);
+            }
+            activeChatMessagesQuery = null;
+            activeChatMessagesCallback = null;
+            activeChatMessagesRef = null;
+        }
+
+        function renderChatSnapshot(snapshot, scope, otherUsername = '') {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+            if (!snapshot.exists()) {
+                container.innerHTML = scope.type === 'group'
+                    ? '<div class="chat-empty">Your group is ready.<br>Start the fun! ✦</div>'
+                    : '<div class="chat-empty">No messages yet.<br>Say hello first! ✦</div>';
+                return;
+            }
+            snapshot.forEach(child => container.appendChild(
+                buildChatBubble(child.val(), child.key, scope, otherUsername)
+            ));
+            container.scrollTop = container.scrollHeight;
+            if (scope.type === 'direct') markActiveChatSeen(scope.id, snapshot);
+        }
+
+        function renderSavedDirectMessage(messageId, message, chatId, username) {
+            if (activeGroupId || activeDirectChatId !== chatId || activeChatUser !== username) return;
+            const container = document.getElementById('chatMessages');
+            if (container.querySelector(`[data-message-id="${messageId}"]`)) return;
+            container.querySelectorAll('.chat-empty').forEach(element => element.remove());
+            container.appendChild(
+                buildChatBubble(message, messageId, { type: 'direct', id: chatId }, username)
+            );
+            container.scrollTop = container.scrollHeight;
+        }
+
         async function startChatWith(username) {
             if (!username || username === currentUser) return;
             stopChatTyping();
@@ -3725,11 +3765,12 @@
             activeGroupData = null;
             activeChatUser = username;
             activeChatRecipientUid = null;
+            activeDirectChatId = getChatId(currentUser, username);
             document.getElementById('chatWithName').textContent = `Chatting with @${username} ✦`;
             document.getElementById('chatMessages').innerHTML = '<div class="chat-empty">Loading messages...</div>';
 
-            if (activeChatMessagesRef) activeChatMessagesRef.off();
-            const chatId = getChatId(currentUser, username);
+            detachActiveChatMessages();
+            const chatId = activeDirectChatId;
             try {
                 const recipientSnap = await db.ref(`users/${username}/uid`).once('value');
                 activeChatRecipientUid = recipientSnap.val();
@@ -3761,19 +3802,12 @@
             watchActiveChatPresence(username);
             watchActiveChatTyping(chatId, username);
             activeChatMessagesRef = db.ref(`chats/${chatId}/messages`);
-            activeChatMessagesRef.limitToLast(100).on('value', snap => {
-                const container = document.getElementById('chatMessages');
-                container.innerHTML = '';
-                if (!snap.exists()) {
-                    container.innerHTML = '<div class="chat-empty">No messages yet.<br>Say hello first! ✦</div>';
-                    return;
-                }
-                snap.forEach(child => container.appendChild(
-                    buildChatBubble(child.val(), child.key, { type: 'direct', id: chatId }, username)
-                ));
-                container.scrollTop = container.scrollHeight;
-                markActiveChatSeen(chatId, snap);
-            }, error => {
+            activeChatMessagesQuery = activeChatMessagesRef.limitToLast(100);
+            activeChatMessagesCallback = snap => {
+                if (activeDirectChatId !== chatId || activeChatUser !== username || activeGroupId) return;
+                renderChatSnapshot(snap, { type: 'direct', id: chatId }, username);
+            };
+            activeChatMessagesQuery.on('value', activeChatMessagesCallback, error => {
                 const container = document.getElementById('chatMessages');
                 container.innerHTML = `<div class="chat-empty">Messages could not load.<br>${error.message || 'Please reopen this chat.'}</div>`;
             });
@@ -3801,17 +3835,27 @@
             const messageId = messageRef.key;
             const senderKey = safeChatKey(currentUser);
             const recipientKey = safeChatKey(activeChatUser);
+            const savedMessage = { from: currentUser, text, timestamp };
             try {
-                await messageRef.set({ from: currentUser, text, timestamp });
+                await messageRef.set(savedMessage);
             } catch (error) {
                 alert(`Secure chat access could not be updated: ${error.message || 'Please reopen this chat.'}`);
                 return;
             }
 
             input.value = '';
+            renderSavedDirectMessage(messageId, savedMessage, chatId, activeChatUser);
             rememberLocalChat(activeChatUser, timestamp);
             stopChatTyping();
             playCuteSound('send');
+
+            if (activeChatMessagesQuery) {
+                activeChatMessagesQuery.once('value').then(snapshot => {
+                    if (activeDirectChatId === chatId && activeChatUser === recipientKey && !activeGroupId) {
+                        renderChatSnapshot(snapshot, { type: 'direct', id: chatId }, recipientKey);
+                    }
+                }).catch(() => {});
+            }
 
             try {
                 const contactUpdates = {};
@@ -3927,11 +3971,12 @@
             stopChatTyping();
             activeChatUser = null;
             activeChatRecipientUid = null;
+            activeDirectChatId = null;
             activeGroupId = groupId;
             if (activeChatPresenceRef) activeChatPresenceRef.off();
             if (activeChatTypingRef) activeChatTypingRef.off();
             document.getElementById('chatTypingIndicator').classList.remove('visible');
-            if (activeChatMessagesRef) activeChatMessagesRef.off();
+            detachActiveChatMessages();
             const groupSnap = await db.ref(`groupChats/${groupId}`).once('value');
             if (!groupSnap.exists()) {
                 document.getElementById('chatMessages').innerHTML = '<div class="chat-empty">This group is no longer available.</div>';
@@ -3943,18 +3988,12 @@
                 `${activeGroupData.name} ✦<span class="chat-presence-label">${memberCount} members</span>`;
             const messagesRef = db.ref(`groupChats/${groupId}/messages`);
             activeChatMessagesRef = messagesRef;
-            messagesRef.limitToLast(120).on('value', snap => {
-                const container = document.getElementById('chatMessages');
-                container.innerHTML = '';
-                if (!snap.exists()) {
-                    container.innerHTML = '<div class="chat-empty">Your group is ready.<br>Start the fun! ✦</div>';
-                    return;
-                }
-                snap.forEach(child => container.appendChild(
-                    buildChatBubble(child.val(), child.key, { type: 'group', id: groupId })
-                ));
-                container.scrollTop = container.scrollHeight;
-            });
+            activeChatMessagesQuery = messagesRef.limitToLast(120);
+            activeChatMessagesCallback = snap => {
+                if (activeGroupId !== groupId) return;
+                renderChatSnapshot(snap, { type: 'group', id: groupId });
+            };
+            activeChatMessagesQuery.on('value', activeChatMessagesCallback);
         }
 
         async function sendGroupChatMessage() {
