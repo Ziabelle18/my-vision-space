@@ -86,6 +86,11 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none !important; -webkit-tap-highlight-color: transparent; }
+        .native-file-input {
+            position: fixed !important; left: -10px !important; top: -10px !important;
+            width: 1px !important; height: 1px !important; opacity: 0.001 !important;
+            overflow: hidden !important; pointer-events: none !important;
+        }
         html { font-size: 17px; }
         html, body { width: 100%; max-width: 100vw; overflow-x: hidden !important; position: relative; }
 
@@ -730,6 +735,15 @@
         .crop-stage.cover-crop { aspect-ratio: 12 / 5; }
         .crop-stage.profile-crop { border-radius: 50%; }
         .crop-stage.dragging { cursor: grabbing; }
+        .crop-preparing {
+            position: absolute; inset: 0; z-index: 4; display: none;
+            place-items: center; padding: 20px; text-align: center;
+            background: rgba(255,253,251,.88); color: var(--accent-gold);
+            font: 700 .8rem var(--font-body); letter-spacing: .03em;
+        }
+        .crop-stage.preparing .crop-preparing { display: grid; }
+        .crop-stage.preparing .crop-image,
+        .crop-stage.preparing .crop-guide { visibility: hidden; }
         .crop-image {
             position: absolute; left: 50%; top: 50%; max-width: none;
             transform-origin: center; user-select: none; -webkit-user-drag: none;
@@ -1508,12 +1522,12 @@
     <div id="ytPlayerContainer"></div>
 
     <!-- FILE INPUTS -->
-    <input type="file" id="heroImageInput" accept="image/*,.gif,video/mp4,video/webm" style="display: none;" onchange="handleImageUpload(event)">
-    <input type="file" id="coverImageInput" accept="image/*" style="display: none;" onchange="handleCoverUpload(event)">
-    <input type="file" id="avatarImageInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
-    <input type="file" id="galleryImageInput" accept="image/*" style="display: none;" onchange="handleGalleryUpload(event)">
-    <input type="file" id="guestbookImageInput" accept="image/*" style="display: none;" onchange="handleGuestbookUpload(event)">
-    <input type="file" id="timelinePhotoInput" accept="image/*" style="display: none;" onchange="handleTimelinePhoto(event)">
+    <input type="file" id="heroImageInput" class="native-file-input" accept="image/*,.gif,video/mp4,video/webm" onchange="handleImageUpload(event)">
+    <input type="file" id="coverImageInput" class="native-file-input" accept="image/*" onchange="handleCoverUpload(event)">
+    <input type="file" id="avatarImageInput" class="native-file-input" accept="image/*" onchange="handleAvatarUpload(event)">
+    <input type="file" id="galleryImageInput" class="native-file-input" accept="image/*" onchange="handleGalleryUpload(event)">
+    <input type="file" id="guestbookImageInput" class="native-file-input" accept="image/*" onchange="handleGuestbookUpload(event)">
+    <input type="file" id="timelinePhotoInput" class="native-file-input" accept="image/*" onchange="handleTimelinePhoto(event)">
 
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
@@ -1783,6 +1797,7 @@
             <div class="crop-stage" id="cropStage">
                 <img class="crop-image" id="cropImage" alt="Photo to crop">
                 <div class="crop-guide"></div>
+                <div class="crop-preparing" id="cropPreparing">Preparing your photo… ✦</div>
             </div>
             <div class="crop-controls">
                 <label for="cropZoom">ZOOM</label>
@@ -1790,7 +1805,7 @@
             </div>
             <div class="crop-actions">
                 <button class="nav-btn" style="justify-content:center; padding:10px;" onclick="closeCropModal()">Cancel</button>
-                <button class="nav-btn" style="justify-content:center; padding:10px; background:var(--accent-gold); color:#fff; font-weight:bold;" onclick="applyCroppedPhoto()">Use Photo ✦</button>
+                <button class="nav-btn" id="cropUsePhotoBtn" style="justify-content:center; padding:10px; background:var(--accent-gold); color:#fff; font-weight:bold;" onclick="applyCroppedPhoto()">Use Photo ✦</button>
             </div>
         </div>
     </div>
@@ -2225,6 +2240,15 @@
         let activeTimelineReplyTarget = null;
         const timelineCommentCountCache = new Map();
         const timelineCommentCountPromises = new Map();
+        try {
+            const savedCounts = JSON.parse(localStorage.getItem('boardly_timeline_comment_counts') || '{}');
+            Object.entries(savedCounts).forEach(([postId, record]) => {
+                if (Date.now() - Number(record?.savedAt || 0) < 7 * 24 * 60 * 60 * 1000 &&
+                    Number.isFinite(Number(record?.count))) {
+                    timelineCommentCountCache.set(postId, Number(record.count));
+                }
+            });
+        } catch (_) {}
         let boardStyleLoadSequence = 0;
         const timelineProfileCache = {};
         const timelineProfilePromises = {};
@@ -2514,7 +2538,7 @@
                 }
             });
             destination.hash = '';
-            setTimeout(() => { window.location.assign(destination.toString()); }, 90);
+            window.location.assign(destination.toString());
         }
 
         function openPendingBoardDestination(rawUrl = window.location.href) {
@@ -2525,6 +2549,7 @@
             if (!card) return false;
             const commentTarget = url.searchParams.get('commentTarget') || '';
             const guestbookEntryKey = url.searchParams.get('guestbookEntry') || '';
+            const chaosNoteKey = url.searchParams.get('chaosNote') || '';
             const revealDestination = () => {
                 let target = card;
                 if (cardId === 'card-memory-guestbook') {
@@ -2533,6 +2558,10 @@
                         entry.dataset.guestbookEntryKey === guestbookEntryKey
                     );
                     target = exactEntry || card;
+                } else if (cardId === 'card-little-chaos' && chaosNoteKey) {
+                    const exactNote = Array.from(card.querySelectorAll('.chaos-note'))
+                        .find(note => note.dataset.chaosNoteKey === chaosNoteKey);
+                    target = exactNote || card;
                 }
                 target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 const commentCards = new Set([
@@ -2549,17 +2578,31 @@
                     triggerCardWiggle(card);
                 }
             };
-            if (cardId === 'card-memory-guestbook') {
+            if (cardId === 'card-memory-guestbook' || cardId === 'card-little-chaos') {
                 const container = document.getElementById('guestbookEntries');
-                if (container && !container.querySelector('.guestbook-entry')) {
+                if (cardId === 'card-memory-guestbook' &&
+                    container && !container.querySelector('.guestbook-entry')) {
                     container.innerHTML = '<div style="font-size:0.72rem; opacity:0.68; padding:8px 2px 2px;">Opening your new Polaroid memory… ✦</div>';
                 }
+                setTimeout(() => {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 60);
                 let attempts = 0;
                 const waitForMemory = () => {
-                    const entries = Array.from(card.querySelectorAll('.guestbook-entry'));
-                    const found = guestbookEntryKey
-                        ? entries.some(entry => entry.dataset.guestbookEntryKey === guestbookEntryKey)
-                        : entries.length > 0 || guestbookSnapshotReady;
+                    const entries = Array.from(card.querySelectorAll(
+                        cardId === 'card-memory-guestbook' ? '.guestbook-entry' : '.chaos-note'
+                    ));
+                    const requestedKey = cardId === 'card-memory-guestbook'
+                        ? guestbookEntryKey
+                        : chaosNoteKey;
+                    const found = requestedKey
+                        ? entries.some(entry =>
+                            cardId === 'card-memory-guestbook'
+                                ? entry.dataset.guestbookEntryKey === requestedKey
+                                : entry.dataset.chaosNoteKey === requestedKey
+                        )
+                        : entries.length > 0 ||
+                            (cardId === 'card-memory-guestbook' && guestbookSnapshotReady);
                     if (found || attempts >= 50) {
                         revealDestination();
                         return;
@@ -2574,7 +2617,67 @@
             url.searchParams.delete('openCard');
             url.searchParams.delete('commentTarget');
             url.searchParams.delete('guestbookEntry');
+            url.searchParams.delete('chaosNote');
             history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+            return true;
+        }
+
+        function openOwnBoardCardDestination(cardId, itemKey = '', itemType = '') {
+            if (!currentUser || viewingUser !== currentUser) return false;
+            if (document.getElementById('chatPage').style.display === 'flex') closeChatPage();
+            if (document.getElementById('timelinePage').style.display === 'block') closeTimelinePage();
+
+            const card = document.getElementById(cardId);
+            if (!card) return false;
+            let selector = '';
+            if (itemType === 'guestbook' && itemKey) {
+                freshGuestbookEntryKey = itemKey;
+                selector = '.guestbook-entry';
+                const entry = guestbookEntriesCache[itemKey];
+                const existing = Array.from(card.querySelectorAll(selector))
+                    .find(row => row.dataset.guestbookEntryKey === itemKey);
+                if (entry && existing) {
+                    existing.replaceWith(buildGuestbookEntryRow(itemKey, entry, 0));
+                } else if (!entry) {
+                    db.ref(`memoryGuestbook/${currentUser}/${itemKey}`).once('value')
+                        .then(snap => {
+                            if (!snap.exists()) return;
+                            const loadedEntry = snap.val() || {};
+                            guestbookEntriesCache[itemKey] = loadedEntry;
+                            const container = document.getElementById('guestbookEntries');
+                            const row = buildGuestbookEntryRow(itemKey, loadedEntry, 0);
+                            const oldRow = Array.from(container.querySelectorAll('.guestbook-entry'))
+                                .find(item => item.dataset.guestbookEntryKey === itemKey);
+                            if (oldRow) oldRow.replaceWith(row);
+                            else container.prepend(row);
+                        })
+                        .catch(() => {});
+                }
+            } else if (itemType === 'chaos' && itemKey) {
+                selector = '.chaos-note';
+            }
+
+            let attempts = 0;
+            const reveal = () => {
+                let target = card;
+                if (selector && itemKey) {
+                    const rows = Array.from(card.querySelectorAll(selector));
+                    const exact = rows.find(row =>
+                        itemType === 'guestbook'
+                            ? row.dataset.guestbookEntryKey === itemKey
+                            : row.dataset.chaosNoteKey === itemKey
+                    );
+                    if (exact) target = exact;
+                    else if (attempts < 40) {
+                        attempts += 1;
+                        setTimeout(reveal, 60);
+                        return;
+                    }
+                }
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                triggerCardWiggle(card);
+            };
+            requestAnimationFrame(reveal);
             return true;
         }
 
@@ -2818,24 +2921,36 @@
         function startGuestbookEntry(event) {
             if (event) event.stopPropagation();
             if (!currentUser) { alert("Please login to leave a memory!"); return; }
-            if (editingGuestbookEntryKey) {
-                document.getElementById('guestbookImageInput').click();
+            const todayEntryKey = `${safeChatKey(currentUser)}_${getLocalDateKey()}`;
+            if (!editingGuestbookEntryKey && guestbookEntriesCache[todayEntryKey]) {
+                alert("You already left one Memory Guestbook entry today. Use Edit on that memory if you want to change it. ✦");
                 return;
             }
-            const entryKey = `${safeChatKey(currentUser)}_${getLocalDateKey()}`;
-            db.ref(`memoryGuestbook/${viewingUser}/${entryKey}`).once('value', snap => {
-                if (snap.exists()) {
-                    alert("You already left one Memory Guestbook entry today. Use Edit on that memory if you want to change it. ✦");
-                    return;
-                }
-                document.getElementById('guestbookImageInput').click();
-            });
+            // Keep the native picker inside the original tap. iPhone Safari blocks
+            // file pickers opened after an asynchronous Firebase callback.
+            const input = document.getElementById('guestbookImageInput');
+            input.value = '';
+            input.click();
         }
 
-        function handleGuestbookUpload(event) {
+        async function handleGuestbookUpload(event) {
             const file = event.target.files[0];
-            if (file) openImageCropper(file, 'guestbook');
             event.target.value = '';
+            if (!file) return;
+            if (!editingGuestbookEntryKey) {
+                const entryKey = `${safeChatKey(currentUser)}_${getLocalDateKey()}`;
+                try {
+                    const snap = await db.ref(`memoryGuestbook/${viewingUser}/${entryKey}`).once('value');
+                    if (snap.exists()) {
+                        alert("You already left one Memory Guestbook entry today. Use Edit on that memory if you want to change it. ✦");
+                        return;
+                    }
+                } catch (_) {
+                    alert("Boardly could not check the guestbook yet. Please try again.");
+                    return;
+                }
+            }
+            openImageCropper(file, 'guestbook');
         }
 
         function showGuestbookComposer(photoUrl, entry = null) {
@@ -2855,7 +2970,9 @@
                 entry ? 'Save Changes ✦' : 'Post Memory ✦';
             document.getElementById('guestbookSaveBtn').hidden = false;
             document.getElementById('guestbookCancelBtn').hidden = false;
-            requestAnimationFrame(() => noteInput.focus({ preventScroll: true }));
+            if (!isIosDevice()) {
+                requestAnimationFrame(() => noteInput.focus({ preventScroll: true }));
+            }
         }
 
         function resetGuestbookComposer(event) {
@@ -2935,7 +3052,7 @@
         function editGuestbookEntry(entryKey, event) {
             if (event) event.stopPropagation();
             const entry = guestbookEntriesCache[entryKey];
-            if (!entry || (currentUser !== viewingUser && currentUser !== entry.author)) return;
+            if (!entry || currentUser !== entry.author) return;
             editingGuestbookEntryKey = entryKey;
             editingGuestbookEntry = { ...entry };
             document.getElementById('guestbookNoteInput').value = entry.note || '';
@@ -2996,7 +3113,7 @@
                 }
             }
 
-            if (currentUser === viewingUser || currentUser === entry.author) {
+            if (currentUser === entry.author) {
                 const editButton = document.createElement('button');
                 editButton.className = 'guestbook-edit';
                 editButton.type = 'button';
@@ -3013,6 +3130,17 @@
                     deleteGuestbookEntry(key);
                 };
                 row.append(editButton, deleteButton);
+            } else if (currentUser === viewingUser) {
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'guestbook-delete';
+                deleteButton.type = 'button';
+                deleteButton.title = 'Remove memory from my board';
+                deleteButton.textContent = '×';
+                deleteButton.onclick = event => {
+                    event.stopPropagation();
+                    deleteGuestbookEntry(key);
+                };
+                row.appendChild(deleteButton);
             }
             return row;
         }
@@ -3020,6 +3148,15 @@
         function loadGuestbook() {
             const container = document.getElementById('guestbookEntries');
             const priorityEntryKey = freshGuestbookEntryKey;
+            let remoteGuestbookRendered = false;
+            getMediaFromIDBPromise(`guestbookEntries_${viewingUser}`).then(cached => {
+                if (remoteGuestbookRendered || !Array.isArray(cached?.entries) || !cached.entries.length) return;
+                container.innerHTML = '';
+                cached.entries.slice(0, 12).forEach(([key, entry], index) => {
+                    guestbookEntriesCache[key] = entry;
+                    container.appendChild(buildGuestbookEntryRow(key, entry, index));
+                });
+            }).catch(() => {});
             if (priorityEntryKey) {
                 db.ref(`memoryGuestbook/${viewingUser}/${priorityEntryKey}`).once('value')
                     .then(snap => {
@@ -3039,6 +3176,7 @@
                 .orderByChild('timestamp')
                 .limitToLast(12)
                 .on('value', snap => {
+                remoteGuestbookRendered = true;
                 container.innerHTML = '';
                 Object.keys(guestbookEntriesCache).forEach(key => delete guestbookEntriesCache[key]);
                 const now = Date.now();
@@ -3064,6 +3202,10 @@
                 }
                 if (!entries.length) {
                     container.innerHTML = '<div style="font-size:0.72rem; opacity:0.6; padding:8px 2px 2px;">No Polaroid stories yet. Be the first memory. ✦</div>';
+                    saveMediaToIDB(`guestbookEntries_${viewingUser}`, {
+                        entries: [],
+                        savedAt: Date.now()
+                    });
                     guestbookKnownEntryKeys.clear();
                     guestbookSnapshotReady = true;
                     return;
@@ -3076,6 +3218,12 @@
                 });
                 guestbookKnownEntryKeys.clear();
                 entries.forEach(([key]) => guestbookKnownEntryKeys.add(key));
+                saveMediaToIDB(`guestbookEntries_${viewingUser}`, {
+                    entries: entries
+                        .sort((a, b) => Number(b[1].timestamp || 0) - Number(a[1].timestamp || 0))
+                        .slice(0, 12),
+                    savedAt: Date.now()
+                });
                 guestbookSnapshotReady = true;
                 freshGuestbookEntryKey = '';
             });
@@ -3094,18 +3242,34 @@
             const input = document.getElementById('chaosNoteInput');
             const text = input.value.trim();
             if (!text) return;
-            db.ref(`chaosNotes/${viewingUser}`).push({
+            const button = event?.currentTarget;
+            if (button) button.disabled = true;
+            const noteRef = db.ref(`chaosNotes/${viewingUser}`).push();
+            noteRef.set({
                 author: currentUser,
                 text,
                 timestamp: Date.now()
-            }, () => {
+            }, error => {
+                if (button) button.disabled = false;
+                if (error) {
+                    alert("Boardly could not drop this note yet. Please try again.");
+                    return;
+                }
                 input.value = '';
-                sendNotification(viewingUser, `${currentUser} dropped a note in Little Chaos! ✦`, 'chaos-note');
+                sendNotification(
+                    viewingUser,
+                    `${currentUser} dropped a note in Little Chaos! ✦`,
+                    'chaos-note',
+                    { noteKey: noteRef.key }
+                );
             });
         }
 
         function loadChaosNotes() {
-            db.ref(`chaosNotes/${viewingUser}`).limitToLast(40).on('value', snap => {
+            db.ref(`chaosNotes/${viewingUser}`)
+                .orderByChild('timestamp')
+                .limitToLast(24)
+                .on('value', snap => {
                 const container = document.getElementById('chaosNotesList');
                 container.innerHTML = '';
                 if (!snap.exists()) {
@@ -3119,6 +3283,7 @@
                 notes.reverse().forEach(([key, note]) => {
                     const row = document.createElement('div');
                     row.className = 'chaos-note';
+                    row.dataset.chaosNoteKey = key;
                     const content = document.createElement('div');
                     content.className = 'chaos-note-content';
                     const meta = document.createElement('div');
@@ -3157,14 +3322,11 @@
         }
 
         /* POLAROID GALLERY WITH LIGHTBOX */
-        async function triggerGallerySelect(e) {
+        function triggerGallerySelect(e) {
             if (e) e.stopPropagation();
-            const snap = await db.ref(`gallery/${viewingUser}`).once('value');
-            if (snap.numChildren() >= 3) {
-                alert("Pinned Memories is full. Delete one photo before adding another. ✦");
-                return;
-            }
-            document.getElementById('galleryImageInput').click();
+            const input = document.getElementById('galleryImageInput');
+            input.value = '';
+            input.click();
         }
 
         async function handleGalleryUpload(e) {
@@ -3189,16 +3351,30 @@
                 container.innerHTML = '';
                 if (snap.exists()) {
                     const isOwner = (currentUser === viewingUser);
-                    Object.keys(snap.val()).forEach(key => {
-                        const item = snap.val()[key];
-                        container.innerHTML += `
-                            <div class="polaroid-frame" onclick="openLightbox('${item.imgUrl}', '${item.caption}')">
-                                ${isOwner ? `<div class="polaroid-del-btn" onclick="deleteGalleryItem(event, '${key}')">&times;</div>` : ''}
-                                <img src="${item.imgUrl}" alt="Photo" loading="lazy" decoding="async">
-                                <div>${item.caption}</div>
-                            </div>
-                        `;
+                    const fragment = document.createDocumentFragment();
+                    Object.entries(snap.val()).forEach(([key, item]) => {
+                        const frame = document.createElement('div');
+                        frame.className = 'polaroid-frame';
+                        frame.onclick = () => openLightbox(item.imgUrl || '', item.caption || '');
+                        if (isOwner) {
+                            const remove = document.createElement('button');
+                            remove.className = 'polaroid-del-btn';
+                            remove.type = 'button';
+                            remove.textContent = '×';
+                            remove.onclick = event => deleteGalleryItem(event, key);
+                            frame.appendChild(remove);
+                        }
+                        const image = document.createElement('img');
+                        image.src = item.imgUrl || '';
+                        image.alt = 'Pinned memory';
+                        image.loading = 'lazy';
+                        image.decoding = 'async';
+                        const caption = document.createElement('div');
+                        caption.textContent = item.caption || '';
+                        frame.append(image, caption);
+                        fragment.appendChild(frame);
                     });
+                    container.appendChild(fragment);
                 } else {
                     container.innerHTML = '<div style="font-size:0.7rem; opacity:0.6; grid-column:span 3;">No photos added.</div>';
                 }
@@ -3849,6 +4025,24 @@
             }
             const prepareToken = Date.now() + Math.random();
             cropState.prepareToken = prepareToken;
+            const image = document.getElementById('cropImage');
+            const stage = document.getElementById('cropStage');
+            const zoom = document.getElementById('cropZoom');
+            const useButton = document.getElementById('cropUsePhotoBtn');
+            cropState.target = target;
+            cropState.image = null;
+            stage.classList.remove('cover-crop', 'profile-crop');
+            if (target === 'cover') stage.classList.add('cover-crop');
+            if (target === 'avatar') stage.classList.add('profile-crop');
+            stage.classList.add('preparing');
+            zoom.disabled = true;
+            useButton.disabled = true;
+            document.getElementById('cropModalTitle').innerText =
+                target === 'cover' ? '✦ Position Cover Photo' :
+                target === 'avatar' ? '✦ Position Profile Photo' :
+                target === 'guestbook' ? '✦ Crop Guestbook Polaroid' :
+                '✦ Crop Pinned Memory';
+            document.getElementById('cropModal').style.display = 'flex';
             const cropProfiles = {
                 cover: 'coverCrop',
                 avatar: 'avatarCrop',
@@ -3860,6 +4054,7 @@
                 preparedBlob = await compressPhotoBlob(file, cropProfiles[target] || 'galleryCrop');
             } catch (error) {
                 if (cropState.prepareToken === prepareToken) {
+                    closeCropModal();
                     alert(error.message || "This photo could not be prepared.");
                 }
                 return;
@@ -3867,8 +4062,6 @@
             if (cropState.prepareToken !== prepareToken) return;
             if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
             const objectUrl = URL.createObjectURL(preparedBlob);
-            const image = document.getElementById('cropImage');
-            const stage = document.getElementById('cropStage');
             cropState.target = target;
             cropState.image = image;
             cropState.objectUrl = objectUrl;
@@ -3876,17 +4069,10 @@
             cropState.y = 0;
             document.getElementById('cropZoom').value = '1';
 
-            stage.classList.remove('cover-crop', 'profile-crop');
-            if (target === 'cover') stage.classList.add('cover-crop');
-            if (target === 'avatar') stage.classList.add('profile-crop');
-            document.getElementById('cropModalTitle').innerText =
-                target === 'cover' ? '✦ Position Cover Photo' :
-                target === 'avatar' ? '✦ Position Profile Photo' :
-                target === 'guestbook' ? '✦ Crop Guestbook Polaroid' :
-                '✦ Crop Pinned Memory';
-
             image.onload = () => {
-                document.getElementById('cropModal').style.display = 'flex';
+                stage.classList.remove('preparing');
+                zoom.disabled = false;
+                useButton.disabled = false;
                 requestAnimationFrame(() => {
                     const rect = stage.getBoundingClientRect();
                     image.style.width = `${image.naturalWidth}px`;
@@ -3904,6 +4090,7 @@
             image.onerror = () => {
                 URL.revokeObjectURL(objectUrl);
                 cropState.objectUrl = null;
+                closeCropModal();
                 alert("This photo could not be opened on this device.");
             };
             image.src = objectUrl;
@@ -3937,7 +4124,11 @@
         function closeCropModal() {
             if (cropRenderFrame) cancelAnimationFrame(cropRenderFrame);
             cropRenderFrame = 0;
+            cropState.prepareToken = 0;
             document.getElementById('cropModal').style.display = 'none';
+            document.getElementById('cropStage').classList.remove('preparing', 'dragging');
+            document.getElementById('cropZoom').disabled = false;
+            document.getElementById('cropUsePhotoBtn').disabled = false;
             if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
             cropState.objectUrl = null;
             cropState.image = null;
@@ -4020,7 +4211,7 @@
                 cropState.originX = cropState.x;
                 cropState.originY = cropState.y;
                 stage.classList.add('dragging');
-                stage.setPointerCapture(event.pointerId);
+                try { stage.setPointerCapture(event.pointerId); } catch (_) {}
             });
             stage.addEventListener('pointermove', event => {
                 if (!cropState.dragging) return;
@@ -4032,10 +4223,39 @@
                 if (!cropState.dragging) return;
                 cropState.dragging = false;
                 stage.classList.remove('dragging');
-                if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+                try {
+                    if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+                } catch (_) {}
             };
             stage.addEventListener('pointerup', endDrag);
             stage.addEventListener('pointercancel', endDrag);
+            if (!window.PointerEvent) {
+                stage.addEventListener('touchstart', event => {
+                    if (!cropState.image || !event.touches[0]) return;
+                    const touch = event.touches[0];
+                    cropState.dragging = true;
+                    cropState.startX = touch.clientX;
+                    cropState.startY = touch.clientY;
+                    cropState.originX = cropState.x;
+                    cropState.originY = cropState.y;
+                    stage.classList.add('dragging');
+                    event.preventDefault();
+                }, { passive: false });
+                stage.addEventListener('touchmove', event => {
+                    if (!cropState.dragging || !event.touches[0]) return;
+                    const touch = event.touches[0];
+                    cropState.x = cropState.originX + touch.clientX - cropState.startX;
+                    cropState.y = cropState.originY + touch.clientY - cropState.startY;
+                    scheduleCropRender();
+                    event.preventDefault();
+                }, { passive: false });
+                const endTouchDrag = () => {
+                    cropState.dragging = false;
+                    stage.classList.remove('dragging');
+                };
+                stage.addEventListener('touchend', endTouchDrag);
+                stage.addEventListener('touchcancel', endTouchDrag);
+            }
             zoom.addEventListener('input', () => {
                 cropState.scale = cropState.minScale * Number(zoom.value);
                 scheduleCropRender();
@@ -4234,6 +4454,11 @@
                 return;
             }
             if (type === 'memory-guestbook') {
+                if (openOwnBoardCardDestination(
+                    'card-memory-guestbook',
+                    notification.entryKey || '',
+                    'guestbook'
+                )) return;
                 navigateToUser(currentUser, {
                     openCard: 'card-memory-guestbook',
                     guestbookEntry: notification.entryKey || ''
@@ -4241,7 +4466,15 @@
                 return;
             }
             if (type === 'chaos-note') {
-                navigateToUser(currentUser, { openCard: 'card-little-chaos' });
+                if (openOwnBoardCardDestination(
+                    'card-little-chaos',
+                    notification.noteKey || '',
+                    'chaos'
+                )) return;
+                navigateToUser(currentUser, {
+                    openCard: 'card-little-chaos',
+                    chaosNote: notification.noteKey || ''
+                });
                 return;
             }
             if (type === 'poke' && notification.from) {
@@ -6306,6 +6539,20 @@
             return `${count} ${count === 1 ? 'comment' : 'comments'}`;
         }
 
+        function persistTimelineCommentCount(postId, count) {
+            try {
+                const storageKey = 'boardly_timeline_comment_counts';
+                const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                saved[postId] = { count, savedAt: Date.now() };
+                const trimmed = Object.fromEntries(
+                    Object.entries(saved)
+                        .sort((a, b) => Number(b[1]?.savedAt || 0) - Number(a[1]?.savedAt || 0))
+                        .slice(0, 200)
+                );
+                localStorage.setItem(storageKey, JSON.stringify(trimmed));
+            } catch (_) {}
+        }
+
         async function refreshTimelineCommentCount(post, retry = true) {
             const postId = post.postId;
             const cachedCount = timelineCommentCountCache.get(postId);
@@ -6321,6 +6568,7 @@
                 .then(snap => {
                     const count = snap.exists() ? snap.numChildren() : 0;
                     timelineCommentCountCache.set(postId, count);
+                    persistTimelineCommentCount(postId, count);
                     const element = document.getElementById(`timeline-comment-count-${postId}`);
                     if (element) element.textContent = formatTimelineCommentCount(count);
                     return count;
@@ -6485,6 +6733,7 @@
             if (activeTimelineInteractionPost?.postId !== post.postId || activeTimelineInteractionMode !== 'comments') return;
             const loadedCount = snap.exists() ? snap.numChildren() : 0;
             timelineCommentCountCache.set(post.postId, loadedCount);
+            persistTimelineCommentCount(post.postId, loadedCount);
             const countElement = document.getElementById(`timeline-comment-count-${post.postId}`);
             if (countElement) countElement.textContent = formatTimelineCommentCount(loadedCount);
             list.innerHTML = '';
