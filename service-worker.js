@@ -54,8 +54,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v55-guestbook-poke-chat-route';
-const BOARDLY_VERSION = 'v55';
+const BOARDLY_CACHE = 'boardly-shell-v56-auto-compress-android-redirects';
+const BOARDLY_VERSION = 'v56';
 const BOARDLY_SHELL = [
   './',
   './index.html',
