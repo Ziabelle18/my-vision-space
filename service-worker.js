@@ -51,8 +51,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v47-all-drops';
-const BOARDLY_VERSION = 'v47';
+const BOARDLY_CACHE = 'boardly-shell-v48-polaroid-styles';
+const BOARDLY_VERSION = 'v48';
 const BOARDLY_SHELL = [
   './',
   './index.html',
