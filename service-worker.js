@@ -1,5 +1,58 @@
-const BOARDLY_CACHE = 'boardly-shell-v42-smooth-loading';
-const BOARDLY_VERSION = 'v42';
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || './#chat';
+  event.waitUntil((async () => {
+    const openClients = await self.clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    });
+    for (const client of openClients) {
+      if ('focus' in client) {
+        await client.focus();
+        client.postMessage({ type: 'OPEN_BOARDLY_CHAT', url: targetUrl });
+        return;
+      }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(targetUrl);
+  })());
+});
+
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: 'AIzaSyC01CDQx0HtHKmrG2sM0Y5emVOgFJ7aQs0',
+  authDomain: 'my-vision-space-45872.firebaseapp.com',
+  databaseURL: 'https://my-vision-space-45872-default-rtdb.firebaseio.com',
+  projectId: 'my-vision-space-45872',
+  storageBucket: 'my-vision-space-45872.firebasestorage.app',
+  messagingSenderId: '619791058814',
+  appId: '1:619791058814:web:e85be838c86ecf604e552f'
+});
+
+try {
+  const messaging = firebase.messaging();
+  messaging.onBackgroundMessage(payload => {
+    const data = payload.data || {};
+    const title = data.title || 'New Boardly message ✦';
+    const options = {
+      body: data.body || 'Open Boardly to read your new message.',
+      icon: data.icon || './boardly-192.png',
+      badge: './boardly-192.png',
+      tag: data.tag || 'boardly-chat',
+      renotify: true,
+      data: {
+        url: data.url || './#chat'
+      }
+    };
+    return self.registration.showNotification(title, options);
+  });
+} catch (error) {
+  console.warn('Boardly background messaging is not supported here:', error);
+}
+
+const BOARDLY_CACHE = 'boardly-shell-v44-free-push';
+const BOARDLY_VERSION = 'v44';
 const BOARDLY_SHELL = [
   './',
   './index.html',
