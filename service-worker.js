@@ -51,8 +51,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v49-optional-captions';
-const BOARDLY_VERSION = 'v49';
+const BOARDLY_CACHE = 'boardly-shell-v50-profile-chat';
+const BOARDLY_VERSION = 'v50';
 const BOARDLY_SHELL = [
   './',
   './index.html',
