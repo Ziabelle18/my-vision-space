@@ -1,5 +1,5 @@
-const BOARDLY_CACHE = 'boardly-shell-v41-nav-spacing';
-const BOARDLY_VERSION = 'v41';
+const BOARDLY_CACHE = 'boardly-shell-v42-smooth-loading';
+const BOARDLY_VERSION = 'v42';
 const BOARDLY_SHELL = [
   './',
   './index.html',
