@@ -1,4 +1,4 @@
-const BOARDLY_CACHE = 'boardly-shell-v25-timeline';
+const BOARDLY_CACHE = 'boardly-shell-v27-timeline-style';
 const BOARDLY_SHELL = [
   './',
   './index.html',
