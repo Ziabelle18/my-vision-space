@@ -1,5 +1,5 @@
-const BOARDLY_CACHE = 'boardly-shell-v35-chat-pending-layer';
-const BOARDLY_VERSION = 'v35';
+const BOARDLY_CACHE = 'boardly-shell-v36-smooth-chat-wiggle';
+const BOARDLY_VERSION = 'v36';
 const BOARDLY_SHELL = [
   './',
   './index.html',
