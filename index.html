@@ -2207,6 +2207,8 @@
         let editingGuestbookEntry = null;
         let freshGuestbookEntryKey = '';
         const guestbookEntriesCache = {};
+        const guestbookKnownEntryKeys = new Set();
+        let guestbookSnapshotReady = false;
         let deferredInstallPrompt = null;
         let timelineDraftPhoto = '';
         let timelineDraftPolaroidColor = 'classic';
@@ -2522,8 +2524,17 @@
             const card = document.getElementById(cardId);
             if (!card) return false;
             const commentTarget = url.searchParams.get('commentTarget') || '';
-            setTimeout(() => {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const guestbookEntryKey = url.searchParams.get('guestbookEntry') || '';
+            const revealDestination = () => {
+                let target = card;
+                if (cardId === 'card-memory-guestbook') {
+                    const entries = Array.from(card.querySelectorAll('.guestbook-entry'));
+                    const exactEntry = entries.find(entry =>
+                        entry.dataset.guestbookEntryKey === guestbookEntryKey
+                    );
+                    target = exactEntry || card;
+                }
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 const commentCards = new Set([
                     'card-about', 'card-philosophy', 'card-things', 'card-goals'
                 ]);
@@ -2537,9 +2548,32 @@
                 } else {
                     triggerCardWiggle(card);
                 }
-            }, 260);
+            };
+            if (cardId === 'card-memory-guestbook') {
+                const container = document.getElementById('guestbookEntries');
+                if (container && !container.querySelector('.guestbook-entry')) {
+                    container.innerHTML = '<div style="font-size:0.72rem; opacity:0.68; padding:8px 2px 2px;">Opening your new Polaroid memory… ✦</div>';
+                }
+                let attempts = 0;
+                const waitForMemory = () => {
+                    const entries = Array.from(card.querySelectorAll('.guestbook-entry'));
+                    const found = guestbookEntryKey
+                        ? entries.some(entry => entry.dataset.guestbookEntryKey === guestbookEntryKey)
+                        : entries.length > 0 || guestbookSnapshotReady;
+                    if (found || attempts >= 50) {
+                        revealDestination();
+                        return;
+                    }
+                    attempts += 1;
+                    setTimeout(waitForMemory, 80);
+                };
+                setTimeout(waitForMemory, 80);
+            } else {
+                setTimeout(revealDestination, 260);
+            }
             url.searchParams.delete('openCard');
             url.searchParams.delete('commentTarget');
+            url.searchParams.delete('guestbookEntry');
             history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
             return true;
         }
@@ -2611,6 +2645,10 @@
         /* PROFILE INITIALIZATION */
         function initProfile() {
             const isOwner = (currentUser === viewingUser);
+            const startupUrl = new URL(window.location.href);
+            if (startupUrl.searchParams.get('openCard') === 'card-memory-guestbook') {
+                freshGuestbookEntryKey = startupUrl.searchParams.get('guestbookEntry') || '';
+            }
             sessionStorage.removeItem('boardly_pending_profile');
             document.querySelectorAll('.owner-only').forEach(el => el.style.display = isOwner ? 'inline-flex' : 'none');
             document.getElementById('homeNavBtn').style.display = currentUser ? 'inline-flex' : 'none';
@@ -2883,7 +2921,12 @@
                     }
                     resetGuestbookComposer();
                     if (!wasEditing) {
-                        sendNotification(viewingUser, `${currentUser} left a Polaroid story in your Memory Guestbook! ✦`, 'memory-guestbook');
+                        sendNotification(
+                            viewingUser,
+                            `${currentUser} left a Polaroid story in your Memory Guestbook! ✦`,
+                            'memory-guestbook',
+                            { entryKey }
+                        );
                     }
                 });
             });
@@ -2901,9 +2944,101 @@
             document.getElementById('card-memory-guestbook').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
+        function buildGuestbookEntryRow(key, entry, index = 0) {
+            const row = document.createElement('div');
+            row.className = 'guestbook-entry';
+            row.dataset.guestbookEntryKey = key;
+
+            const polaroid = document.createElement('div');
+            polaroid.className = 'guestbook-polaroid';
+            const image = document.createElement('img');
+            image.src = entry.imgUrl;
+            image.alt = `Memory left by ${entry.author}`;
+            image.decoding = 'async';
+            image.loading = index === 0 ? 'eager' : 'lazy';
+            if (key === freshGuestbookEntryKey) image.fetchPriority = 'high';
+            const signature = document.createElement('span');
+            signature.textContent = `@${entry.author}`;
+            polaroid.append(image, signature);
+
+            const story = document.createElement('div');
+            story.className = 'guestbook-story';
+            const meta = document.createElement('div');
+            meta.className = 'guestbook-story-meta';
+            const author = document.createElement('span');
+            author.textContent = `✦ @${entry.author}`;
+            const date = document.createElement('span');
+            date.textContent = new Date(entry.timestamp || Date.now()).toLocaleDateString();
+            meta.append(author, date);
+            const note = document.createElement('div');
+            note.className = 'guestbook-story-text';
+            note.textContent = entry.note;
+            story.append(meta, note);
+            row.append(polaroid, story);
+
+            const effectChars = { hearts: '♡', stars: '✦', sparkles: '⋆' };
+            const effectChar = effectChars[entry.effect];
+            if (effectChar) {
+                const staticDeco = document.createElement('span');
+                staticDeco.className = 'guestbook-static-deco';
+                staticDeco.textContent = `${effectChar} ${effectChar}`;
+                row.appendChild(staticDeco);
+                if (key === freshGuestbookEntryKey && index < 3) {
+                    for (let i = 0; i < 5; i++) {
+                        const deco = document.createElement('span');
+                        deco.className = 'guestbook-deco';
+                        deco.textContent = effectChar;
+                        deco.style.left = `${18 + i * 17}%`;
+                        deco.style.bottom = `${4 + (i % 2) * 9}px`;
+                        deco.style.animationDelay = `${i * 0.18}s`;
+                        row.appendChild(deco);
+                    }
+                }
+            }
+
+            if (currentUser === viewingUser || currentUser === entry.author) {
+                const editButton = document.createElement('button');
+                editButton.className = 'guestbook-edit';
+                editButton.type = 'button';
+                editButton.title = 'Edit memory';
+                editButton.textContent = 'Edit';
+                editButton.onclick = event => editGuestbookEntry(key, event);
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'guestbook-delete';
+                deleteButton.type = 'button';
+                deleteButton.title = 'Delete memory';
+                deleteButton.textContent = '×';
+                deleteButton.onclick = event => {
+                    event.stopPropagation();
+                    deleteGuestbookEntry(key);
+                };
+                row.append(editButton, deleteButton);
+            }
+            return row;
+        }
+
         function loadGuestbook() {
-            db.ref(`memoryGuestbook/${viewingUser}`).on('value', snap => {
-                const container = document.getElementById('guestbookEntries');
+            const container = document.getElementById('guestbookEntries');
+            const priorityEntryKey = freshGuestbookEntryKey;
+            if (priorityEntryKey) {
+                db.ref(`memoryGuestbook/${viewingUser}/${priorityEntryKey}`).once('value')
+                    .then(snap => {
+                        if (!snap.exists()) return;
+                        const alreadyRendered = Array.from(container.querySelectorAll('.guestbook-entry'))
+                            .some(entry => entry.dataset.guestbookEntryKey === priorityEntryKey);
+                        if (alreadyRendered) return;
+                        const entry = snap.val() || {};
+                        guestbookEntriesCache[priorityEntryKey] = entry;
+                        container.replaceChildren(
+                            buildGuestbookEntryRow(priorityEntryKey, entry, 0)
+                        );
+                    })
+                    .catch(() => {});
+            }
+            db.ref(`memoryGuestbook/${viewingUser}`)
+                .orderByChild('timestamp')
+                .limitToLast(12)
+                .on('value', snap => {
                 container.innerHTML = '';
                 Object.keys(guestbookEntriesCache).forEach(key => delete guestbookEntriesCache[key]);
                 const now = Date.now();
@@ -2921,81 +3056,27 @@
                         entries.push([child.key, entry]);
                     });
                 }
+                if (!freshGuestbookEntryKey && guestbookSnapshotReady) {
+                    const newestUnseen = entries
+                        .filter(([key]) => !guestbookKnownEntryKeys.has(key))
+                        .sort((a, b) => Number(b[1].timestamp || 0) - Number(a[1].timestamp || 0))[0];
+                    if (newestUnseen) freshGuestbookEntryKey = newestUnseen[0];
+                }
                 if (!entries.length) {
                     container.innerHTML = '<div style="font-size:0.72rem; opacity:0.6; padding:8px 2px 2px;">No Polaroid stories yet. Be the first memory. ✦</div>';
+                    guestbookKnownEntryKeys.clear();
+                    guestbookSnapshotReady = true;
                     return;
                 }
                 entries
                     .sort((a, b) => Number(b[1].timestamp || 0) - Number(a[1].timestamp || 0))
                     .slice(0, 12)
                     .forEach(([key, entry], index) => {
-                    const row = document.createElement('div');
-                    row.className = 'guestbook-entry';
-
-                    const polaroid = document.createElement('div');
-                    polaroid.className = 'guestbook-polaroid';
-                    const image = document.createElement('img');
-                    image.src = entry.imgUrl;
-                    image.alt = `Memory left by ${entry.author}`;
-                    const signature = document.createElement('span');
-                    signature.textContent = `@${entry.author}`;
-                    polaroid.append(image, signature);
-
-                    const story = document.createElement('div');
-                    story.className = 'guestbook-story';
-                    const meta = document.createElement('div');
-                    meta.className = 'guestbook-story-meta';
-                    const author = document.createElement('span');
-                    author.textContent = `✦ @${entry.author}`;
-                    const date = document.createElement('span');
-                    date.textContent = new Date(entry.timestamp || Date.now()).toLocaleDateString();
-                    meta.append(author, date);
-                    const note = document.createElement('div');
-                    note.className = 'guestbook-story-text';
-                    note.textContent = entry.note;
-                    story.append(meta, note);
-                    row.append(polaroid, story);
-
-                    const effectChars = { hearts: '♡', stars: '✦', sparkles: '⋆' };
-                    const effectChar = effectChars[entry.effect];
-                    if (effectChar) {
-                        const staticDeco = document.createElement('span');
-                        staticDeco.className = 'guestbook-static-deco';
-                        staticDeco.textContent = `${effectChar} ${effectChar}`;
-                        row.appendChild(staticDeco);
-                        if (key === freshGuestbookEntryKey && index < 3) {
-                            for (let i = 0; i < 5; i++) {
-                                const deco = document.createElement('span');
-                                deco.className = 'guestbook-deco';
-                                deco.textContent = effectChar;
-                                deco.style.left = `${18 + i * 17}%`;
-                                deco.style.bottom = `${4 + (i % 2) * 9}px`;
-                                deco.style.animationDelay = `${i * 0.18}s`;
-                                row.appendChild(deco);
-                            }
-                        }
-                    }
-
-                    if (currentUser === viewingUser || currentUser === entry.author) {
-                        const editButton = document.createElement('button');
-                        editButton.className = 'guestbook-edit';
-                        editButton.type = 'button';
-                        editButton.title = 'Edit memory';
-                        editButton.textContent = 'Edit';
-                        editButton.onclick = event => editGuestbookEntry(key, event);
-                        const deleteButton = document.createElement('button');
-                        deleteButton.className = 'guestbook-delete';
-                        deleteButton.type = 'button';
-                        deleteButton.title = 'Delete memory';
-                        deleteButton.textContent = '×';
-                        deleteButton.onclick = event => {
-                            event.stopPropagation();
-                            deleteGuestbookEntry(key);
-                        };
-                        row.append(editButton, deleteButton);
-                    }
-                    container.appendChild(row);
+                    container.appendChild(buildGuestbookEntryRow(key, entry, index));
                 });
+                guestbookKnownEntryKeys.clear();
+                entries.forEach(([key]) => guestbookKnownEntryKeys.add(key));
+                guestbookSnapshotReady = true;
                 freshGuestbookEntryKey = '';
             });
         }
@@ -4153,7 +4234,10 @@
                 return;
             }
             if (type === 'memory-guestbook') {
-                navigateToUser(currentUser, { openCard: 'card-memory-guestbook' });
+                navigateToUser(currentUser, {
+                    openCard: 'card-memory-guestbook',
+                    guestbookEntry: notification.entryKey || ''
+                });
                 return;
             }
             if (type === 'chaos-note') {
@@ -6054,7 +6138,13 @@
         }
 
         async function buildTimelinePostElement(post) {
-            const profile = await getTimelineAuthorProfile(post.author);
+            const commentCountPromise = Number.isFinite(timelineCommentCountCache.get(post.postId))
+                ? Promise.resolve(timelineCommentCountCache.get(post.postId))
+                : refreshTimelineCommentCount(post);
+            const [profile] = await Promise.all([
+                getTimelineAuthorProfile(post.author),
+                commentCountPromise
+            ]);
             const article = document.createElement('article');
             article.className = 'timeline-post';
             article.dataset.postId = post.postId;
@@ -6150,7 +6240,7 @@
             const cachedCommentCount = timelineCommentCountCache.get(post.postId);
             commentCount.textContent = Number.isFinite(cachedCommentCount)
                 ? formatTimelineCommentCount(cachedCommentCount)
-                : 'Comments…';
+                : 'Comments';
             commentCount.onclick = () => openTimelineComments(post);
             counts.append(likeCount, commentCount);
             article.appendChild(counts);
