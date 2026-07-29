@@ -1,4 +1,5 @@
-const BOARDLY_CACHE = 'boardly-shell-v27-timeline-style';
+const BOARDLY_CACHE = 'boardly-shell-v31-universal-refresh';
+const BOARDLY_VERSION = 'v31';
 const BOARDLY_SHELL = [
   './',
   './index.html',
@@ -12,7 +13,9 @@ const BOARDLY_SHELL = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(BOARDLY_CACHE)
-      .then(cache => cache.addAll(BOARDLY_SHELL))
+      .then(cache => Promise.all(
+        BOARDLY_SHELL.map(url => cache.add(new Request(url, { cache: 'reload' })))
+      ))
       .then(() => self.skipWaiting())
   );
 });
@@ -26,7 +29,15 @@ self.addEventListener('activate', event => {
           .map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then(clients => clients.forEach(client => {
+        client.postMessage({ type: 'BOARDLY_UPDATED', version: BOARDLY_VERSION });
+      }))
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', event => {
@@ -38,7 +49,7 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then(response => {
           if (response && response.ok) {
             const copy = response.clone();
