@@ -564,18 +564,26 @@
             font: 700 0.58rem var(--font-body);
         }
         .guestbook-deco {
-            position: absolute; z-index: 1; color: var(--accent-gold);
+            position: absolute; z-index: 3; color: var(--accent-gold);
             opacity: 0; pointer-events: none; font-size: 0.8rem;
-            animation: guestbookDrift 3.4s ease-out forwards;
+            animation: guestbookDrift 2.6s ease-out forwards;
+            -webkit-animation: guestbookDrift 2.6s ease-out forwards;
+            will-change: transform, opacity;
         }
         @keyframes guestbookDrift {
             0% { opacity: 0; transform: translateY(20px) rotate(0deg) scale(0.7); }
             22% { opacity: 0.72; }
             100% { opacity: 0; transform: translateY(-90px) rotate(24deg) scale(1.05); }
         }
+        @-webkit-keyframes guestbookDrift {
+            0% { opacity: 0; -webkit-transform: translateY(20px) rotate(0deg) scale(0.7); }
+            22% { opacity: 0.72; }
+            100% { opacity: 0; -webkit-transform: translateY(-90px) rotate(24deg) scale(1.05); }
+        }
         .guestbook-static-deco {
-            position: absolute; right: 12px; bottom: 8px; z-index: 1;
-            color: var(--accent-gold); opacity: 0.28; font-size: 1.15rem;
+            position: absolute; right: 12px; bottom: 8px; z-index: 3;
+            color: var(--accent-gold); opacity: 0.44; font-size: 1.15rem;
+            pointer-events: none;
         }
         body.body-font-script .guestbook-story-text,
         body.body-font-script .guestbook-create textarea { font-size: 0.96rem; font-weight: 600; }
@@ -728,9 +736,6 @@
             pointer-events: none; backface-visibility: hidden;
         }
         .crop-stage.dragging .crop-image { will-change: transform; }
-        @media (hover: none) and (pointer: coarse) {
-            .guestbook-deco { animation: none; opacity: 0.2; }
-        }
         .poke-celebration {
             position: fixed; inset: 0; z-index: 12000; overflow: hidden;
             pointer-events: none; display: none;
@@ -738,15 +743,18 @@
         .poke-celebration.active { display: block; }
         .poke-confetti {
             position: absolute; left: var(--start-x); bottom: -28px;
-            width: var(--size); height: calc(var(--size) * 0.48);
-            border-radius: 3px; background: var(--confetti-color);
-            opacity: 0;
+            width: auto; height: auto; background: transparent;
+            color: var(--confetti-color); font-size: var(--size); line-height: 1;
+            opacity: 0; font-style: normal; font-family: Georgia, serif;
+            text-shadow: 0 2px 7px rgba(197,160,89,.18);
             animation: pokeConfettiBurst var(--duration) cubic-bezier(.12,.72,.25,1) var(--delay) forwards;
             will-change: transform, opacity;
         }
         .poke-popper {
-            position: absolute; bottom: 18px; font-size: clamp(2.4rem, 10vw, 4.5rem);
-            filter: drop-shadow(0 7px 12px rgba(0,0,0,.18));
+            position: absolute; bottom: 18px; color: var(--accent-gold);
+            font: 700 clamp(1.8rem, 8vw, 3.5rem) Georgia, serif;
+            letter-spacing: .12em; white-space: nowrap;
+            filter: drop-shadow(0 7px 12px rgba(197,160,89,.28));
             animation: pokePopperBounce .72s ease-out both;
         }
         .poke-popper.left { left: 4%; transform: rotate(-24deg); }
@@ -2213,6 +2221,8 @@
         let activeTimelineInteractionPost = null;
         let activeTimelineInteractionMode = '';
         let activeTimelineReplyTarget = null;
+        const timelineCommentCountCache = new Map();
+        const timelineCommentCountPromises = new Map();
         let boardStyleLoadSequence = 0;
         const timelineProfileCache = {};
         const timelineProfilePromises = {};
@@ -2862,12 +2872,15 @@
                     expiresAt: Number(existing?.expiresAt || editingGuestbookEntry?.expiresAt || (now + GUESTBOOK_LIFETIME_MS))
                 };
                 const wasEditing = Boolean(editingGuestbookEntryKey);
+                // Set this before Firebase's local value event can render the new entry.
+                // Safari/iPhone can fire that render before the set() callback.
+                freshGuestbookEntryKey = entryKey;
                 entryRef.set(payload, error => {
                     if (error) {
+                        freshGuestbookEntryKey = '';
                         alert("Boardly could not save this memory yet. Please try again.");
                         return;
                     }
-                    freshGuestbookEntryKey = wasEditing ? '' : entryKey;
                     resetGuestbookComposer();
                     if (!wasEditing) {
                         sendNotification(viewingUser, `${currentUser} left a Polaroid story in your Memory Guestbook! ✦`, 'memory-guestbook');
@@ -3148,19 +3161,21 @@
 
             const leftPopper = document.createElement('span');
             leftPopper.className = 'poke-popper left';
-            leftPopper.textContent = '🎉';
+            leftPopper.textContent = '✦ ◆ ✦';
             const rightPopper = document.createElement('span');
             rightPopper.className = 'poke-popper right';
-            rightPopper.textContent = '🎉';
+            rightPopper.textContent = '✦ ◆ ✦';
             const labelEl = document.createElement('div');
             labelEl.className = 'poke-celebration-label';
             labelEl.textContent = label;
             layer.append(leftPopper, rightPopper, labelEl);
 
             const colors = ['#f5b8cf', '#b9d9f5', '#d7c2f2', '#f6d37d', '#c5a059', '#f7b38c'];
+            const diamonds = ['✦', '◆', '◇', '⋄'];
             for (let i = 0; i < 42; i++) {
                 const piece = document.createElement('i');
                 piece.className = 'poke-confetti';
+                piece.textContent = diamonds[i % diamonds.length];
                 const fromLeft = i % 2 === 0;
                 piece.style.setProperty('--start-x', fromLeft ? `${3 + Math.random() * 13}%` : `${84 + Math.random() * 13}%`);
                 piece.style.setProperty('--drift-x', `${(fromLeft ? 1 : -1) * (80 + Math.random() * 280)}px`);
@@ -4147,7 +4162,6 @@
             }
             if (type === 'poke' && notification.from) {
                 launchPokeCelebration(`@${notification.from} POKED YOU! ✦`);
-                setTimeout(() => navigateToUser(notification.from), 950);
                 return;
             }
             if (['visit', 'like', 'follow'].includes(type) && notification.from) {
@@ -6133,6 +6147,10 @@
             commentCount.type = 'button';
             commentCount.className = 'timeline-count-button';
             commentCount.id = `timeline-comment-count-${post.postId}`;
+            const cachedCommentCount = timelineCommentCountCache.get(post.postId);
+            commentCount.textContent = Number.isFinite(cachedCommentCount)
+                ? formatTimelineCommentCount(cachedCommentCount)
+                : 'Comments…';
             commentCount.onclick = () => openTimelineComments(post);
             counts.append(likeCount, commentCount);
             article.appendChild(counts);
@@ -6194,11 +6212,42 @@
             });
         }
 
-        async function refreshTimelineCommentCount(post) {
-            const snap = await db.ref(`timelinePostComments/${post.postId}`).once('value');
-            const count = snap.exists() ? snap.numChildren() : 0;
-            const element = document.getElementById(`timeline-comment-count-${post.postId}`);
-            if (element) element.textContent = count ? `${count} ${count === 1 ? 'comment' : 'comments'}` : '';
+        function formatTimelineCommentCount(count) {
+            return `${count} ${count === 1 ? 'comment' : 'comments'}`;
+        }
+
+        async function refreshTimelineCommentCount(post, retry = true) {
+            const postId = post.postId;
+            const cachedCount = timelineCommentCountCache.get(postId);
+            const initialElement = document.getElementById(`timeline-comment-count-${postId}`);
+            if (Number.isFinite(cachedCount) && initialElement) {
+                initialElement.textContent = formatTimelineCommentCount(cachedCount);
+            }
+            if (timelineCommentCountPromises.has(postId)) {
+                return timelineCommentCountPromises.get(postId);
+            }
+
+            const request = db.ref(`timelinePostComments/${postId}`).once('value')
+                .then(snap => {
+                    const count = snap.exists() ? snap.numChildren() : 0;
+                    timelineCommentCountCache.set(postId, count);
+                    const element = document.getElementById(`timeline-comment-count-${postId}`);
+                    if (element) element.textContent = formatTimelineCommentCount(count);
+                    return count;
+                })
+                .catch(() => {
+                    const element = document.getElementById(`timeline-comment-count-${postId}`);
+                    if (element && !timelineCommentCountCache.has(postId)) {
+                        element.textContent = 'Comments';
+                    }
+                    if (retry) {
+                        setTimeout(() => refreshTimelineCommentCount(post, false), 900);
+                    }
+                    return null;
+                })
+                .finally(() => timelineCommentCountPromises.delete(postId));
+            timelineCommentCountPromises.set(postId, request);
+            return request;
         }
 
         function closeTimelineInteractionModal() {
@@ -6333,8 +6382,21 @@
             if (!post) return;
             const list = document.getElementById('timelineInteractionList');
             list.innerHTML = '<div class="chat-empty" style="padding:24px;">Loading comments…</div>';
-            const snap = await db.ref(`timelinePostComments/${post.postId}`).once('value');
+            let snap;
+            try {
+                snap = await db.ref(`timelinePostComments/${post.postId}`).once('value');
+            } catch (_) {
+                if (activeTimelineInteractionPost?.postId === post.postId &&
+                    activeTimelineInteractionMode === 'comments') {
+                    list.innerHTML = '<div class="chat-empty" style="padding:24px;">Comments could not load yet.<br>Please tap Comment to try again. ✦</div>';
+                }
+                return;
+            }
             if (activeTimelineInteractionPost?.postId !== post.postId || activeTimelineInteractionMode !== 'comments') return;
+            const loadedCount = snap.exists() ? snap.numChildren() : 0;
+            timelineCommentCountCache.set(post.postId, loadedCount);
+            const countElement = document.getElementById(`timeline-comment-count-${post.postId}`);
+            if (countElement) countElement.textContent = formatTimelineCommentCount(loadedCount);
             list.innerHTML = '';
             if (!snap.exists()) {
                 list.innerHTML = '<div class="chat-empty" style="padding:24px;">No comments yet.<br>Start the conversation! ✦</div>';
