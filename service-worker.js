@@ -2,18 +2,19 @@ self.addEventListener('notificationclick', event => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || './#chat';
   event.waitUntil((async () => {
+    const absoluteTargetUrl = new URL(targetUrl, self.registration.scope).href;
     const openClients = await self.clients.matchAll({
       type: 'window',
       includeUncontrolled: true
     });
     for (const client of openClients) {
-      if ('focus' in client) {
-        await client.focus();
-        client.postMessage({ type: 'OPEN_BOARDLY_CHAT', url: targetUrl });
+      if ('navigate' in client && 'focus' in client) {
+        const navigatedClient = await client.navigate(absoluteTargetUrl);
+        await (navigatedClient || client).focus();
         return;
       }
     }
-    if (self.clients.openWindow) await self.clients.openWindow(targetUrl);
+    if (self.clients.openWindow) await self.clients.openWindow(absoluteTargetUrl);
   })());
 });
 
@@ -53,8 +54,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v54-comments-wiggle';
-const BOARDLY_VERSION = 'v54';
+const BOARDLY_CACHE = 'boardly-shell-v55-guestbook-poke-chat-route';
+const BOARDLY_VERSION = 'v55';
 const BOARDLY_SHELL = [
   './',
   './index.html',
