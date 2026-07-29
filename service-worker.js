@@ -1,5 +1,5 @@
-const BOARDLY_CACHE = 'boardly-shell-v33-chat-uid-repair';
-const BOARDLY_VERSION = 'v33';
+const BOARDLY_CACHE = 'boardly-shell-v34-live-chat-render';
+const BOARDLY_VERSION = 'v34';
 const BOARDLY_SHELL = [
   './',
   './index.html',
