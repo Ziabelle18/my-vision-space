@@ -1035,14 +1035,31 @@
             font: 500 0.84rem var(--font-body); line-height: 1.5;
         }
         .timeline-photo-preview-wrap {
-            position: relative; display: none; margin-top: 10px;
-            border-radius: 12px; overflow: hidden; background: var(--card-pink);
+            position: relative; display: none; width: min(88%, 390px);
+            margin: 14px auto 12px; padding: 9px 9px 13px;
+            border: 1px solid rgba(116, 91, 55, 0.14); border-radius: 3px;
+            overflow: visible; background: #fffdf8;
+            box-shadow: 0 8px 22px rgba(91, 66, 36, 0.18);
+            transform: rotate(-0.45deg);
         }
-        .timeline-photo-preview { display: block; width: 100%; max-height: 420px; object-fit: contain; }
+        .timeline-photo-preview {
+            display: block; width: 100%; aspect-ratio: 4 / 3;
+            max-height: 310px; object-fit: cover; border-radius: 1px;
+            background: var(--card-pink);
+        }
+        .timeline-photo-preview-caption {
+            min-height: 38px; padding: 8px 8px 0; color: #5f4a36;
+            font: 700 1.04rem 'Caveat', cursive; line-height: 1.22;
+            text-align: center; white-space: pre-wrap; word-break: break-word;
+        }
+        .timeline-photo-preview-caption.empty {
+            color: rgba(95, 74, 54, 0.48); font-weight: 600;
+        }
         .timeline-photo-remove {
-            position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+            position: absolute; top: -9px; right: -9px; width: 29px; height: 29px;
             border-radius: 50%; border: 1px solid var(--accent-gold);
-            background: var(--card-white); color: var(--accent-gold); cursor: pointer;
+            background: #fffdf8; color: var(--accent-gold); cursor: pointer;
+            box-shadow: 0 3px 9px rgba(91, 66, 36, 0.18);
         }
         .board-update-preview {
             display: none; margin-top: 10px; padding: 12px;
@@ -1081,9 +1098,25 @@
             margin-top: 7px; font-size: 0.86rem; line-height: 1.55;
             white-space: pre-wrap; word-break: break-word;
         }
+        .timeline-polaroid {
+            width: min(88%, 390px); margin: 12px auto 5px;
+            padding: 10px 10px 14px; border: 1px solid rgba(116, 91, 55, 0.14);
+            border-radius: 3px; background: #fffdf8;
+            box-shadow: 0 9px 24px rgba(91, 66, 36, 0.2);
+            transform: rotate(-0.45deg);
+        }
         .timeline-post-image {
-            display: block; width: 100%; max-height: 620px; margin-top: 11px;
-            object-fit: contain; border-radius: 12px; background: var(--card-pink);
+            display: block; width: 100%; aspect-ratio: 4 / 3;
+            max-height: 350px; margin: 0; object-fit: cover;
+            border-radius: 1px; background: var(--card-pink); cursor: zoom-in;
+        }
+        .timeline-polaroid-caption {
+            min-height: 42px; padding: 10px 8px 0; color: #5f4a36;
+            font: 700 1.13rem 'Caveat', cursive; line-height: 1.25;
+            text-align: center; white-space: pre-wrap; word-break: break-word;
+        }
+        .timeline-polaroid-caption.is-placeholder {
+            color: rgba(95, 74, 54, 0.55); font-weight: 600;
         }
         .timeline-board-card {
             margin-top: 10px; padding: 13px; border-radius: 12px;
@@ -1137,6 +1170,7 @@
             .timeline-topbar .nav-btn { padding-inline: 8px; font-size: 0.66rem; }
             .timeline-shell { padding-inline: 9px; }
             .drop-composer, .timeline-post { padding: 13px; }
+            .timeline-polaroid, .timeline-photo-preview-wrap { width: 92%; }
             .composer-actions select { order: 3; width: 100%; margin-left: 0; }
         }
 
@@ -1712,9 +1746,10 @@
                         <div class="composer-sub">A thought, a photo, or something new on your board.</div>
                     </div>
                 </div>
-                <textarea id="timelinePostText" maxlength="500" placeholder="Drop something on your timeline..."></textarea>
+                <textarea id="timelinePostText" maxlength="500" placeholder="Write a thought or photo description..." oninput="updateTimelinePhotoCaptionPreview()"></textarea>
                 <div class="timeline-photo-preview-wrap" id="timelinePhotoPreviewWrap">
                     <img class="timeline-photo-preview" id="timelinePhotoPreview" alt="Selected post photo">
+                    <div class="timeline-photo-preview-caption empty" id="timelinePhotoCaptionPreview">Your photo description will appear here ✦</div>
                     <button class="timeline-photo-remove" onclick="clearTimelinePhoto()" aria-label="Remove selected photo">×</button>
                 </div>
                 <div class="board-update-preview" id="timelineBoardPreview">
@@ -1889,6 +1924,7 @@
         let timelineAllPosts = [];
         let timelineVisibleCount = 12;
         let timelineLoadSequence = 0;
+        let timelineRenderSequence = 0;
         let boardStyleLoadSequence = 0;
         const timelineProfileCache = {};
 
@@ -4666,6 +4702,7 @@
                     timelineDraftPhoto = canvas.toDataURL('image/jpeg', 0.82);
                     document.getElementById('timelinePhotoPreview').src = timelineDraftPhoto;
                     document.getElementById('timelinePhotoPreviewWrap').style.display = 'block';
+                    updateTimelinePhotoCaptionPreview();
                 };
                 image.onerror = () => alert('This photo could not be opened.');
                 image.src = loadEvent.target.result;
@@ -4677,6 +4714,16 @@
             timelineDraftPhoto = '';
             document.getElementById('timelinePhotoPreview').removeAttribute('src');
             document.getElementById('timelinePhotoPreviewWrap').style.display = 'none';
+            updateTimelinePhotoCaptionPreview();
+        }
+
+        function updateTimelinePhotoCaptionPreview() {
+            const caption = document.getElementById('timelinePhotoCaptionPreview');
+            const input = document.getElementById('timelinePostText');
+            if (!caption || !input) return;
+            const value = input.value.trim();
+            caption.textContent = value || 'Your photo description will appear here ✦';
+            caption.classList.toggle('empty', !value);
         }
 
         function getCurrentBoardUpdatePreview() {
@@ -4715,6 +4762,11 @@
             const text = textInput.value.trim();
             if (!text && !timelineDraftPhoto && !timelineDraftIsBoardUpdate) {
                 alert('Write something, add a photo, or choose Board Update first.');
+                return;
+            }
+            if (timelineDraftPhoto && !text) {
+                alert('Please add a short description for your Polaroid photo. ✦');
+                textInput.focus();
                 return;
             }
             const privacy = document.getElementById('timelinePrivacy').value;
@@ -4803,7 +4855,7 @@
             if (sequence !== timelineLoadSequence) return;
             timelineAllPosts = postGroups.flat()
                 .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
-            renderTimelinePosts();
+            await renderTimelinePosts();
         }
 
         function formatTimelineTime(timestamp) {
@@ -4818,22 +4870,28 @@
         }
 
         async function renderTimelinePosts() {
+            const renderSequence = ++timelineRenderSequence;
             const container = document.getElementById('timelinePosts');
-            container.innerHTML = '';
             const visiblePosts = timelineAllPosts.slice(0, timelineVisibleCount);
             if (!visiblePosts.length) {
+                if (renderSequence !== timelineRenderSequence) return;
                 container.innerHTML = timelineFilter === 'mine'
                     ? '<div class="timeline-empty">Your timeline is ready for its first Board Drop. ✦</div>'
                     : '<div class="timeline-empty">Your circle is still quiet.<br>Follow friends or create the first Board Drop. ✦</div>';
                 document.getElementById('timelineLoadMore').style.display = 'none';
                 return;
             }
-            for (const post of visiblePosts) {
-                const postElement = await buildTimelinePostElement(post);
-                container.appendChild(postElement);
+            const postElements = await Promise.all(
+                visiblePosts.map(post => buildTimelinePostElement(post))
+            );
+            if (renderSequence !== timelineRenderSequence) return;
+            const fragment = document.createDocumentFragment();
+            postElements.forEach(postElement => fragment.appendChild(postElement));
+            container.replaceChildren(fragment);
+            visiblePosts.forEach(post => {
                 refreshTimelineLikeState(post);
                 refreshTimelineCommentCount(post);
-            }
+            });
             document.getElementById('timelineLoadMore').style.display =
                 timelineAllPosts.length > timelineVisibleCount ? 'flex' : 'none';
         }
@@ -4883,18 +4941,30 @@
             type.className = 'timeline-post-type';
             type.textContent = post.type === 'board-update' ? '✦ BOARD UPDATE' : '✦ BOARD DROP';
             article.appendChild(type);
-            if (post.text) {
+            if (post.text && !post.imageUrl) {
                 const text = document.createElement('div');
                 text.className = 'timeline-post-text';
                 text.textContent = post.text;
                 article.appendChild(text);
             }
             if (post.imageUrl) {
+                const polaroid = document.createElement('figure');
+                polaroid.className = 'timeline-polaroid';
                 const image = document.createElement('img');
                 image.className = 'timeline-post-image';
                 image.src = post.imageUrl;
                 image.alt = `Photo shared by @${profile.handle}`;
-                article.appendChild(image);
+                image.loading = 'lazy';
+                image.onclick = () => openLightbox(
+                    post.imageUrl,
+                    post.text || `A little moment from @${profile.handle} ✦`
+                );
+                const caption = document.createElement('figcaption');
+                caption.className = 'timeline-polaroid-caption';
+                caption.textContent = post.text || `A little moment from @${profile.handle} ✦`;
+                if (!post.text) caption.classList.add('is-placeholder');
+                polaroid.append(image, caption);
+                article.appendChild(polaroid);
             }
             if (post.type === 'board-update') {
                 const boardCard = document.createElement('div');
