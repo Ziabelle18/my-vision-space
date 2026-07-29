@@ -1,5 +1,5 @@
-const BOARDLY_CACHE = 'boardly-shell-v31-universal-refresh';
-const BOARDLY_VERSION = 'v31';
+const BOARDLY_CACHE = 'boardly-shell-v32-chat-migration';
+const BOARDLY_VERSION = 'v32';
 const BOARDLY_SHELL = [
   './',
   './index.html',
