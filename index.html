@@ -735,6 +735,51 @@
             background: #aaa; box-shadow: 0 0 0 2px rgba(170,170,170,0.14);
         }
         .presence-dot.online { background: #55b982; box-shadow: 0 0 0 2px rgba(85,185,130,0.17); }
+        .online-friends-block {
+            margin: 3px 0 13px; padding: 10px 9px;
+            border-radius: 14px; background: var(--card-pink);
+            border: 1px solid rgba(197,160,89,0.22);
+        }
+        .online-friends-title {
+            margin-bottom: 8px; color: var(--accent-gold);
+            font: 700 0.68rem var(--font-body); letter-spacing: 0.08em;
+        }
+        .online-friends-list {
+            display: flex; gap: 10px; min-height: 68px;
+            overflow-x: auto; padding: 2px 1px 5px;
+            scrollbar-width: none;
+        }
+        .online-friends-list::-webkit-scrollbar { display: none; }
+        .online-friend-card {
+            width: 58px; flex: 0 0 58px; padding: 0; border: 0;
+            background: transparent; color: var(--text-color);
+            text-align: center; cursor: pointer;
+        }
+        .online-avatar-wrap {
+            position: relative; width: 48px; height: 48px; margin: 0 auto 5px;
+            border-radius: 50%; padding: 2px; background: var(--card-white);
+            border: 1px solid var(--accent-gold);
+            box-shadow: 0 5px 14px rgba(197,160,89,0.18);
+            transition: transform 0.2s ease;
+        }
+        .online-friend-card:hover .online-avatar-wrap { transform: translateY(-2px) scale(1.04); }
+        .online-friend-avatar {
+            display: block; width: 100%; height: 100%; border-radius: 50%;
+            object-fit: cover; background: #e1e3e6;
+        }
+        .online-status-dot {
+            position: absolute; right: 0; bottom: 1px; width: 12px; height: 12px;
+            border-radius: 50%; background: #55b982; border: 2px solid var(--card-white);
+            box-shadow: 0 0 0 2px rgba(85,185,130,0.18);
+        }
+        .online-friend-name {
+            display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            font: 700 0.56rem var(--font-body);
+        }
+        .online-friends-empty {
+            width: 100%; align-self: center; text-align: center;
+            font-size: 0.65rem; opacity: 0.62; line-height: 1.4;
+        }
         .contact-unread {
             display: inline-flex; min-width: 19px; height: 19px; padding: 0 5px;
             border-radius: 10px; align-items: center; justify-content: center;
@@ -853,6 +898,15 @@
         .timeline-brand {
             flex: 1; text-align: center; color: var(--brand-gold);
             font: 700 1.34rem 'Cinzel', serif; letter-spacing: 0.12em;
+        }
+        .timeline-chat-button {
+            position: relative; background: var(--card-white);
+            color: var(--accent-gold); font-weight: 700;
+        }
+        .timeline-chat-unread {
+            display: none; min-width: 18px; height: 18px; padding: 0 5px;
+            align-items: center; justify-content: center; border-radius: 10px;
+            background: #d95c6a; color: #fff; font: 700 0.58rem Arial, sans-serif;
         }
         .timeline-shell {
             width: min(100%, 680px); margin: 0 auto; padding: 15px 12px 90px;
@@ -996,7 +1050,8 @@
         .timeline-load-more { width: 100%; justify-content: center; padding: 10px; margin-top: 4px; }
         @media (max-width: 480px) {
             .timeline-topbar { padding-inline: 10px; }
-            .timeline-brand { font-size: 1.18rem; }
+            .timeline-brand { font-size: 1.02rem; letter-spacing: 0.08em; }
+            .timeline-topbar .nav-btn { padding-inline: 8px; font-size: 0.66rem; }
             .timeline-shell { padding-inline: 9px; }
             .drop-composer, .timeline-post { padding: 13px; }
             .composer-actions select { order: 3; width: 100%; margin-left: 0; }
@@ -1549,6 +1604,7 @@
         <div class="timeline-topbar">
             <button class="nav-btn" onclick="goMyBoard()">✦ MY BOARD</button>
             <div class="timeline-brand">BOARDLY</div>
+            <button class="nav-btn timeline-chat-button" onclick="openChatPage()">✦ CHAT <span class="timeline-chat-unread" id="timelineChatUnreadBadge">0</span></button>
             <button class="nav-btn" onclick="openNotifModal()">🔔 <span id="timelineNotifBadge">0</span></button>
         </div>
         <div class="timeline-shell">
@@ -1613,7 +1669,7 @@
     <section class="chat-page" id="chatPage" aria-label="Private chats">
         <div class="chat-topbar">
             <button class="nav-btn" onclick="closeChatPage()">← Back</button>
-            <h2>PRIVATE CHATS ✦</h2>
+            <h2>BOARDLY CHATS ✦</h2>
             <span style="width:64px;"></span>
         </div>
         <div class="chat-shell">
@@ -1623,6 +1679,12 @@
                     <button class="nav-btn" onclick="searchChatFriends()">Search</button>
                 </div>
                 <div id="chatSearchResults"></div>
+                <div class="online-friends-block">
+                    <div class="online-friends-title">✦ ONLINE NOW</div>
+                    <div class="online-friends-list" id="onlineFriendsList">
+                        <div class="online-friends-empty">Checking who’s online…</div>
+                    </div>
+                </div>
                 <button class="nav-btn group-create-btn" onclick="openCreateGroupModal()">✦ Create Group Chat</button>
                 <div style="font-size:0.7rem; color:var(--accent-gold); font-weight:700; margin:8px 0;">GROUP CHATS</div>
                 <div id="groupChatContacts"><div style="font-size:0.75rem; opacity:0.6;">No groups yet.</div></div>
@@ -1712,6 +1774,7 @@
         let groupContactsRef = null;
         let inboxRef = null;
         let typingTimer = null;
+        let onlineFriendsRefreshTimer = null;
         let presenceRef = null;
         let chatScrollPosition = 0;
         let cropState = {
@@ -3496,6 +3559,9 @@
             document.body.style.right = '0';
             document.getElementById('chatPage').style.display = 'flex';
             if (location.hash !== '#chat') history.pushState(null, '', '#chat');
+            loadOnlineFriends();
+            clearInterval(onlineFriendsRefreshTimer);
+            onlineFriendsRefreshTimer = setInterval(loadOnlineFriends, 20000);
             loadChatContacts();
             loadGroupChatContacts();
         }
@@ -3512,6 +3578,8 @@
 
         function closeChatPage() {
             stopChatTyping();
+            clearInterval(onlineFriendsRefreshTimer);
+            onlineFriendsRefreshTimer = null;
             document.getElementById('chatPage').style.display = 'none';
             unlockChatPageScroll();
             if (location.hash === '#chat') history.replaceState(null, '', location.pathname + location.search);
@@ -3559,6 +3627,100 @@
                 }
                 matches.forEach(user => makeChatPersonButton(user, results));
             });
+        }
+
+        async function loadOnlineFriends() {
+            const container = document.getElementById('onlineFriendsList');
+            if (!currentUser || !container) return;
+            if (!container.children.length) {
+                container.innerHTML = '<div class="online-friends-empty">Checking who’s online…</div>';
+            }
+
+            try {
+                const [usersSnap, followersSnap, contactsSnap] = await Promise.all([
+                    db.ref('users').once('value'),
+                    db.ref(`followers/${currentUser}`).once('value'),
+                    db.ref(`chatContacts/${safeChatKey(currentUser)}`).once('value').catch(() => null)
+                ]);
+                const users = usersSnap.val() || {};
+                const allUsernames = Object.keys(users)
+                    .filter(username => username !== currentUser)
+                    .slice(0, 120);
+                const circle = new Set([
+                    ...Object.keys(followersSnap.val() || {}),
+                    ...Object.values(getLocalChatContacts()).map(item => item?.username).filter(Boolean),
+                    ...Object.values(contactsSnap?.val() || {}).map(item => item?.username).filter(Boolean)
+                ]);
+
+                const followingChecks = await Promise.all(
+                    allUsernames.map(username =>
+                        db.ref(`followers/${username}/${currentUser}`).once('value')
+                            .then(snapshot => [username, snapshot.val() === true])
+                            .catch(() => [username, false])
+                    )
+                );
+                followingChecks.forEach(([username, isFollowing]) => {
+                    if (isFollowing) circle.add(username);
+                });
+
+                const candidates = Array.from(circle)
+                    .filter(username => username && username !== currentUser && users[username])
+                    .slice(0, 60);
+                const presenceChecks = await Promise.all(
+                    candidates.map(username =>
+                        db.ref(`presence/${safeChatKey(username)}/state`).once('value')
+                            .then(snapshot => [username, snapshot.val() === 'online'])
+                            .catch(() => [username, false])
+                    )
+                );
+                const onlineNames = presenceChecks
+                    .filter(([, isOnline]) => isOnline)
+                    .map(([username]) => username);
+
+                const onlineProfiles = await Promise.all(
+                    onlineNames.map(async username => {
+                        const boardSnap = await db.ref(`boards/${username}`).once('value').catch(() => null);
+                        const board = boardSnap?.val() || {};
+                        return {
+                            username,
+                            handle: users[username]?.publicHandle || board.profileHandle || username,
+                            avatarImg: board.avatarImg || DEFAULT_AVATAR
+                        };
+                    })
+                );
+
+                container.innerHTML = '';
+                if (!onlineProfiles.length) {
+                    container.innerHTML = '<div class="online-friends-empty">Your circle is quiet right now. ✦</div>';
+                    return;
+                }
+
+                onlineProfiles.forEach(profile => {
+                    const button = document.createElement('button');
+                    button.className = 'online-friend-card';
+                    button.type = 'button';
+                    button.title = `Chat with @${profile.handle}`;
+
+                    const avatarWrap = document.createElement('span');
+                    avatarWrap.className = 'online-avatar-wrap';
+                    const avatar = document.createElement('img');
+                    avatar.className = 'online-friend-avatar';
+                    avatar.src = profile.avatarImg;
+                    avatar.alt = `@${profile.handle}`;
+                    const dot = document.createElement('span');
+                    dot.className = 'online-status-dot';
+                    avatarWrap.append(avatar, dot);
+
+                    const name = document.createElement('span');
+                    name.className = 'online-friend-name';
+                    name.textContent = `@${profile.handle}`;
+                    button.append(avatarWrap, name);
+                    button.onclick = () => startChatWith(profile.username);
+                    container.appendChild(button);
+                });
+            } catch (error) {
+                container.innerHTML = '<div class="online-friends-empty">Online friends will appear here. ✦</div>';
+            }
         }
 
         function rememberLocalChat(username, timestamp = Date.now()) {
@@ -3610,6 +3772,11 @@
                 const badge = document.getElementById('chatUnreadBadge');
                 badge.textContent = total > 99 ? '99+' : total;
                 badge.style.display = total > 0 ? 'inline-flex' : 'none';
+                const timelineBadge = document.getElementById('timelineChatUnreadBadge');
+                if (timelineBadge) {
+                    timelineBadge.textContent = total > 99 ? '99+' : total;
+                    timelineBadge.style.display = total > 0 ? 'inline-flex' : 'none';
+                }
             });
         }
 
