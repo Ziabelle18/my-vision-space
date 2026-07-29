@@ -43,6 +43,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
     <style>
         :root {
@@ -773,6 +774,14 @@
             flex: 1; text-align: center; color: var(--accent-gold);
             font: 700 1.55rem 'Caveat', cursive; letter-spacing: 0.04em;
         }
+        .chat-alert-btn {
+            min-width: 106px; justify-content: center; white-space: nowrap;
+            transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+        }
+        .chat-alert-btn.enabled {
+            border-color: #79a889; background: #e8f5ec; color: #3e7250;
+        }
+        .chat-alert-btn:disabled { cursor: default; opacity: 0.72; }
         .chat-shell {
             width: min(100%, 980px); flex: 1; min-height: 0; margin: 0 auto;
             padding: 14px; display: grid; grid-template-columns: 280px 1fr; gap: 14px;
@@ -934,6 +943,11 @@
             .chat-conversation { min-height: 0; }
             .chat-launcher { bottom: 76px; }
             .pwa-install-card { bottom: 132px; }
+            .chat-topbar { padding: 8px 10px; gap: 7px; }
+            .chat-topbar h2 { font-size: 1.25rem; }
+            .chat-alert-btn { min-width: 48px; padding-inline: 9px; font-size: 0; }
+            .chat-alert-btn::before { content: "🔔"; font-size: 0.9rem; }
+            .chat-alert-btn.enabled::before { content: "✓"; }
         }
         body.section-font-script .card-title {
             font-size: 1.12rem;
@@ -1741,7 +1755,7 @@
         <div class="chat-topbar">
             <button class="nav-btn" onclick="closeChatPage()">← Back</button>
             <h2>BOARDLY CHATS ✦</h2>
-            <span style="width:64px;"></span>
+            <button class="nav-btn chat-alert-btn" id="chatAlertBtn" type="button" onclick="enablePushNotifications()">🔔 Enable alerts</button>
         </div>
         <div class="chat-shell">
             <aside class="chat-sidebar">
@@ -1806,6 +1820,16 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const auth = firebase.auth();
+
+        /*
+         * FREE PUSH NOTIFICATION SETUP
+         * Replace these two public placeholders after the Cloudflare/Firebase setup.
+         * Never place a Firebase service-account private key in this file.
+         */
+        const BOARDLY_PUSH_ENDPOINT = 'https://boardly-push-notifications.krizzialester.workers.dev/send';
+        const BOARDLY_WEB_PUSH_PUBLIC_KEY = 'BMYUS2aC9rO2AY5kKBnw2HXEYJSAPKW1_dhIR9uVCWCq8WZwFgTY3L7AiyPQlJlAcwthWivy5jw6IgQAL9OwFgM';
+        let boardlyMessaging = null;
+
         const DEFAULT_AVATAR = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#e1e3e6"/><circle cx="100" cy="72" r="34" fill="#9aa0a6"/><path d="M42 174c4-39 25-62 58-62s54 23 58 62" fill="#9aa0a6"/></svg>'
         )}`;
@@ -2054,6 +2078,7 @@
             document.getElementById('authGate').style.display = 'none';
             document.getElementById('logoutBtn').style.display = 'flex';
             setupRealtimeChatAccount();
+            refreshBoardlyPushToken();
             const requestedProfile = new URLSearchParams(window.location.search).get('user');
             if (viewingUser !== u && !requestedProfile) {
                 viewingUser = u;
@@ -2067,6 +2092,7 @@
 
         async function logout() {
             if (presenceRef) presenceRef.set({ state: 'offline', lastChanged: firebase.database.ServerValue.TIMESTAMP });
+            await unregisterBoardlyPushToken();
             localStorage.removeItem('vspace_user');
             await auth.signOut();
             window.location.href = window.location.pathname;
@@ -3614,7 +3640,8 @@
                 }
                 db.ref(`chats/${incoming.chatId}/messages/${incoming.messageId}/delivered/${safeChatKey(currentUser)}`)
                     .set(firebase.database.ServerValue.TIMESTAMP);
-                if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+                const fullPushEnabled = localStorage.getItem('boardly_push_uid') === auth.currentUser?.uid;
+                if (!fullPushEnabled && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
                     new Notification(`Boardly ✦ @${incoming.from || 'friend'}`, {
                         body: incoming.preview || 'Sent you a message',
                         tag: `boardly-${incoming.chatId}`,
@@ -3628,9 +3655,194 @@
             watchUnreadMessages();
         }
 
+        function isBoardlyPushConfigured() {
+            return BOARDLY_PUSH_ENDPOINT.startsWith('https://') &&
+                !BOARDLY_PUSH_ENDPOINT.includes('REPLACE') &&
+                BOARDLY_WEB_PUSH_PUBLIC_KEY.length > 40 &&
+                !BOARDLY_WEB_PUSH_PUBLIC_KEY.includes('REPLACE');
+        }
+
+        function getBoardlyMessaging() {
+            if (boardlyMessaging) return boardlyMessaging;
+            if (!firebase.messaging) return null;
+            try {
+                boardlyMessaging = firebase.messaging();
+                return boardlyMessaging;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        async function boardlyTokenKey(token) {
+            const bytes = new TextEncoder().encode(token);
+            const digest = await crypto.subtle.digest('SHA-256', bytes);
+            return Array.from(new Uint8Array(digest))
+                .map(byte => byte.toString(16).padStart(2, '0'))
+                .join('');
+        }
+
+        function updateChatAlertButton() {
+            const button = document.getElementById('chatAlertBtn');
+            if (!button) return;
+            const supported = 'serviceWorker' in navigator && 'Notification' in window && Boolean(firebase.messaging);
+            const enabled = supported && Notification.permission === 'granted' &&
+                localStorage.getItem('boardly_push_uid') === auth.currentUser?.uid;
+            button.classList.toggle('enabled', Boolean(enabled));
+            button.disabled = Boolean(enabled) || !supported;
+            if (!supported) {
+                button.textContent = 'Alerts unavailable';
+            } else if (enabled) {
+                button.textContent = '✓ Alerts on';
+            } else if (!isBoardlyPushConfigured()) {
+                button.textContent = '🔔 Setup needed';
+            } else if (Notification.permission === 'denied') {
+                button.textContent = '🔕 Allow in settings';
+            } else {
+                button.textContent = '🔔 Enable alerts';
+            }
+        }
+
         function askForChatNotifications() {
-            if (!('Notification' in window) || Notification.permission !== 'default') return;
-            Notification.requestPermission().catch(() => {});
+            updateChatAlertButton();
+        }
+
+        async function enablePushNotifications() {
+            if (!auth.currentUser || !currentUser) {
+                alert('Please log in first.');
+                return;
+            }
+            if (!isBoardlyPushConfigured()) {
+                alert('Boardly push notifications are still being connected. Please try again after the setup update.');
+                return;
+            }
+            if (!('serviceWorker' in navigator) || !('Notification' in window) || !firebase.messaging) {
+                alert('Push notifications are not supported on this browser.');
+                return;
+            }
+            if (isIosDevice() && !isBoardlyStandalone()) {
+                alert('On iPhone or iPad, add Boardly to your Home Screen first, then open the installed Boardly app and enable alerts.');
+                return;
+            }
+            if (Notification.permission === 'denied') {
+                alert('Notifications are blocked. Open your phone settings, allow notifications for Boardly or your browser, then try again.');
+                updateChatAlertButton();
+                return;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    updateChatAlertButton();
+                    return;
+                }
+                const messaging = getBoardlyMessaging();
+                if (!messaging) throw new Error('Messaging is unavailable on this browser.');
+                const registration = boardlySWRegistration || await navigator.serviceWorker.ready;
+                const token = await messaging.getToken({
+                    vapidKey: BOARDLY_WEB_PUSH_PUBLIC_KEY,
+                    serviceWorkerRegistration: registration
+                });
+                if (!token) throw new Error('No notification token was created.');
+                const deviceKey = await boardlyTokenKey(token);
+                await db.ref(`pushTokens/${auth.currentUser.uid}/${deviceKey}`).set({
+                    token,
+                    username: currentUser,
+                    updatedAt: firebase.database.ServerValue.TIMESTAMP,
+                    userAgent: navigator.userAgent.slice(0, 180)
+                });
+                localStorage.setItem('boardly_push_device_key', deviceKey);
+                localStorage.setItem('boardly_push_uid', auth.currentUser.uid);
+                updateChatAlertButton();
+                alert('Boardly chat notifications are now on! ✦');
+            } catch (error) {
+                console.warn('Boardly push registration failed:', error);
+                alert(`Notifications could not be enabled yet: ${error.message || 'Please try again.'}`);
+                updateChatAlertButton();
+            }
+        }
+
+        async function refreshBoardlyPushToken() {
+            updateChatAlertButton();
+            if (!auth.currentUser || !isBoardlyPushConfigured() ||
+                !('Notification' in window) || Notification.permission !== 'granted') return;
+            try {
+                const messaging = getBoardlyMessaging();
+                if (!messaging) return;
+                const registration = boardlySWRegistration || await navigator.serviceWorker.ready;
+                const token = await messaging.getToken({
+                    vapidKey: BOARDLY_WEB_PUSH_PUBLIC_KEY,
+                    serviceWorkerRegistration: registration
+                });
+                if (!token) return;
+                const deviceKey = await boardlyTokenKey(token);
+                await db.ref(`pushTokens/${auth.currentUser.uid}/${deviceKey}`).set({
+                    token,
+                    username: currentUser,
+                    updatedAt: firebase.database.ServerValue.TIMESTAMP,
+                    userAgent: navigator.userAgent.slice(0, 180)
+                });
+                localStorage.setItem('boardly_push_device_key', deviceKey);
+                localStorage.setItem('boardly_push_uid', auth.currentUser.uid);
+                updateChatAlertButton();
+            } catch (error) {
+                console.warn('Boardly could not refresh its push token:', error);
+            }
+        }
+
+        async function unregisterBoardlyPushToken() {
+            const uid = auth.currentUser?.uid;
+            const deviceKey = localStorage.getItem('boardly_push_device_key');
+            try {
+                if (uid && deviceKey) await db.ref(`pushTokens/${uid}/${deviceKey}`).remove();
+                const messaging = getBoardlyMessaging();
+                if (messaging) await messaging.deleteToken();
+            } catch (error) {
+                console.warn('Boardly could not remove this notification device:', error);
+            } finally {
+                localStorage.removeItem('boardly_push_device_key');
+                localStorage.removeItem('boardly_push_uid');
+            }
+        }
+
+        async function triggerBoardlyPush(type, conversationId, messageId) {
+            if (!auth.currentUser || !isBoardlyPushConfigured()) return;
+            try {
+                const idToken = await auth.currentUser.getIdToken();
+                const response = await fetch(BOARDLY_PUSH_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${idToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ type, conversationId, messageId })
+                });
+                if (!response.ok) {
+                    const result = await response.json().catch(() => ({}));
+                    throw new Error(result.error || `Push request failed (${response.status}).`);
+                }
+            } catch (error) {
+                console.warn('The message was sent, but its push alert could not be delivered:', error);
+            }
+        }
+
+        function openBoardlyPushDestination(rawUrl = window.location.href) {
+            if (!currentUser) return false;
+            const url = new URL(rawUrl, window.location.href);
+            const directUsername = url.searchParams.get('pushChat');
+            const groupId = url.searchParams.get('pushGroup');
+            if (!directUsername && !groupId) return false;
+
+            openChatPage();
+            setTimeout(() => {
+                if (groupId) startGroupChat(groupId);
+                else if (directUsername) startChatWith(directUsername);
+            }, 220);
+
+            url.searchParams.delete('pushChat');
+            url.searchParams.delete('pushGroup');
+            url.hash = '#chat';
+            history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+            return true;
         }
 
         function playPageEntrance(element) {
@@ -4214,6 +4426,7 @@
             } catch (error) {
                 console.warn('Message was saved, but chat notifications could not fully update:', error);
             }
+            triggerBoardlyPush('direct', chatId, messageId);
         }
 
         function openCreateGroupModal() {
@@ -4359,6 +4572,7 @@
                     'group-chat',
                     { groupId: activeGroupId }
                 ));
+            triggerBoardlyPush('group', activeGroupId, groupMessageRef.key);
             input.value = '';
             playCuteSound('send');
         }
@@ -5029,7 +5243,13 @@
                     if (hadController) reloadForBoardlyUpdate();
                 });
                 navigator.serviceWorker.addEventListener('message', event => {
-                    if (hadController && event.data?.type === 'BOARDLY_UPDATED') reloadForBoardlyUpdate();
+                    if (hadController && event.data?.type === 'BOARDLY_UPDATED') {
+                        reloadForBoardlyUpdate();
+                        return;
+                    }
+                    if (event.data?.type === 'OPEN_BOARDLY_CHAT' && event.data.url) {
+                        openBoardlyPushDestination(event.data.url);
+                    }
                 });
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') requestUpdate();
@@ -5069,8 +5289,9 @@
                 if (firebaseUser) {
                     try {
                         await resolveAuthenticatedUser(firebaseUser);
-                        if (location.hash === '#chat' && currentUser) openChatPage();
-                        if (location.hash === '#timeline' && currentUser) openTimelinePage(false);
+                        const openedFromPush = openBoardlyPushDestination();
+                        if (!openedFromPush && location.hash === '#chat' && currentUser) openChatPage();
+                        if (!openedFromPush && location.hash === '#timeline' && currentUser) openTimelinePage(false);
                     } catch (error) {
                         alert(friendlyAuthError(error));
                         await auth.signOut();
