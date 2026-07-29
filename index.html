@@ -494,17 +494,28 @@
             margin: -2px 0 12px; font-size: 0.7rem; opacity: 0.7;
             line-height: 1.45; font-style: italic;
         }
-        .guestbook-create {
-            display: grid; grid-template-columns: 1fr auto; gap: 8px;
-            align-items: end; margin-bottom: 12px;
+        .guestbook-create { display: grid; gap: 9px; margin-bottom: 12px; }
+        .guestbook-photo-stage {
+            display: none; grid-template-columns: 82px 1fr; gap: 10px; align-items: center;
+            padding: 9px; border: 1px dashed rgba(197,160,89,0.55); border-radius: 12px;
+            background: rgba(255,255,255,0.4); contain: layout paint;
         }
+        .guestbook-photo-stage.visible { display: grid; }
+        .guestbook-photo-stage img {
+            display: block; width: 82px; height: 82px; object-fit: cover;
+            border: 5px solid rgba(255,255,255,0.88); border-bottom-width: 13px;
+            border-radius: 3px; box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .guestbook-photo-status { font-size: 0.72rem; line-height: 1.5; opacity: 0.78; }
+        .guestbook-details { display: grid; gap: 8px; }
+        .guestbook-details[hidden] { display: none; }
         .guestbook-create textarea {
             width: 100%; min-height: 68px; padding: 10px; resize: vertical;
             border: 1px solid var(--accent-gold); border-radius: 10px;
             background: var(--bg-color); color: var(--text-color);
             font: 500 0.8rem var(--font-body); line-height: 1.45;
         }
-        .guestbook-tools { display: flex; flex-direction: column; gap: 7px; }
+        .guestbook-tools { display: flex; flex-wrap: wrap; gap: 7px; }
         .guestbook-tools select { min-height: 36px; }
         .guestbook-entry {
             position: relative; overflow: hidden; margin-top: 12px; padding: 12px;
@@ -542,6 +553,13 @@
             border: 1px solid var(--accent-gold); background: var(--card-white);
             color: var(--accent-gold); cursor: pointer;
         }
+        .guestbook-edit {
+            position: absolute; top: 35px; right: 7px; z-index: 4;
+            min-width: 44px; height: 23px; padding: 0 7px; border-radius: 12px;
+            border: 1px solid var(--accent-gold); background: var(--card-white);
+            color: var(--accent-gold); cursor: pointer;
+            font: 700 0.58rem var(--font-body);
+        }
         .guestbook-deco {
             position: absolute; z-index: 1; color: var(--accent-gold);
             opacity: 0; pointer-events: none; font-size: 0.8rem;
@@ -559,9 +577,7 @@
         body.body-font-script .guestbook-story-text,
         body.body-font-script .guestbook-create textarea { font-size: 0.96rem; font-weight: 600; }
         @media (max-width: 480px) {
-            .guestbook-create { grid-template-columns: 1fr; }
-            .guestbook-tools { flex-direction: row; }
-            .guestbook-tools > * { flex: 1; }
+            .guestbook-tools > * { flex: 1 1 120px; }
             .guestbook-entry { grid-template-columns: 98px 1fr; gap: 10px; padding: 10px; }
         }
 
@@ -681,6 +697,9 @@
             font: 500 0.78rem var(--font-body); line-height: 1.4; cursor: pointer;
         }
         .notification-item:hover { background: var(--card-pink); border-radius: 9px; }
+        .notification-item.unread .notification-message { font-weight: 800; }
+        .notification-item.read { opacity: 0.68; }
+        .notification-item.read .notification-message { font-weight: 500; }
         .notification-arrow { color: var(--accent-gold); font-weight: 700; flex: 0 0 auto; }
 
         /* DRAG, ZOOM & CROP EDITOR */
@@ -696,7 +715,8 @@
                 var(--card-white);
             background-size: 18px 18px;
             background-position: 0 0, 0 9px, 9px -9px, -9px 0;
-            touch-action: none; cursor: grab;
+            touch-action: none; cursor: grab; contain: layout paint;
+            isolation: isolate; transform: translateZ(0); backface-visibility: hidden;
         }
         .crop-stage.cover-crop { aspect-ratio: 12 / 5; }
         .crop-stage.profile-crop { border-radius: 50%; }
@@ -704,7 +724,56 @@
         .crop-image {
             position: absolute; left: 50%; top: 50%; max-width: none;
             transform-origin: center; user-select: none; -webkit-user-drag: none;
-            pointer-events: none;
+            pointer-events: none; will-change: transform;
+            backface-visibility: hidden; transform-style: preserve-3d;
+        }
+        .poke-celebration {
+            position: fixed; inset: 0; z-index: 12000; overflow: hidden;
+            pointer-events: none; display: none;
+        }
+        .poke-celebration.active { display: block; }
+        .poke-confetti {
+            position: absolute; left: var(--start-x); bottom: -28px;
+            width: var(--size); height: calc(var(--size) * 0.48);
+            border-radius: 3px; background: var(--confetti-color);
+            opacity: 0;
+            animation: pokeConfettiBurst var(--duration) cubic-bezier(.12,.72,.25,1) var(--delay) forwards;
+            will-change: transform, opacity;
+        }
+        .poke-popper {
+            position: absolute; bottom: 18px; font-size: clamp(2.4rem, 10vw, 4.5rem);
+            filter: drop-shadow(0 7px 12px rgba(0,0,0,.18));
+            animation: pokePopperBounce .72s ease-out both;
+        }
+        .poke-popper.left { left: 4%; transform: rotate(-24deg); }
+        .poke-popper.right { right: 4%; transform: scaleX(-1) rotate(-24deg); }
+        .poke-celebration-label {
+            position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%);
+            padding: 10px 18px; border: 1px solid var(--accent-gold); border-radius: 999px;
+            background: rgba(255,255,255,.9); color: var(--accent-gold);
+            box-shadow: 0 12px 28px rgba(197,160,89,.25);
+            font: 800 0.86rem var(--font-body); letter-spacing: .08em;
+            animation: pokeLabelPop 1.35s ease-out both;
+        }
+        @keyframes pokeConfettiBurst {
+            0% { opacity: 0; transform: translate3d(0,0,0) rotate(0deg) scale(.5); }
+            12% { opacity: 1; }
+            76% { opacity: 1; }
+            100% { opacity: 0; transform: translate3d(var(--drift-x), var(--rise-y), 0) rotate(var(--spin)) scale(1); }
+        }
+        @keyframes pokePopperBounce {
+            0% { opacity: 0; translate: 0 30px; scale: .5; }
+            60% { opacity: 1; translate: 0 -5px; scale: 1.12; }
+            100% { opacity: 1; translate: 0 0; scale: 1; }
+        }
+        @keyframes pokeLabelPop {
+            0% { opacity: 0; transform: translate(-50%,-50%) scale(.72); }
+            22%, 72% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%,-56%) scale(.96); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .poke-confetti { animation-duration: .35s; }
+            .poke-popper, .poke-celebration-label { animation-duration: .4s; }
         }
         .crop-guide {
             position: absolute; inset: 0; pointer-events: none;
@@ -1420,6 +1489,7 @@
 
     <div class="bg-blob blob-1"></div>
     <div class="bg-blob blob-2"></div>
+    <div class="poke-celebration" id="pokeCelebration" aria-hidden="true"></div>
 
     <!-- AUDIO & YOUTUBE PLAYER -->
     <audio id="bgMusic" loop src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"></audio>
@@ -1627,15 +1697,25 @@
                     <div class="card-header-flex"><div class="card-title">✦ MEMORY GUESTBOOK</div></div>
                     <div class="guestbook-intro">One little photo story per friend, per day. Memories gently fade after 7 days. ✦</div>
                     <div class="guestbook-create">
-                        <textarea id="guestbookNoteInput" maxlength="220" placeholder="Write the tiny story behind your photo..." onclick="event.stopPropagation()"></textarea>
+                        <div class="guestbook-photo-stage" id="guestbookPhotoStage">
+                            <img id="guestbookPhotoPreview" alt="Guestbook photo preview">
+                            <div class="guestbook-photo-status" id="guestbookPhotoStatus">Photo ready ✦ Now add its little story below.</div>
+                        </div>
                         <div class="guestbook-tools">
+                            <button class="nav-btn" id="guestbookChoosePhotoBtn" style="padding:9px 11px;" onclick="startGuestbookEntry(event)">Choose Photo First ✦</button>
+                        </div>
+                        <div class="guestbook-details" id="guestbookDetails" hidden>
+                            <textarea id="guestbookNoteInput" maxlength="220" placeholder="Now write the tiny story behind your photo… (optional)" onclick="event.stopPropagation()"></textarea>
+                            <div class="guestbook-tools">
                             <select class="nav-btn" id="guestbookEffectSelect" onclick="event.stopPropagation()">
                                 <option value="stars">Stars ✦</option>
                                 <option value="hearts">Hearts ♡</option>
                                 <option value="sparkles">Sparkles ⋆</option>
                                 <option value="none">No Effect</option>
                             </select>
-                            <button class="nav-btn" style="padding:9px 11px;" onclick="startGuestbookEntry(event)">Add Photo ✦</button>
+                                <button class="nav-btn" id="guestbookSaveBtn" style="padding:9px 11px; background:var(--accent-gold); color:#fff;" onclick="saveGuestbookEntry(event)">Post Memory ✦</button>
+                                <button class="nav-btn" id="guestbookCancelBtn" style="padding:9px 11px;" onclick="resetGuestbookComposer(event)">Cancel</button>
+                            </div>
                         </div>
                     </div>
                     <div id="guestbookEntries"></div>
@@ -2115,8 +2195,13 @@
             minScale: 1, scale: 1, x: 0, y: 0,
             dragging: false, startX: 0, startY: 0, originX: 0, originY: 0
         };
-        let pendingGuestbookNote = '';
-        let pendingGuestbookEffect = 'stars';
+        let cropRenderFrame = 0;
+        let pendingGuestbookPhoto = '';
+        let pendingGuestbookTarget = '';
+        let editingGuestbookEntryKey = '';
+        let editingGuestbookEntry = null;
+        let freshGuestbookEntryKey = '';
+        const guestbookEntriesCache = {};
         let deferredInstallPrompt = null;
         let timelineDraftPhoto = '';
         let timelineDraftPolaroidColor = 'classic';
@@ -2653,16 +2738,16 @@
         function startGuestbookEntry(event) {
             if (event) event.stopPropagation();
             if (!currentUser) { alert("Please login to leave a memory!"); return; }
-            const note = document.getElementById('guestbookNoteInput').value.trim();
-            if (!note) { alert("Please write a small story for your Polaroid."); return; }
+            if (editingGuestbookEntryKey) {
+                document.getElementById('guestbookImageInput').click();
+                return;
+            }
             const entryKey = `${safeChatKey(currentUser)}_${getLocalDateKey()}`;
             db.ref(`memoryGuestbook/${viewingUser}/${entryKey}`).once('value', snap => {
                 if (snap.exists()) {
-                    alert("You already left one Memory Guestbook entry today. Come back tomorrow for another! ✦");
+                    alert("You already left one Memory Guestbook entry today. Use Edit on that memory if you want to change it. ✦");
                     return;
                 }
-                pendingGuestbookNote = note;
-                pendingGuestbookEffect = document.getElementById('guestbookEffectSelect').value;
                 document.getElementById('guestbookImageInput').click();
             });
         }
@@ -2673,10 +2758,111 @@
             event.target.value = '';
         }
 
+        function showGuestbookComposer(photoUrl, entry = null) {
+            pendingGuestbookPhoto = photoUrl || '';
+            pendingGuestbookTarget = viewingUser;
+            const stage = document.getElementById('guestbookPhotoStage');
+            const details = document.getElementById('guestbookDetails');
+            const preview = document.getElementById('guestbookPhotoPreview');
+            const status = document.getElementById('guestbookPhotoStatus');
+            if (!pendingGuestbookPhoto) {
+                stage.classList.remove('visible');
+                details.hidden = true;
+                return;
+            }
+            preview.src = pendingGuestbookPhoto;
+            stage.classList.add('visible');
+            details.hidden = false;
+            status.textContent = entry
+                ? 'Editing this Polaroid ✦ You can change the photo, story, or effect.'
+                : 'Photo ready ✦ Now add its little story below.';
+            document.getElementById('guestbookChoosePhotoBtn').textContent =
+                entry ? 'Change Photo ✦' : 'Choose Another Photo ✦';
+            document.getElementById('guestbookSaveBtn').textContent =
+                entry ? 'Save Changes ✦' : 'Post Memory ✦';
+            requestAnimationFrame(() => document.getElementById('guestbookNoteInput').focus({ preventScroll: true }));
+        }
+
+        function resetGuestbookComposer(event) {
+            if (event) event.stopPropagation();
+            pendingGuestbookPhoto = '';
+            pendingGuestbookTarget = '';
+            editingGuestbookEntryKey = '';
+            editingGuestbookEntry = null;
+            const preview = document.getElementById('guestbookPhotoPreview');
+            preview.removeAttribute('src');
+            document.getElementById('guestbookPhotoStage').classList.remove('visible');
+            document.getElementById('guestbookDetails').hidden = true;
+            document.getElementById('guestbookNoteInput').value = '';
+            document.getElementById('guestbookEffectSelect').value = 'stars';
+            document.getElementById('guestbookChoosePhotoBtn').textContent = 'Choose Photo First ✦';
+            document.getElementById('guestbookSaveBtn').textContent = 'Post Memory ✦';
+        }
+
+        function saveGuestbookEntry(event) {
+            if (event) event.stopPropagation();
+            if (!currentUser) { alert("Please login to leave a memory!"); return; }
+            if (!pendingGuestbookPhoto || pendingGuestbookTarget !== viewingUser) {
+                alert("Please choose and crop a photo first. ✦");
+                return;
+            }
+            const note = document.getElementById('guestbookNoteInput').value.trim();
+            const effect = document.getElementById('guestbookEffectSelect').value;
+            const entryKey = editingGuestbookEntryKey ||
+                `${safeChatKey(currentUser)}_${getLocalDateKey()}`;
+            const entryRef = db.ref(`memoryGuestbook/${viewingUser}/${entryKey}`);
+            entryRef.once('value', snap => {
+                const existing = snap.val();
+                if (!editingGuestbookEntryKey && snap.exists()) {
+                    alert("You already left one Memory Guestbook entry today. Use Edit on that memory instead. ✦");
+                    return;
+                }
+                if (editingGuestbookEntryKey && !existing) {
+                    alert("This guestbook memory is no longer available.");
+                    resetGuestbookComposer();
+                    return;
+                }
+                const now = Date.now();
+                const payload = {
+                    author: existing?.author || currentUser,
+                    imgUrl: pendingGuestbookPhoto,
+                    note,
+                    effect,
+                    timestamp: Number(existing?.timestamp || editingGuestbookEntry?.timestamp || now),
+                    expiresAt: Number(existing?.expiresAt || editingGuestbookEntry?.expiresAt || (now + GUESTBOOK_LIFETIME_MS))
+                };
+                const wasEditing = Boolean(editingGuestbookEntryKey);
+                entryRef.set(payload, error => {
+                    if (error) {
+                        alert("Boardly could not save this memory yet. Please try again.");
+                        return;
+                    }
+                    freshGuestbookEntryKey = wasEditing ? '' : entryKey;
+                    resetGuestbookComposer();
+                    if (!wasEditing) {
+                        sendNotification(viewingUser, `${currentUser} left a Polaroid story in your Memory Guestbook! ✦`, 'memory-guestbook');
+                    }
+                });
+            });
+        }
+
+        function editGuestbookEntry(entryKey, event) {
+            if (event) event.stopPropagation();
+            const entry = guestbookEntriesCache[entryKey];
+            if (!entry || (currentUser !== viewingUser && currentUser !== entry.author)) return;
+            editingGuestbookEntryKey = entryKey;
+            editingGuestbookEntry = { ...entry };
+            document.getElementById('guestbookNoteInput').value = entry.note || '';
+            document.getElementById('guestbookEffectSelect').value = entry.effect || 'stars';
+            showGuestbookComposer(entry.imgUrl, entry);
+            document.getElementById('card-memory-guestbook').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
         function loadGuestbook() {
             db.ref(`memoryGuestbook/${viewingUser}`).on('value', snap => {
                 const container = document.getElementById('guestbookEntries');
                 container.innerHTML = '';
+                Object.keys(guestbookEntriesCache).forEach(key => delete guestbookEntriesCache[key]);
                 const now = Date.now();
                 const entries = [];
                 if (snap.exists()) {
@@ -2688,6 +2874,7 @@
                             child.ref.remove().catch(() => {});
                             return;
                         }
+                        guestbookEntriesCache[child.key] = entry;
                         entries.push([child.key, entry]);
                     });
                 }
@@ -2733,7 +2920,7 @@
                         staticDeco.className = 'guestbook-static-deco';
                         staticDeco.textContent = `${effectChar} ${effectChar}`;
                         row.appendChild(staticDeco);
-                        if (index < 3) {
+                        if (key === freshGuestbookEntryKey && index < 3) {
                             for (let i = 0; i < 5; i++) {
                                 const deco = document.createElement('span');
                                 deco.className = 'guestbook-deco';
@@ -2747,6 +2934,12 @@
                     }
 
                     if (currentUser === viewingUser || currentUser === entry.author) {
+                        const editButton = document.createElement('button');
+                        editButton.className = 'guestbook-edit';
+                        editButton.type = 'button';
+                        editButton.title = 'Edit memory';
+                        editButton.textContent = 'Edit';
+                        editButton.onclick = event => editGuestbookEntry(key, event);
                         const deleteButton = document.createElement('button');
                         deleteButton.className = 'guestbook-delete';
                         deleteButton.type = 'button';
@@ -2756,15 +2949,17 @@
                             event.stopPropagation();
                             deleteGuestbookEntry(key);
                         };
-                        row.appendChild(deleteButton);
+                        row.append(editButton, deleteButton);
                     }
                     container.appendChild(row);
                 });
+                freshGuestbookEntryKey = '';
             });
         }
 
         function deleteGuestbookEntry(entryKey) {
             if (!entryKey || !confirm("Delete this Memory Guestbook entry?")) return;
+            if (editingGuestbookEntryKey === entryKey) resetGuestbookComposer();
             db.ref(`memoryGuestbook/${viewingUser}/${entryKey}`).remove();
         }
 
@@ -2911,7 +3106,47 @@
             if (!currentUser) { alert("Please login first!"); return; }
             if (currentUser === viewingUser) return;
             sendNotification(viewingUser, `${currentUser} sent you a cute poke! 🫶✨`, 'poke');
-            alert(`You poked @${viewingUser}! ✦`);
+            launchPokeCelebration(`POKED @${viewingUser} ✦`);
+        }
+
+        function launchPokeCelebration(label = 'CUTE POKE! ✦') {
+            const layer = document.getElementById('pokeCelebration');
+            if (!layer) return;
+            layer.replaceChildren();
+            layer.classList.add('active');
+            layer.setAttribute('aria-hidden', 'false');
+
+            const leftPopper = document.createElement('span');
+            leftPopper.className = 'poke-popper left';
+            leftPopper.textContent = '🎉';
+            const rightPopper = document.createElement('span');
+            rightPopper.className = 'poke-popper right';
+            rightPopper.textContent = '🎉';
+            const labelEl = document.createElement('div');
+            labelEl.className = 'poke-celebration-label';
+            labelEl.textContent = label;
+            layer.append(leftPopper, rightPopper, labelEl);
+
+            const colors = ['#f5b8cf', '#b9d9f5', '#d7c2f2', '#f6d37d', '#c5a059', '#f7b38c'];
+            for (let i = 0; i < 42; i++) {
+                const piece = document.createElement('i');
+                piece.className = 'poke-confetti';
+                const fromLeft = i % 2 === 0;
+                piece.style.setProperty('--start-x', fromLeft ? `${3 + Math.random() * 13}%` : `${84 + Math.random() * 13}%`);
+                piece.style.setProperty('--drift-x', `${(fromLeft ? 1 : -1) * (80 + Math.random() * 280)}px`);
+                piece.style.setProperty('--rise-y', `${-(window.innerHeight * (0.48 + Math.random() * 0.48))}px`);
+                piece.style.setProperty('--spin', `${(Math.random() > .5 ? 1 : -1) * (260 + Math.random() * 620)}deg`);
+                piece.style.setProperty('--delay', `${Math.random() * .18}s`);
+                piece.style.setProperty('--duration', `${1.05 + Math.random() * .65}s`);
+                piece.style.setProperty('--size', `${7 + Math.random() * 8}px`);
+                piece.style.setProperty('--confetti-color', colors[i % colors.length]);
+                layer.appendChild(piece);
+            }
+            setTimeout(() => {
+                layer.classList.remove('active');
+                layer.setAttribute('aria-hidden', 'true');
+                layer.replaceChildren();
+            }, 1900);
         }
 
         function messageProfile() {
@@ -3432,6 +3667,8 @@
                 document.getElementById('cropModal').style.display = 'flex';
                 requestAnimationFrame(() => {
                     const rect = stage.getBoundingClientRect();
+                    image.style.width = `${image.naturalWidth}px`;
+                    image.style.height = `${image.naturalHeight}px`;
                     cropState.minScale = Math.max(
                         rect.width / image.naturalWidth,
                         rect.height / image.naturalHeight
@@ -3463,13 +3700,21 @@
         function renderCropPosition() {
             if (!cropState.image) return;
             clampCropPosition();
-            cropState.image.style.width = `${cropState.image.naturalWidth}px`;
-            cropState.image.style.height = `${cropState.image.naturalHeight}px`;
             cropState.image.style.transform =
-                `translate(calc(-50% + ${cropState.x}px), calc(-50% + ${cropState.y}px)) scale(${cropState.scale})`;
+                `translate3d(calc(-50% + ${cropState.x}px), calc(-50% + ${cropState.y}px), 0) scale(${cropState.scale})`;
+        }
+
+        function scheduleCropRender() {
+            if (cropRenderFrame) return;
+            cropRenderFrame = requestAnimationFrame(() => {
+                cropRenderFrame = 0;
+                renderCropPosition();
+            });
         }
 
         function closeCropModal() {
+            if (cropRenderFrame) cancelAnimationFrame(cropRenderFrame);
+            cropRenderFrame = 0;
             document.getElementById('cropModal').style.display = 'none';
             if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
             cropState.objectUrl = null;
@@ -3522,25 +3767,7 @@
                 saveMediaToIDB(`timelineProfile_${viewingUser}`, updatedProfile);
                 db.ref('boards/' + viewingUser).update({ avatarImg: croppedDataUrl });
             } else if (target === 'guestbook') {
-                const entryKey = `${safeChatKey(currentUser)}_${getLocalDateKey()}`;
-                const entryRef = db.ref(`memoryGuestbook/${viewingUser}/${entryKey}`);
-                entryRef.once('value', snap => {
-                    if (snap.exists()) {
-                        alert("You already left one Memory Guestbook entry today. ✦");
-                        return;
-                    }
-                    entryRef.set({
-                        author: currentUser,
-                        imgUrl: croppedDataUrl,
-                        note: pendingGuestbookNote,
-                        effect: pendingGuestbookEffect,
-                        timestamp: Date.now(),
-                        expiresAt: Date.now() + GUESTBOOK_LIFETIME_MS
-                    }, () => {
-                        document.getElementById('guestbookNoteInput').value = '';
-                        sendNotification(viewingUser, `${currentUser} left a Polaroid story in your Memory Guestbook! ✦`, 'memory-guestbook');
-                    });
-                });
+                showGuestbookComposer(croppedDataUrl, editingGuestbookEntry);
             } else {
                 const caption = prompt("Enter a short caption for this photo:", "Memories ✨") || "";
                 db.ref(`gallery/${viewingUser}`).once('value', snap => {
@@ -3573,7 +3800,7 @@
                 if (!cropState.dragging) return;
                 cropState.x = cropState.originX + event.clientX - cropState.startX;
                 cropState.y = cropState.originY + event.clientY - cropState.startY;
-                renderCropPosition();
+                scheduleCropRender();
             });
             const endDrag = event => {
                 if (!cropState.dragging) return;
@@ -3585,7 +3812,7 @@
             stage.addEventListener('pointercancel', endDrag);
             zoom.addEventListener('input', () => {
                 cropState.scale = cropState.minScale * Number(zoom.value);
-                renderCropPosition();
+                scheduleCropRender();
             });
         }
 
@@ -3712,14 +3939,6 @@
         /* NOTIFICATIONS & VISITORS */
         function openNotifModal() {
             document.getElementById('notifModal').style.display = 'flex';
-            if (!currentUser) return;
-            db.ref(`notifications/${currentUser}`).once('value', snap => {
-                const updates = {};
-                snap.forEach(child => {
-                    if (child.val()?.read !== true) updates[`${child.key}/read`] = true;
-                });
-                if (Object.keys(updates).length) db.ref(`notifications/${currentUser}`).update(updates);
-            });
         }
         function closeNotifModal() { document.getElementById('notifModal').style.display = 'none'; }
 
@@ -3745,7 +3964,7 @@
 
         function openNotificationDestination(notificationKey, notification) {
             if (!currentUser || !notification) return;
-            db.ref(`notifications/${currentUser}/${notificationKey}`).remove();
+            db.ref(`notifications/${currentUser}/${notificationKey}`).update({ read: true });
             closeNotifModal();
             const type = notification.type || '';
 
@@ -3767,7 +3986,12 @@
                 openTimelineNotificationActivity(notification, 'comments');
                 return;
             }
-            if (['visit', 'like', 'follow', 'poke'].includes(type) && notification.from) {
+            if (type === 'poke' && notification.from) {
+                launchPokeCelebration(`@${notification.from} POKED YOU! ✦`);
+                setTimeout(() => navigateToUser(notification.from), 950);
+                return;
+            }
+            if (['visit', 'like', 'follow'].includes(type) && notification.from) {
                 navigateToUser(notification.from);
                 return;
             }
@@ -3793,10 +4017,10 @@
                     Object.keys(notifications).reverse().forEach(k => {
                         const notification = notifications[k];
                         const item = document.createElement('button');
-                        item.className = 'notification-item';
-                        if (notification.read === true) item.style.opacity = '0.68';
+                        item.className = `notification-item ${notification.read === true ? 'read' : 'unread'}`;
                         item.type = 'button';
                         const message = document.createElement('span');
+                        message.className = 'notification-message';
                         message.textContent = `✦ ${notification.message}`;
                         const arrow = document.createElement('span');
                         arrow.className = 'notification-arrow';
