@@ -755,6 +755,168 @@
             line-height: 1.3;
         }
 
+        /* BOARDLY HOME TIMELINE */
+        html.timeline-open, body.timeline-open {
+            width: 100%; height: 100%; overflow: hidden !important;
+            overscroll-behavior: none;
+        }
+        body.timeline-open .modal-overlay { z-index: 6000; }
+        .timeline-page {
+            position: fixed; inset: 0; z-index: 4500; display: none;
+            width: 100vw; height: 100dvh; min-height: 100svh;
+            overflow-y: auto; overscroll-behavior: contain;
+            background: var(--bg-color); color: var(--text-color);
+            background-image: radial-gradient(rgba(200, 200, 180, 0.2) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+        .timeline-topbar {
+            position: sticky; top: 0; z-index: 10; min-height: 66px;
+            padding: 10px 15px; display: flex; align-items: center; gap: 10px;
+            background: color-mix(in srgb, var(--bg-color) 90%, transparent);
+            border-bottom: 1px solid rgba(197,160,89,0.32);
+            -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+        }
+        .timeline-brand {
+            flex: 1; text-align: center; color: var(--brand-gold);
+            font: 700 1.34rem 'Cinzel', serif; letter-spacing: 0.12em;
+        }
+        .timeline-shell {
+            width: min(100%, 680px); margin: 0 auto; padding: 15px 12px 90px;
+        }
+        .timeline-welcome {
+            margin: 3px 2px 13px; color: var(--accent-gold);
+            font: 700 1.5rem 'Caveat', cursive; text-align: center;
+        }
+        .drop-composer, .timeline-post {
+            position: relative; padding: 15px; margin-bottom: 14px;
+            border-radius: 16px; background: var(--card-white);
+            border: 1px solid rgba(197,160,89,0.36);
+            box-shadow: var(--shadow-soft);
+        }
+        .drop-composer::before, .timeline-post::before {
+            content: ""; position: absolute; width: 68px; height: 14px;
+            top: -7px; left: 50%; transform: translateX(-50%);
+            background: var(--tape-color); opacity: 0.72;
+        }
+        .composer-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .timeline-avatar {
+            width: 42px; height: 42px; flex: 0 0 auto; border-radius: 50%;
+            object-fit: cover; border: 1px solid var(--accent-gold);
+            background: var(--card-pink);
+        }
+        .composer-title { font-weight: 700; font-size: 0.88rem; }
+        .composer-sub { margin-top: 2px; font-size: 0.67rem; opacity: 0.65; }
+        .drop-composer textarea {
+            width: 100%; min-height: 78px; resize: vertical; padding: 11px 12px;
+            border: 1px solid rgba(197,160,89,0.48); border-radius: 12px;
+            background: var(--bg-color); color: var(--text-color);
+            font: 500 0.84rem var(--font-body); line-height: 1.5;
+        }
+        .timeline-photo-preview-wrap {
+            position: relative; display: none; margin-top: 10px;
+            border-radius: 12px; overflow: hidden; background: var(--card-pink);
+        }
+        .timeline-photo-preview { display: block; width: 100%; max-height: 420px; object-fit: contain; }
+        .timeline-photo-remove {
+            position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+            border-radius: 50%; border: 1px solid var(--accent-gold);
+            background: var(--card-white); color: var(--accent-gold); cursor: pointer;
+        }
+        .board-update-preview {
+            display: none; margin-top: 10px; padding: 12px;
+            border-left: 3px solid var(--accent-gold); border-radius: 10px;
+            background: var(--card-pink);
+        }
+        .board-update-preview strong { display: block; color: var(--accent-gold); margin-bottom: 4px; }
+        .composer-actions {
+            display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-top: 10px;
+        }
+        .composer-actions select { margin-left: auto; }
+        .timeline-filter {
+            display: flex; gap: 8px; margin: 4px 0 14px; padding: 5px;
+            border-radius: 24px; background: var(--card-white);
+            border: 1px solid rgba(197,160,89,0.28);
+        }
+        .timeline-filter button {
+            flex: 1; padding: 8px 10px; border: 0; border-radius: 18px;
+            background: transparent; color: var(--text-color); cursor: pointer;
+            font: 700 0.74rem var(--font-body);
+        }
+        .timeline-filter button.active { background: var(--accent-gold); color: #fff; }
+        .timeline-post-head { display: flex; align-items: center; gap: 10px; }
+        .timeline-post-person { flex: 1; min-width: 0; }
+        .timeline-post-name { font-weight: 700; font-size: 0.84rem; }
+        .timeline-post-meta { margin-top: 2px; font-size: 0.63rem; opacity: 0.62; }
+        .timeline-post-menu {
+            border: 0; background: transparent; color: var(--accent-gold);
+            font-size: 1.1rem; cursor: pointer;
+        }
+        .timeline-post-type {
+            display: inline-block; margin: 11px 0 5px; color: var(--accent-gold);
+            font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em;
+        }
+        .timeline-post-text {
+            margin-top: 7px; font-size: 0.86rem; line-height: 1.55;
+            white-space: pre-wrap; word-break: break-word;
+        }
+        .timeline-post-image {
+            display: block; width: 100%; max-height: 620px; margin-top: 11px;
+            object-fit: contain; border-radius: 12px; background: var(--card-pink);
+        }
+        .timeline-board-card {
+            margin-top: 10px; padding: 13px; border-radius: 12px;
+            background: var(--card-pink); border: 1px dashed rgba(197,160,89,0.5);
+        }
+        .timeline-board-card h3 {
+            color: var(--accent-gold); font: 700 1.2rem 'Caveat', cursive;
+        }
+        .timeline-board-card p { margin-top: 4px; font-size: 0.75rem; line-height: 1.45; opacity: 0.8; }
+        .timeline-counts {
+            min-height: 25px; padding: 8px 2px 5px; display: flex;
+            justify-content: space-between; font-size: 0.66rem; opacity: 0.7;
+        }
+        .timeline-post-actions {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+            padding-top: 8px; border-top: 1px solid rgba(197,160,89,0.22);
+        }
+        .timeline-action {
+            padding: 8px 5px; border: 0; border-radius: 10px;
+            background: transparent; color: var(--text-color);
+            font: 700 0.7rem var(--font-body); cursor: pointer;
+        }
+        .timeline-action:hover, .timeline-action.liked { background: var(--card-pink); color: var(--accent-gold); }
+        .timeline-comments {
+            display: none; margin-top: 10px; padding-top: 9px;
+            border-top: 1px dashed rgba(197,160,89,0.28);
+        }
+        .timeline-comment {
+            display: flex; gap: 7px; align-items: flex-start; margin-bottom: 7px;
+            padding: 8px 9px; border-radius: 10px; background: var(--bg-color);
+            font-size: 0.72rem; line-height: 1.4;
+        }
+        .timeline-comment-body { flex: 1; min-width: 0; word-break: break-word; }
+        .timeline-comment-delete {
+            border: 0; background: transparent; color: var(--accent-gold); cursor: pointer;
+        }
+        .timeline-comment-compose { display: flex; gap: 6px; margin-top: 8px; }
+        .timeline-comment-compose input {
+            min-width: 0; flex: 1; padding: 9px 10px; border-radius: 18px;
+            border: 1px solid var(--accent-gold); background: var(--bg-color); color: var(--text-color);
+        }
+        .timeline-empty {
+            padding: 40px 22px; text-align: center; border-radius: 16px;
+            background: var(--card-white); border: 1px solid rgba(197,160,89,0.3);
+            color: var(--accent-gold); line-height: 1.6;
+        }
+        .timeline-load-more { width: 100%; justify-content: center; padding: 10px; margin-top: 4px; }
+        @media (max-width: 480px) {
+            .timeline-topbar { padding-inline: 10px; }
+            .timeline-brand { font-size: 1.18rem; }
+            .timeline-shell { padding-inline: 9px; }
+            .drop-composer, .timeline-post { padding: 13px; }
+            .composer-actions select { order: 3; width: 100%; margin-left: 0; }
+        }
+
         /* MULTILINE LIST EDIT TEXTAREA */
         .list-edit-textarea {
             width: 100%; height: 140px; padding: 12px; border: 1px solid var(--accent-gold);
@@ -858,11 +1020,12 @@
     <input type="file" id="avatarImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleAvatarUpload(event)">
     <input type="file" id="galleryImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleGalleryUpload(event)">
     <input type="file" id="guestbookImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleGuestbookUpload(event)">
+    <input type="file" id="timelinePhotoInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleTimelinePhoto(event)">
 
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
-        <div class="nav-logo" onclick="goHome()">BOARDLY</div>
-        <button class="home-nav-btn" id="homeNavBtn" onclick="goHome()">✦ HOME</button>
+        <div class="nav-logo" onclick="openTimelinePage()">BOARDLY</div>
+        <button class="home-nav-btn" id="homeNavBtn" onclick="openTimelinePage()">✦ FEED</button>
 
         <!-- SEARCH ENGINE BAR -->
         <div class="nav-search">
@@ -929,6 +1092,7 @@
                 <div class="social-chip"><span id="followersCount">0</span> Followers</div>
                 <div class="social-chip owner-only" onclick="openVisitorsModal()">👀 Visitors</div>
                 <div class="social-chip owner-only" onclick="openEditProfileModal()">✦ Edit Profile</div>
+                <div class="social-chip owner-only" onclick="shareBoardUpdate()">✦ Share Update</div>
                 <div class="social-chip" id="pokeBtn" onclick="pokeProfile()">🫶 Poke ✦</div>
             </div>
         </div>
@@ -1293,6 +1457,56 @@
         </div>
     </div>
 
+    <!-- BOARDLY HOME TIMELINE -->
+    <section class="timeline-page" id="timelinePage" aria-label="Boardly timeline">
+        <div class="timeline-topbar">
+            <button class="nav-btn" onclick="goMyBoard()">✦ MY BOARD</button>
+            <div class="timeline-brand">BOARDLY</div>
+            <button class="nav-btn" onclick="openNotifModal()">🔔 <span id="timelineNotifBadge">0</span></button>
+        </div>
+        <div class="timeline-shell">
+            <div class="timeline-welcome">little updates from your circle ✦</div>
+
+            <div class="drop-composer">
+                <div class="composer-head">
+                    <img class="timeline-avatar" id="timelineComposerAvatar" alt="Your profile photo">
+                    <div>
+                        <div class="composer-title" id="timelineComposerName">Create a Board Drop</div>
+                        <div class="composer-sub">A thought, a photo, or something new on your board.</div>
+                    </div>
+                </div>
+                <textarea id="timelinePostText" maxlength="500" placeholder="Drop something on your timeline..."></textarea>
+                <div class="timeline-photo-preview-wrap" id="timelinePhotoPreviewWrap">
+                    <img class="timeline-photo-preview" id="timelinePhotoPreview" alt="Selected post photo">
+                    <button class="timeline-photo-remove" onclick="clearTimelinePhoto()" aria-label="Remove selected photo">×</button>
+                </div>
+                <div class="board-update-preview" id="timelineBoardPreview">
+                    <strong>✦ BOARD UPDATE</strong>
+                    <span id="timelineBoardPreviewText"></span>
+                </div>
+                <div class="composer-actions">
+                    <button class="nav-btn" onclick="document.getElementById('timelinePhotoInput').click()">✦ Add Photo</button>
+                    <button class="nav-btn" id="timelineBoardToggle" onclick="toggleBoardUpdateDraft()">✦ Board Update</button>
+                    <select class="nav-btn" id="timelinePrivacy" aria-label="Post privacy">
+                        <option value="public">Public</option>
+                        <option value="followers">Followers only</option>
+                        <option value="private">Only me</option>
+                    </select>
+                    <button class="nav-btn" id="timelinePostButton" style="background:var(--accent-gold); color:#fff;" onclick="createTimelinePost()">Post Drop ✦</button>
+                </div>
+            </div>
+
+            <div class="timeline-filter">
+                <button class="active" id="timelineFollowingTab" onclick="setTimelineFilter('following')">FOLLOWING</button>
+                <button id="timelineMyTab" onclick="setTimelineFilter('mine')">MY DROPS</button>
+            </div>
+            <div id="timelinePosts">
+                <div class="timeline-empty">Gathering your friends’ Board Drops… ✦</div>
+            </div>
+            <button class="nav-btn timeline-load-more" id="timelineLoadMore" style="display:none;" onclick="showMoreTimelinePosts()">Load More ✦</button>
+        </div>
+    </section>
+
     <!-- PRIVATE CHAT: OWN PAGE -->
     <div class="pwa-install-card" id="pwaInstallCard">
         <div class="pwa-install-mark">B</div>
@@ -1381,6 +1595,13 @@
         let pendingGuestbookNote = '';
         let pendingGuestbookEffect = 'stars';
         let deferredInstallPrompt = null;
+        let timelineDraftPhoto = '';
+        let timelineDraftIsBoardUpdate = false;
+        let timelineFilter = 'following';
+        let timelineAllPosts = [];
+        let timelineVisibleCount = 12;
+        let timelineLoadSequence = 0;
+        const timelineProfileCache = {};
 
         /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
@@ -1556,7 +1777,15 @@
             document.getElementById('authGate').style.display = 'none';
             document.getElementById('logoutBtn').style.display = 'flex';
             setupRealtimeChatAccount();
-            if (viewingUser !== u) { navigateToUser(u); } else { initProfile(); }
+            const requestedProfile = new URLSearchParams(window.location.search).get('user');
+            if (viewingUser !== u && !requestedProfile) {
+                viewingUser = u;
+                initProfile();
+                openTimelinePage(false);
+            } else {
+                initProfile();
+                if (!requestedProfile || location.hash === '#timeline') openTimelinePage(false);
+            }
         }
 
         async function logout() {
@@ -1565,7 +1794,20 @@
             await auth.signOut();
             window.location.href = window.location.pathname;
         }
-        function goHome() { if (currentUser) navigateToUser(currentUser); else document.getElementById('authGate').style.display = 'flex'; }
+        function goHome() { openTimelinePage(); }
+        function goMyBoard() {
+            if (!currentUser) {
+                document.getElementById('authGate').style.display = 'flex';
+                return;
+            }
+            closeTimelinePage();
+            if (viewingUser === currentUser) {
+                history.replaceState(null, '', `?user=${encodeURIComponent(currentUser)}`);
+                window.scrollTo(0, 0);
+            } else {
+                navigateToUser(currentUser);
+            }
+        }
 
         function navigateToUser(u) {
             const loader = document.getElementById('pageLoader');
@@ -2648,15 +2890,18 @@
             db.ref(`notifications/${currentUser}`).on('value', snap => {
                 const list = document.getElementById('notifList');
                 const badge = document.getElementById('notifBadge');
+                const timelineBadge = document.getElementById('timelineNotifBadge');
                 list.innerHTML = '';
                 if (snap.exists()) {
                     badge.innerText = snap.numChildren();
+                    if (timelineBadge) timelineBadge.innerText = snap.numChildren();
                     Object.keys(snap.val()).reverse().forEach(k => {
                         const n = snap.val()[k];
                         list.innerHTML += `<div style="padding:6px 0; border-bottom:1px solid rgba(0,0,0,0.05); font-size:0.8rem;">✦ ${n.message}</div>`;
                     });
                 } else {
                     badge.innerText = '0';
+                    if (timelineBadge) timelineBadge.innerText = '0';
                     list.innerHTML = '<div style="font-size:0.8rem; opacity:0.6;">No notifications yet.</div>';
                 }
             });
@@ -3190,6 +3435,478 @@
             stopChatTyping();
         }
 
+        /* BOARDLY HOME TIMELINE & BOARD DROPS */
+        function openTimelinePage(updateHash = true) {
+            if (!currentUser) {
+                document.getElementById('authGate').style.display = 'flex';
+                return;
+            }
+            if (document.getElementById('chatPage').style.display === 'flex') closeChatPage();
+            document.documentElement.classList.add('timeline-open');
+            document.body.classList.add('timeline-open');
+            document.getElementById('timelinePage').style.display = 'block';
+            if (updateHash && location.hash !== '#timeline') history.pushState(null, '', '#timeline');
+            prepareTimelineComposer();
+            loadTimelineFeed();
+        }
+
+        function closeTimelinePage() {
+            document.getElementById('timelinePage').style.display = 'none';
+            document.documentElement.classList.remove('timeline-open');
+            document.body.classList.remove('timeline-open');
+            if (location.hash === '#timeline') {
+                history.replaceState(null, '', location.pathname + location.search);
+            }
+        }
+
+        async function prepareTimelineComposer() {
+            if (!currentUser) return;
+            const profile = await getTimelineAuthorProfile(currentUser);
+            document.getElementById('timelineComposerAvatar').src = profile.avatarImg;
+            document.getElementById('timelineComposerName').textContent =
+                `Create a Board Drop, ${profile.displayName || '@' + currentUser}`;
+        }
+
+        async function getTimelineAuthorProfile(username) {
+            if (timelineProfileCache[username]) return timelineProfileCache[username];
+            const [boardSnap, userSnap] = await Promise.all([
+                db.ref(`boards/${username}`).once('value'),
+                db.ref(`users/${username}`).once('value')
+            ]);
+            const board = boardSnap.val() || {};
+            const user = userSnap.val() || {};
+            const profile = {
+                displayName: board.displayName || username,
+                handle: user.publicHandle || board.profileHandle || username,
+                avatarImg: board.avatarImg || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80'
+            };
+            timelineProfileCache[username] = profile;
+            return profile;
+        }
+
+        function handleTimelinePhoto(event) {
+            const file = event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                alert('Please use a JPG, PNG, or WebP photo.');
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Please choose a photo smaller than 10 MB.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = loadEvent => {
+                const image = new Image();
+                image.onload = () => {
+                    const maxSide = 1200;
+                    const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+                    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+                    timelineDraftPhoto = canvas.toDataURL('image/jpeg', 0.82);
+                    document.getElementById('timelinePhotoPreview').src = timelineDraftPhoto;
+                    document.getElementById('timelinePhotoPreviewWrap').style.display = 'block';
+                };
+                image.onerror = () => alert('This photo could not be opened.');
+                image.src = loadEvent.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearTimelinePhoto() {
+            timelineDraftPhoto = '';
+            document.getElementById('timelinePhotoPreview').removeAttribute('src');
+            document.getElementById('timelinePhotoPreviewWrap').style.display = 'none';
+        }
+
+        function getCurrentBoardUpdatePreview() {
+            const title = document.getElementById('mainTitleText')?.innerText.trim() || 'My Board';
+            const quote = document.getElementById('mainQuoteText')?.innerText.trim() || '';
+            return { title, quote };
+        }
+
+        function toggleBoardUpdateDraft(forceState) {
+            timelineDraftIsBoardUpdate = typeof forceState === 'boolean' ? forceState : !timelineDraftIsBoardUpdate;
+            const preview = document.getElementById('timelineBoardPreview');
+            const button = document.getElementById('timelineBoardToggle');
+            if (timelineDraftIsBoardUpdate) {
+                const board = getCurrentBoardUpdatePreview();
+                document.getElementById('timelineBoardPreviewText').textContent =
+                    `${board.title}${board.quote ? ' — ' + board.quote : ''}`;
+                preview.style.display = 'block';
+                button.style.background = 'var(--card-pink)';
+                button.style.color = 'var(--accent-gold)';
+            } else {
+                preview.style.display = 'none';
+                button.style.background = '';
+                button.style.color = '';
+            }
+        }
+
+        function shareBoardUpdate() {
+            openTimelinePage();
+            toggleBoardUpdateDraft(true);
+            document.getElementById('timelinePostText').focus();
+        }
+
+        async function createTimelinePost() {
+            if (!currentUser || !auth.currentUser) return;
+            const textInput = document.getElementById('timelinePostText');
+            const text = textInput.value.trim();
+            if (!text && !timelineDraftPhoto && !timelineDraftIsBoardUpdate) {
+                alert('Write something, add a photo, or choose Board Update first.');
+                return;
+            }
+            const privacy = document.getElementById('timelinePrivacy').value;
+            const postRef = db.ref(`timelinePosts/${currentUser}/${privacy}`).push();
+            const board = timelineDraftIsBoardUpdate ? getCurrentBoardUpdatePreview() : null;
+            const post = {
+                author: currentUser,
+                authorUid: auth.currentUser.uid,
+                text,
+                imageUrl: timelineDraftPhoto || '',
+                type: timelineDraftIsBoardUpdate ? 'board-update' : 'quick-drop',
+                boardTitle: board?.title || '',
+                boardQuote: board?.quote || '',
+                privacy,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+            const button = document.getElementById('timelinePostButton');
+            button.disabled = true;
+            button.textContent = 'Posting...';
+            try {
+                await postRef.set(post);
+                textInput.value = '';
+                clearTimelinePhoto();
+                toggleBoardUpdateDraft(false);
+                document.getElementById('timelinePrivacy').value = 'public';
+                timelineVisibleCount = 12;
+                await loadTimelineFeed();
+            } catch (error) {
+                alert(`Board Drop could not be posted: ${error.message || error}`);
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Post Drop ✦';
+            }
+        }
+
+        function setTimelineFilter(filter) {
+            timelineFilter = filter;
+            timelineVisibleCount = 12;
+            document.getElementById('timelineFollowingTab').classList.toggle('active', filter === 'following');
+            document.getElementById('timelineMyTab').classList.toggle('active', filter === 'mine');
+            loadTimelineFeed();
+        }
+
+        async function getFollowedTimelineAuthors() {
+            if (timelineFilter === 'mine') return [currentUser];
+            const usersSnap = await db.ref('users').once('value');
+            const usernames = usersSnap.exists() ? Object.keys(usersSnap.val()) : [];
+            const checks = await Promise.all(usernames.map(async username => {
+                if (username === currentUser) return username;
+                const followed = await db.ref(`followers/${username}/${currentUser}`).once('value');
+                return followed.exists() ? username : null;
+            }));
+            return checks.filter(Boolean);
+        }
+
+        async function readTimelineBucket(author, privacy) {
+            try {
+                const snap = await db.ref(`timelinePosts/${author}/${privacy}`).limitToLast(30).once('value');
+                const posts = [];
+                snap.forEach(child => posts.push({
+                    ...child.val(),
+                    postId: child.key,
+                    storageAuthor: author,
+                    storagePrivacy: privacy
+                }));
+                return posts;
+            } catch (error) {
+                return [];
+            }
+        }
+
+        async function loadTimelineFeed() {
+            if (!currentUser) return;
+            const sequence = ++timelineLoadSequence;
+            const container = document.getElementById('timelinePosts');
+            container.innerHTML = '<div class="timeline-empty">Gathering Board Drops… ✦</div>';
+            const authors = await getFollowedTimelineAuthors();
+            const postGroups = await Promise.all(authors.flatMap(author => {
+                const buckets = [readTimelineBucket(author, 'public')];
+                if (author === currentUser || timelineFilter === 'following') {
+                    buckets.push(readTimelineBucket(author, 'followers'));
+                }
+                if (author === currentUser) buckets.push(readTimelineBucket(author, 'private'));
+                return buckets;
+            }));
+            if (sequence !== timelineLoadSequence) return;
+            timelineAllPosts = postGroups.flat()
+                .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
+            renderTimelinePosts();
+        }
+
+        function formatTimelineTime(timestamp) {
+            const value = Number(timestamp || 0);
+            if (!value) return 'Just now';
+            const seconds = Math.max(1, Math.floor((Date.now() - value) / 1000));
+            if (seconds < 60) return `${seconds}s`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+            if (seconds < 604800) return `${Math.floor(seconds / 86400)}d`;
+            return new Date(value).toLocaleDateString();
+        }
+
+        async function renderTimelinePosts() {
+            const container = document.getElementById('timelinePosts');
+            container.innerHTML = '';
+            const visiblePosts = timelineAllPosts.slice(0, timelineVisibleCount);
+            if (!visiblePosts.length) {
+                container.innerHTML = timelineFilter === 'mine'
+                    ? '<div class="timeline-empty">Your timeline is ready for its first Board Drop. ✦</div>'
+                    : '<div class="timeline-empty">Your circle is still quiet.<br>Follow friends or create the first Board Drop. ✦</div>';
+                document.getElementById('timelineLoadMore').style.display = 'none';
+                return;
+            }
+            for (const post of visiblePosts) {
+                const postElement = await buildTimelinePostElement(post);
+                container.appendChild(postElement);
+                refreshTimelineLikeState(post);
+                refreshTimelineCommentCount(post);
+            }
+            document.getElementById('timelineLoadMore').style.display =
+                timelineAllPosts.length > timelineVisibleCount ? 'flex' : 'none';
+        }
+
+        function showMoreTimelinePosts() {
+            timelineVisibleCount += 10;
+            renderTimelinePosts();
+        }
+
+        async function buildTimelinePostElement(post) {
+            const profile = await getTimelineAuthorProfile(post.author);
+            const article = document.createElement('article');
+            article.className = 'timeline-post';
+            article.dataset.postId = post.postId;
+
+            const head = document.createElement('div');
+            head.className = 'timeline-post-head';
+            const avatar = document.createElement('img');
+            avatar.className = 'timeline-avatar';
+            avatar.src = profile.avatarImg;
+            avatar.alt = `@${profile.handle}`;
+            avatar.onclick = () => navigateToUser(post.author);
+            const person = document.createElement('div');
+            person.className = 'timeline-post-person';
+            const name = document.createElement('div');
+            name.className = 'timeline-post-name';
+            name.textContent = `${profile.displayName} · @${profile.handle}`;
+            name.onclick = () => navigateToUser(post.author);
+            const meta = document.createElement('div');
+            meta.className = 'timeline-post-meta';
+            const privacyLabels = { public: 'Public', followers: 'Followers only', private: 'Only me' };
+            meta.textContent = `${formatTimelineTime(post.timestamp)} · ${privacyLabels[post.privacy] || 'Public'}`;
+            person.append(name, meta);
+            head.append(avatar, person);
+            if (post.author === currentUser) {
+                const menu = document.createElement('button');
+                menu.className = 'timeline-post-menu';
+                menu.type = 'button';
+                menu.title = 'Delete Board Drop';
+                menu.textContent = '×';
+                menu.onclick = () => deleteTimelinePost(post);
+                head.appendChild(menu);
+            }
+            article.appendChild(head);
+
+            const type = document.createElement('div');
+            type.className = 'timeline-post-type';
+            type.textContent = post.type === 'board-update' ? '✦ BOARD UPDATE' : '✦ BOARD DROP';
+            article.appendChild(type);
+            if (post.text) {
+                const text = document.createElement('div');
+                text.className = 'timeline-post-text';
+                text.textContent = post.text;
+                article.appendChild(text);
+            }
+            if (post.imageUrl) {
+                const image = document.createElement('img');
+                image.className = 'timeline-post-image';
+                image.src = post.imageUrl;
+                image.alt = `Photo shared by @${profile.handle}`;
+                article.appendChild(image);
+            }
+            if (post.type === 'board-update') {
+                const boardCard = document.createElement('div');
+                boardCard.className = 'timeline-board-card';
+                const title = document.createElement('h3');
+                title.textContent = post.boardTitle || `${profile.displayName}'s board`;
+                const quote = document.createElement('p');
+                quote.textContent = post.boardQuote || 'A fresh little update is waiting on this board.';
+                boardCard.append(title, quote);
+                boardCard.onclick = () => navigateToUser(post.author);
+                article.appendChild(boardCard);
+            }
+
+            const counts = document.createElement('div');
+            counts.className = 'timeline-counts';
+            const likeCount = document.createElement('span');
+            likeCount.id = `timeline-like-count-${post.postId}`;
+            const commentCount = document.createElement('span');
+            commentCount.id = `timeline-comment-count-${post.postId}`;
+            counts.append(likeCount, commentCount);
+            article.appendChild(counts);
+
+            const actions = document.createElement('div');
+            actions.className = 'timeline-post-actions';
+            const likeButton = document.createElement('button');
+            likeButton.className = 'timeline-action';
+            likeButton.id = `timeline-like-btn-${post.postId}`;
+            likeButton.textContent = '♡ Like';
+            likeButton.onclick = () => toggleTimelineLike(post);
+            const commentButton = document.createElement('button');
+            commentButton.className = 'timeline-action';
+            commentButton.textContent = '✦ Comment';
+            commentButton.onclick = () => toggleTimelineComments(post);
+            const visitButton = document.createElement('button');
+            visitButton.className = 'timeline-action';
+            visitButton.textContent = 'Visit Board';
+            visitButton.onclick = () => navigateToUser(post.author);
+            actions.append(likeButton, commentButton, visitButton);
+            article.appendChild(actions);
+
+            const comments = document.createElement('div');
+            comments.className = 'timeline-comments';
+            comments.id = `timeline-comments-${post.postId}`;
+            const list = document.createElement('div');
+            list.id = `timeline-comment-list-${post.postId}`;
+            const compose = document.createElement('div');
+            compose.className = 'timeline-comment-compose';
+            const input = document.createElement('input');
+            input.id = `timeline-comment-input-${post.postId}`;
+            input.maxLength = 300;
+            input.placeholder = 'Write a comment...';
+            input.onkeydown = event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    postTimelineComment(post);
+                }
+            };
+            const send = document.createElement('button');
+            send.className = 'nav-btn';
+            send.textContent = 'Send ✦';
+            send.onclick = () => postTimelineComment(post);
+            compose.append(input, send);
+            comments.append(list, compose);
+            article.appendChild(comments);
+            return article;
+        }
+
+        async function refreshTimelineLikeState(post) {
+            const snap = await db.ref(`timelinePostLikes/${post.postId}`).once('value');
+            const count = snap.exists() ? snap.numChildren() : 0;
+            const countElement = document.getElementById(`timeline-like-count-${post.postId}`);
+            const button = document.getElementById(`timeline-like-btn-${post.postId}`);
+            if (countElement) countElement.textContent = count ? `♡ ${count} ${count === 1 ? 'like' : 'likes'}` : '';
+            if (button) {
+                const liked = snap.hasChild(currentUser);
+                button.classList.toggle('liked', liked);
+                button.textContent = liked ? '♥ Liked' : '♡ Like';
+            }
+        }
+
+        function toggleTimelineLike(post) {
+            const ref = db.ref(`timelinePostLikes/${post.postId}/${currentUser}`);
+            ref.once('value', snap => {
+                if (snap.exists()) {
+                    ref.remove().then(() => refreshTimelineLikeState(post));
+                } else {
+                    ref.set(true).then(() => {
+                        refreshTimelineLikeState(post);
+                        sendNotification(post.author, `${currentUser} liked your Board Drop! ♡`, 'timeline-like');
+                    });
+                }
+            });
+        }
+
+        async function refreshTimelineCommentCount(post) {
+            const snap = await db.ref(`timelinePostComments/${post.postId}`).once('value');
+            const count = snap.exists() ? snap.numChildren() : 0;
+            const element = document.getElementById(`timeline-comment-count-${post.postId}`);
+            if (element) element.textContent = count ? `${count} ${count === 1 ? 'comment' : 'comments'}` : '';
+        }
+
+        function toggleTimelineComments(post) {
+            const box = document.getElementById(`timeline-comments-${post.postId}`);
+            const opening = box.style.display !== 'block';
+            box.style.display = opening ? 'block' : 'none';
+            if (opening) loadTimelineComments(post);
+        }
+
+        async function loadTimelineComments(post) {
+            const snap = await db.ref(`timelinePostComments/${post.postId}`).once('value');
+            const list = document.getElementById(`timeline-comment-list-${post.postId}`);
+            if (!list) return;
+            list.innerHTML = '';
+            if (!snap.exists()) {
+                list.innerHTML = '<div style="font-size:0.68rem; opacity:0.58; margin-bottom:7px;">No comments yet.</div>';
+                return;
+            }
+            const comments = [];
+            snap.forEach(child => comments.push([child.key, child.val()]));
+            comments.sort((a, b) => Number(a[1].timestamp || 0) - Number(b[1].timestamp || 0));
+            comments.forEach(([commentId, comment]) => {
+                const row = document.createElement('div');
+                row.className = 'timeline-comment';
+                const body = document.createElement('div');
+                body.className = 'timeline-comment-body';
+                const author = document.createElement('b');
+                author.textContent = `@${comment.author} `;
+                body.append(author, document.createTextNode(comment.text));
+                row.appendChild(body);
+                if (currentUser === post.author || currentUser === comment.author) {
+                    const remove = document.createElement('button');
+                    remove.className = 'timeline-comment-delete';
+                    remove.textContent = '×';
+                    remove.onclick = () => deleteTimelineComment(post, commentId);
+                    row.appendChild(remove);
+                }
+                list.appendChild(row);
+            });
+        }
+
+        async function postTimelineComment(post) {
+            const input = document.getElementById(`timeline-comment-input-${post.postId}`);
+            const text = input.value.trim();
+            if (!text) return;
+            await db.ref(`timelinePostComments/${post.postId}`).push({
+                author: currentUser,
+                postAuthor: post.author,
+                text,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+            input.value = '';
+            loadTimelineComments(post);
+            refreshTimelineCommentCount(post);
+            sendNotification(post.author, `${currentUser} commented on your Board Drop! ✦`, 'timeline-comment');
+        }
+
+        async function deleteTimelineComment(post, commentId) {
+            if (!confirm('Delete this comment?')) return;
+            await db.ref(`timelinePostComments/${post.postId}/${commentId}`).remove();
+            loadTimelineComments(post);
+            refreshTimelineCommentCount(post);
+        }
+
+        async function deleteTimelinePost(post) {
+            if (!confirm('Delete this Board Drop?')) return;
+            await db.ref(`timelinePosts/${post.storageAuthor}/${post.storagePrivacy}/${post.postId}`).remove();
+            loadTimelineFeed();
+        }
+
         /* HYBRID MUSIC PLAYER */
         function saveCustomMusic() {
             const url = document.getElementById('customMusicInput').value.trim();
@@ -3264,6 +3981,7 @@
                     try {
                         await resolveAuthenticatedUser(firebaseUser);
                         if (location.hash === '#chat' && currentUser) openChatPage();
+                        if (location.hash === '#timeline' && currentUser) openTimelinePage(false);
                     } catch (error) {
                         alert(friendlyAuthError(error));
                         await auth.signOut();
@@ -3281,6 +3999,13 @@
             if (location.hash !== '#chat') {
                 document.getElementById('chatPage').style.display = 'none';
                 unlockChatPageScroll();
+            }
+            if (location.hash === '#timeline' && currentUser) {
+                openTimelinePage(false);
+            } else if (location.hash !== '#chat') {
+                document.getElementById('timelinePage').style.display = 'none';
+                document.documentElement.classList.remove('timeline-open');
+                document.body.classList.remove('timeline-open');
             }
         });
     </script>
