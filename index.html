@@ -500,13 +500,8 @@
             line-height: 1.45; font-style: italic;
         }
         .guestbook-create {
-            display: grid; grid-template-columns: 1fr auto; gap: 8px;
-            align-items: end; margin-bottom: 12px;
-        }
-        .guestbook-photo-status {
-            grid-column: 1 / -1; margin-top: -1px; padding: 6px 8px;
-            border-radius: 8px; background: rgba(255,255,255,0.38);
-            font-size: 0.68rem; line-height: 1.4; opacity: 0.76;
+            display: grid; grid-template-columns: 1fr; gap: 8px;
+            margin-bottom: 12px;
         }
         .guestbook-create textarea {
             width: 100%; min-height: 68px; padding: 10px; resize: vertical;
@@ -514,8 +509,13 @@
             background: var(--bg-color); color: var(--text-color);
             font: 500 0.8rem var(--font-body); line-height: 1.45;
         }
-        .guestbook-tools { display: flex; flex-direction: column; gap: 7px; }
-        .guestbook-tools select { min-height: 36px; }
+        .guestbook-tools {
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+        }
+        .guestbook-tools > * {
+            width: 100%; min-width: 0; min-height: 46px; box-sizing: border-box;
+            justify-content: center; text-align: center;
+        }
         .guestbook-create textarea:disabled,
         .guestbook-tools select:disabled {
             opacity: 0.62; cursor: not-allowed;
@@ -580,9 +580,6 @@
         body.body-font-script .guestbook-story-text,
         body.body-font-script .guestbook-create textarea { font-size: 0.96rem; font-weight: 600; }
         @media (max-width: 480px) {
-            .guestbook-create { grid-template-columns: 1fr; }
-            .guestbook-tools { display: grid; grid-template-columns: 1fr 1fr; }
-            .guestbook-tools select { grid-column: 1 / -1; }
             .guestbook-entry { grid-template-columns: 98px 1fr; gap: 10px; padding: 10px; }
         }
 
@@ -1716,7 +1713,6 @@
                             <button class="nav-btn" id="guestbookSaveBtn" hidden style="padding:9px 11px; background:var(--accent-gold); color:#fff;" onclick="saveGuestbookEntry(event)">Post Memory ✦</button>
                             <button class="nav-btn" id="guestbookCancelBtn" hidden style="padding:9px 11px;" onclick="resetGuestbookComposer(event)">Cancel</button>
                         </div>
-                        <div class="guestbook-photo-status" id="guestbookPhotoStatus">✦ Upload your photo first. The caption box will unlock after cropping.</div>
                     </div>
                     <div id="guestbookEntries"></div>
                 </div>
@@ -2799,7 +2795,6 @@
             pendingGuestbookTarget = viewingUser;
             const noteInput = document.getElementById('guestbookNoteInput');
             const effectSelect = document.getElementById('guestbookEffectSelect');
-            const status = document.getElementById('guestbookPhotoStatus');
             if (!pendingGuestbookPhoto) {
                 noteInput.disabled = true;
                 effectSelect.disabled = true;
@@ -2807,9 +2802,6 @@
             }
             noteInput.disabled = false;
             effectSelect.disabled = false;
-            status.textContent = entry
-                ? '✦ Editing this Polaroid. Change the story, effect, or choose a new photo.'
-                : '✦ Photo ready. You may now write a caption—or leave it blank.';
             document.getElementById('guestbookChoosePhotoBtn').textContent = 'Change Photo ✦';
             document.getElementById('guestbookSaveBtn').textContent =
                 entry ? 'Save Changes ✦' : 'Post Memory ✦';
@@ -2831,8 +2823,6 @@
             noteInput.placeholder = 'Upload a photo first, then write its tiny story…';
             effectSelect.value = 'stars';
             effectSelect.disabled = true;
-            document.getElementById('guestbookPhotoStatus').textContent =
-                '✦ Upload your photo first. The caption box will unlock after cropping.';
             document.getElementById('guestbookChoosePhotoBtn').textContent = 'Add Photo ✦';
             document.getElementById('guestbookSaveBtn').textContent = 'Post Memory ✦';
             document.getElementById('guestbookSaveBtn').hidden = true;
