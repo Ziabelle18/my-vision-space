@@ -779,7 +779,10 @@
             transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
         }
         .chat-alert-btn.enabled {
-            border-color: #79a889; background: #e8f5ec; color: #3e7250;
+            border-color: var(--accent-gold);
+            background: rgba(197, 160, 89, 0.14);
+            color: var(--accent-gold);
+            box-shadow: 0 0 0 1px rgba(197, 160, 89, 0.08), 0 3px 12px rgba(197, 160, 89, 0.16);
         }
         .chat-alert-btn:disabled { cursor: default; opacity: 0.72; }
         .chat-shell {
@@ -947,7 +950,7 @@
             .chat-topbar h2 { font-size: 1.25rem; }
             .chat-alert-btn { min-width: 48px; padding-inline: 9px; font-size: 0; }
             .chat-alert-btn::before { content: "🔔"; font-size: 0.9rem; }
-            .chat-alert-btn.enabled::before { content: "✓"; }
+            .chat-alert-btn.enabled::before { content: "✦"; font-size: 1.08rem; }
         }
         body.section-font-script .card-title {
             font-size: 1.12rem;
@@ -3692,7 +3695,7 @@
             if (!supported) {
                 button.textContent = 'Alerts unavailable';
             } else if (enabled) {
-                button.textContent = '✓ Alerts on';
+                button.textContent = '✦ Alerts on';
             } else if (!isBoardlyPushConfigured()) {
                 button.textContent = '🔔 Setup needed';
             } else if (Notification.permission === 'denied') {
