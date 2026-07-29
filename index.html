@@ -560,6 +560,15 @@
             border: 1px solid var(--accent-gold); background: transparent;
             color: var(--accent-gold); cursor: pointer; font-size: 0.7rem;
         }
+        .notification-item {
+            width: 100%; padding: 10px 8px; display: flex; align-items: center;
+            justify-content: space-between; gap: 10px; border: 0;
+            border-bottom: 1px solid rgba(197,160,89,0.18);
+            background: transparent; color: var(--text-color); text-align: left;
+            font: 500 0.78rem var(--font-body); line-height: 1.4; cursor: pointer;
+        }
+        .notification-item:hover { background: var(--card-pink); border-radius: 9px; }
+        .notification-arrow { color: var(--accent-gold); font-weight: 700; flex: 0 0 auto; }
 
         /* DRAG, ZOOM & CROP EDITOR */
         .crop-modal-card { max-width: 520px; }
@@ -1025,7 +1034,7 @@
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
         <div class="nav-logo" onclick="openTimelinePage()">BOARDLY</div>
-        <button class="home-nav-btn" id="homeNavBtn" onclick="openTimelinePage()">✦ FEED</button>
+        <button class="home-nav-btn" id="homeNavBtn" onclick="openTimelinePage()">✦ TIMELINE</button>
 
         <!-- SEARCH ENGINE BAR -->
         <div class="nav-search">
@@ -1075,7 +1084,7 @@
 
         <div class="profile-details-bar">
             <div class="avatar-wrapper">
-                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Avatar" class="avatar-img" id="avatarImg">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e1e3e6'/%3E%3Ccircle cx='100' cy='72' r='34' fill='%239aa0a6'/%3E%3Cpath d='M42 174c4-39 25-62 58-62s54 23 58 62' fill='%239aa0a6'/%3E%3C/svg%3E" alt="No profile photo" class="avatar-img" id="avatarImg">
                 <div class="avatar-edit-badge owner-only" onclick="triggerAvatarSelect()">✦</div>
             </div>
 
@@ -1564,10 +1573,14 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const auth = firebase.auth();
+        const DEFAULT_AVATAR = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#e1e3e6"/><circle cx="100" cy="72" r="34" fill="#9aa0a6"/><path d="M42 174c4-39 25-62 58-62s54 23 58 62" fill="#9aa0a6"/></svg>'
+        )}`;
 
         let currentUser = null;
         const cachedBoardlyUser = localStorage.getItem('vspace_user') || null;
-        let viewingUser = new URLSearchParams(window.location.search).get('user') || cachedBoardlyUser || "zizabelle";
+        const pendingBoardlyProfile = sessionStorage.getItem('boardly_pending_profile') || null;
+        let viewingUser = new URLSearchParams(window.location.search).get('user') || pendingBoardlyProfile || cachedBoardlyUser || "zizabelle";
         let isAuthSignUp = true;
         let pendingAuthUsername = null;
         let activeCardId = null;
@@ -1601,6 +1614,7 @@
         let timelineAllPosts = [];
         let timelineVisibleCount = 12;
         let timelineLoadSequence = 0;
+        let boardStyleLoadSequence = 0;
         const timelineProfileCache = {};
 
         /* INDEXEDDB MEDIA VAULT */
@@ -1810,9 +1824,18 @@
         }
 
         function navigateToUser(u) {
+            const targetUser = String(u || '').trim().replace(/^@+/, '');
+            if (!targetUser) return;
+            sessionStorage.setItem('boardly_pending_profile', targetUser);
+            document.getElementById('searchResults').style.display = 'none';
+            document.getElementById('friendSearch').value = '';
             const loader = document.getElementById('pageLoader');
             loader.classList.remove('hidden');
-            setTimeout(() => { window.location.href = "?user=" + u; }, 300);
+            const destination = new URL(window.location.href);
+            destination.search = '';
+            destination.searchParams.set('user', targetUser);
+            destination.hash = '';
+            setTimeout(() => { window.location.assign(destination.toString()); }, 250);
         }
 
         /* SEARCH ENGINE WITH LIVE CARDS */
@@ -1852,12 +1875,16 @@
                 const publicHandle = users[username]?.publicHandle || username;
                 const card = document.createElement('div');
                 card.className = 'search-card';
-                card.onclick = () => navigateToUser(username);
+                card.onclick = event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    navigateToUser(username);
+                };
 
                 const avatar = document.createElement('img');
                 avatar.className = 'search-avatar';
                 avatar.alt = `@${publicHandle}`;
-                avatar.src = profile.avatarImg || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80';
+                avatar.src = profile.avatarImg || DEFAULT_AVATAR;
 
                 const info = document.createElement('div');
                 info.className = 'search-info';
@@ -1877,8 +1904,9 @@
         /* PROFILE INITIALIZATION */
         function initProfile() {
             const isOwner = (currentUser === viewingUser);
+            sessionStorage.removeItem('boardly_pending_profile');
             document.querySelectorAll('.owner-only').forEach(el => el.style.display = isOwner ? 'inline-flex' : 'none');
-            document.getElementById('homeNavBtn').style.display = (!isOwner && currentUser) ? 'inline-flex' : 'none';
+            document.getElementById('homeNavBtn').style.display = currentUser ? 'inline-flex' : 'none';
 
             document.getElementById('userHandleText').innerText = `@${viewingUser}`;
             document.getElementById('dispNameText').innerText = viewingUser;
@@ -2885,6 +2913,32 @@
         function openNotifModal() { document.getElementById('notifModal').style.display = 'flex'; }
         function closeNotifModal() { document.getElementById('notifModal').style.display = 'none'; }
 
+        function openNotificationDestination(notificationKey, notification) {
+            if (!currentUser || !notification) return;
+            db.ref(`notifications/${currentUser}/${notificationKey}`).remove();
+            closeNotifModal();
+            const type = notification.type || '';
+
+            if (type === 'chat') {
+                openChatPage();
+                if (notification.from) setTimeout(() => startChatWith(notification.from), 180);
+                return;
+            }
+            if (type === 'timeline-like' || type === 'timeline-comment') {
+                openTimelinePage();
+                return;
+            }
+            if (['visit', 'like', 'follow', 'poke'].includes(type) && notification.from) {
+                navigateToUser(notification.from);
+                return;
+            }
+            if (['comment', 'memory-guestbook', 'chaos-note'].includes(type)) {
+                navigateToUser(currentUser);
+                return;
+            }
+            if (notification.from) navigateToUser(notification.from);
+        }
+
         function loadNotifications() {
             if (!currentUser) return;
             db.ref(`notifications/${currentUser}`).on('value', snap => {
@@ -2896,8 +2950,18 @@
                     badge.innerText = snap.numChildren();
                     if (timelineBadge) timelineBadge.innerText = snap.numChildren();
                     Object.keys(snap.val()).reverse().forEach(k => {
-                        const n = snap.val()[k];
-                        list.innerHTML += `<div style="padding:6px 0; border-bottom:1px solid rgba(0,0,0,0.05); font-size:0.8rem;">✦ ${n.message}</div>`;
+                        const notification = snap.val()[k];
+                        const item = document.createElement('button');
+                        item.className = 'notification-item';
+                        item.type = 'button';
+                        const message = document.createElement('span');
+                        message.textContent = `✦ ${notification.message}`;
+                        const arrow = document.createElement('span');
+                        arrow.className = 'notification-arrow';
+                        arrow.textContent = '›';
+                        item.append(message, arrow);
+                        item.onclick = () => openNotificationDestination(k, notification);
+                        list.appendChild(item);
                     });
                 } else {
                     badge.innerText = '0';
@@ -2942,6 +3006,60 @@
         /* SETTINGS & FONTS */
         function openSettingsModal() { document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettingsModal() { document.getElementById('settingsModal').style.display = 'none'; }
+
+        function readSavedFonts(username) {
+            try {
+                return JSON.parse(localStorage.getItem('vspace_fonts_' + username) || '{}');
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function applyBoardStyleVisual(theme, fonts = {}) {
+            const selectedTheme = theme || 'theme-cream-white';
+            document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
+            document.body.classList.add(selectedTheme);
+
+            const selectedFonts = {
+                '--font-title': fonts['--font-title'] || "'Playfair Display', serif",
+                '--font-body': fonts['--font-body'] || "'Montserrat', sans-serif"
+            };
+            Object.entries(selectedFonts).forEach(([name, value]) => {
+                document.documentElement.style.setProperty(name, value);
+            });
+
+            const scriptFonts = ['Great Vibes', 'Clicker Script', 'Parisienne', 'Alex Brush', 'Caveat', 'Allura', 'Pacifico'];
+            document.body.classList.toggle(
+                'body-font-script',
+                scriptFonts.some(font => selectedFonts['--font-body'].includes(font))
+            );
+            document.body.classList.toggle(
+                'section-font-script',
+                scriptFonts.some(font => selectedFonts['--font-title'].includes(font))
+            );
+            updateAppThemeColor();
+        }
+
+        async function applySavedStyleForUser(username) {
+            if (!username) return;
+            const requestId = ++boardStyleLoadSequence;
+            const localTheme = localStorage.getItem('vspace_theme_' + username) || 'theme-cream-white';
+            const localFonts = readSavedFonts(username);
+            applyBoardStyleVisual(localTheme, localFonts);
+
+            try {
+                const snap = await db.ref(`boards/${username}`).once('value');
+                if (requestId !== boardStyleLoadSequence) return;
+                const board = snap.val() || {};
+                const cloudTheme = board.theme || localTheme;
+                const cloudFonts = board.fonts || localFonts;
+                applyBoardStyleVisual(cloudTheme, cloudFonts);
+                localStorage.setItem('vspace_theme_' + username, cloudTheme);
+                localStorage.setItem('vspace_fonts_' + username, JSON.stringify(cloudFonts));
+            } catch (error) {
+                console.warn('Boardly could not refresh the saved style:', error);
+            }
+        }
 
         function setTheme(cls, skipCloudSave = false) {
             document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
@@ -3436,15 +3554,19 @@
         }
 
         /* BOARDLY HOME TIMELINE & BOARD DROPS */
-        function openTimelinePage(updateHash = true) {
+        async function openTimelinePage(updateHash = true) {
             if (!currentUser) {
                 document.getElementById('authGate').style.display = 'flex';
                 return;
             }
             if (document.getElementById('chatPage').style.display === 'flex') closeChatPage();
+            const loader = document.getElementById('pageLoader');
+            loader.classList.remove('hidden');
+            await applySavedStyleForUser(currentUser);
             document.documentElement.classList.add('timeline-open');
             document.body.classList.add('timeline-open');
             document.getElementById('timelinePage').style.display = 'block';
+            loader.classList.add('hidden');
             if (updateHash && location.hash !== '#timeline') history.pushState(null, '', '#timeline');
             prepareTimelineComposer();
             loadTimelineFeed();
@@ -3454,6 +3576,7 @@
             document.getElementById('timelinePage').style.display = 'none';
             document.documentElement.classList.remove('timeline-open');
             document.body.classList.remove('timeline-open');
+            applySavedStyleForUser(viewingUser);
             if (location.hash === '#timeline') {
                 history.replaceState(null, '', location.pathname + location.search);
             }
@@ -3478,7 +3601,7 @@
             const profile = {
                 displayName: board.displayName || username,
                 handle: user.publicHandle || board.profileHandle || username,
-                avatarImg: board.avatarImg || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80'
+                avatarImg: board.avatarImg || DEFAULT_AVATAR
             };
             timelineProfileCache[username] = profile;
             return profile;
@@ -4006,6 +4129,7 @@
                 document.getElementById('timelinePage').style.display = 'none';
                 document.documentElement.classList.remove('timeline-open');
                 document.body.classList.remove('timeline-open');
+                if (viewingUser) applySavedStyleForUser(viewingUser);
             }
         });
     </script>
