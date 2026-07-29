@@ -341,7 +341,12 @@
             animation: tapWiggle 0.52s cubic-bezier(0.22, 0.75, 0.28, 1) forwards !important;
             will-change: transform;
         }
-        .card:hover { transform: translateY(-5px) scale(1.01) !important; box-shadow: 0 12px 24px rgba(197, 160, 89, 0.22); }
+        @media (hover: hover) and (pointer: fine) {
+            .card:hover {
+                transform: translateY(-5px) scale(1.01) !important;
+                box-shadow: 0 12px 24px rgba(197, 160, 89, 0.22);
+            }
+        }
         .card-white { background: var(--card-white); color: var(--text-color); }
         .card-pink { background: var(--card-pink); color: var(--text-color); }
         .card-black { background: var(--card-black); color: #ffffff; }
@@ -494,29 +499,27 @@
             margin: -2px 0 12px; font-size: 0.7rem; opacity: 0.7;
             line-height: 1.45; font-style: italic;
         }
-        .guestbook-create { display: grid; gap: 9px; margin-bottom: 12px; }
-        .guestbook-photo-stage {
-            display: none; grid-template-columns: 82px 1fr; gap: 10px; align-items: center;
-            padding: 9px; border: 1px dashed rgba(197,160,89,0.55); border-radius: 12px;
-            background: rgba(255,255,255,0.4); contain: layout paint;
+        .guestbook-create {
+            display: grid; grid-template-columns: 1fr auto; gap: 8px;
+            align-items: end; margin-bottom: 12px;
         }
-        .guestbook-photo-stage.visible { display: grid; }
-        .guestbook-photo-stage img {
-            display: block; width: 82px; height: 82px; object-fit: cover;
-            border: 5px solid rgba(255,255,255,0.88); border-bottom-width: 13px;
-            border-radius: 3px; box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        .guestbook-photo-status {
+            grid-column: 1 / -1; margin-top: -1px; padding: 6px 8px;
+            border-radius: 8px; background: rgba(255,255,255,0.38);
+            font-size: 0.68rem; line-height: 1.4; opacity: 0.76;
         }
-        .guestbook-photo-status { font-size: 0.72rem; line-height: 1.5; opacity: 0.78; }
-        .guestbook-details { display: grid; gap: 8px; }
-        .guestbook-details[hidden] { display: none; }
         .guestbook-create textarea {
             width: 100%; min-height: 68px; padding: 10px; resize: vertical;
             border: 1px solid var(--accent-gold); border-radius: 10px;
             background: var(--bg-color); color: var(--text-color);
             font: 500 0.8rem var(--font-body); line-height: 1.45;
         }
-        .guestbook-tools { display: flex; flex-wrap: wrap; gap: 7px; }
+        .guestbook-tools { display: flex; flex-direction: column; gap: 7px; }
         .guestbook-tools select { min-height: 36px; }
+        .guestbook-create textarea:disabled,
+        .guestbook-tools select:disabled {
+            opacity: 0.62; cursor: not-allowed;
+        }
         .guestbook-entry {
             position: relative; overflow: hidden; margin-top: 12px; padding: 12px;
             display: grid; grid-template-columns: 112px 1fr; gap: 13px;
@@ -577,7 +580,9 @@
         body.body-font-script .guestbook-story-text,
         body.body-font-script .guestbook-create textarea { font-size: 0.96rem; font-weight: 600; }
         @media (max-width: 480px) {
-            .guestbook-tools > * { flex: 1 1 120px; }
+            .guestbook-create { grid-template-columns: 1fr; }
+            .guestbook-tools { display: grid; grid-template-columns: 1fr 1fr; }
+            .guestbook-tools select { grid-column: 1 / -1; }
             .guestbook-entry { grid-template-columns: 98px 1fr; gap: 10px; padding: 10px; }
         }
 
@@ -716,7 +721,6 @@
             background-size: 18px 18px;
             background-position: 0 0, 0 9px, 9px -9px, -9px 0;
             touch-action: none; cursor: grab; contain: layout paint;
-            isolation: isolate; transform: translateZ(0); backface-visibility: hidden;
         }
         .crop-stage.cover-crop { aspect-ratio: 12 / 5; }
         .crop-stage.profile-crop { border-radius: 50%; }
@@ -724,8 +728,11 @@
         .crop-image {
             position: absolute; left: 50%; top: 50%; max-width: none;
             transform-origin: center; user-select: none; -webkit-user-drag: none;
-            pointer-events: none; will-change: transform;
-            backface-visibility: hidden; transform-style: preserve-3d;
+            pointer-events: none; backface-visibility: hidden;
+        }
+        .crop-stage.dragging .crop-image { will-change: transform; }
+        @media (hover: none) and (pointer: coarse) {
+            .guestbook-deco { animation: none; opacity: 0.2; }
         }
         .poke-celebration {
             position: fixed; inset: 0; z-index: 12000; overflow: hidden;
@@ -1497,11 +1504,11 @@
 
     <!-- FILE INPUTS -->
     <input type="file" id="heroImageInput" accept="image/*,.gif,video/mp4,video/webm" style="display: none;" onchange="handleImageUpload(event)">
-    <input type="file" id="coverImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleCoverUpload(event)">
-    <input type="file" id="avatarImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleAvatarUpload(event)">
-    <input type="file" id="galleryImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleGalleryUpload(event)">
-    <input type="file" id="guestbookImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleGuestbookUpload(event)">
-    <input type="file" id="timelinePhotoInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleTimelinePhoto(event)">
+    <input type="file" id="coverImageInput" accept="image/*" style="display: none;" onchange="handleCoverUpload(event)">
+    <input type="file" id="avatarImageInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
+    <input type="file" id="galleryImageInput" accept="image/*" style="display: none;" onchange="handleGalleryUpload(event)">
+    <input type="file" id="guestbookImageInput" accept="image/*" style="display: none;" onchange="handleGuestbookUpload(event)">
+    <input type="file" id="timelinePhotoInput" accept="image/*" style="display: none;" onchange="handleTimelinePhoto(event)">
 
     <!-- STICKY TOP NAVIGATION BAR -->
     <div class="top-nav">
@@ -1697,26 +1704,19 @@
                     <div class="card-header-flex"><div class="card-title">✦ MEMORY GUESTBOOK</div></div>
                     <div class="guestbook-intro">One little photo story per friend, per day. Memories gently fade after 7 days. ✦</div>
                     <div class="guestbook-create">
-                        <div class="guestbook-photo-stage" id="guestbookPhotoStage">
-                            <img id="guestbookPhotoPreview" alt="Guestbook photo preview">
-                            <div class="guestbook-photo-status" id="guestbookPhotoStatus">Photo ready ✦ Now add its little story below.</div>
-                        </div>
+                        <textarea id="guestbookNoteInput" maxlength="220" disabled placeholder="Upload a photo first, then write its tiny story…" onclick="event.stopPropagation()"></textarea>
                         <div class="guestbook-tools">
-                            <button class="nav-btn" id="guestbookChoosePhotoBtn" style="padding:9px 11px;" onclick="startGuestbookEntry(event)">Choose Photo First ✦</button>
-                        </div>
-                        <div class="guestbook-details" id="guestbookDetails" hidden>
-                            <textarea id="guestbookNoteInput" maxlength="220" placeholder="Now write the tiny story behind your photo… (optional)" onclick="event.stopPropagation()"></textarea>
-                            <div class="guestbook-tools">
-                            <select class="nav-btn" id="guestbookEffectSelect" onclick="event.stopPropagation()">
+                            <select class="nav-btn" id="guestbookEffectSelect" disabled onclick="event.stopPropagation()">
                                 <option value="stars">Stars ✦</option>
                                 <option value="hearts">Hearts ♡</option>
                                 <option value="sparkles">Sparkles ⋆</option>
                                 <option value="none">No Effect</option>
                             </select>
-                                <button class="nav-btn" id="guestbookSaveBtn" style="padding:9px 11px; background:var(--accent-gold); color:#fff;" onclick="saveGuestbookEntry(event)">Post Memory ✦</button>
-                                <button class="nav-btn" id="guestbookCancelBtn" style="padding:9px 11px;" onclick="resetGuestbookComposer(event)">Cancel</button>
-                            </div>
+                            <button class="nav-btn" id="guestbookChoosePhotoBtn" style="padding:9px 11px;" onclick="startGuestbookEntry(event)">Add Photo ✦</button>
+                            <button class="nav-btn" id="guestbookSaveBtn" hidden style="padding:9px 11px; background:var(--accent-gold); color:#fff;" onclick="saveGuestbookEntry(event)">Post Memory ✦</button>
+                            <button class="nav-btn" id="guestbookCancelBtn" hidden style="padding:9px 11px;" onclick="resetGuestbookComposer(event)">Cancel</button>
                         </div>
+                        <div class="guestbook-photo-status" id="guestbookPhotoStatus">✦ Upload your photo first. The caption box will unlock after cropping.</div>
                     </div>
                     <div id="guestbookEntries"></div>
                 </div>
@@ -2193,7 +2193,8 @@
         let cropState = {
             target: null, image: null, objectUrl: null,
             minScale: 1, scale: 1, x: 0, y: 0,
-            dragging: false, startX: 0, startY: 0, originX: 0, originY: 0
+            dragging: false, startX: 0, startY: 0, originX: 0, originY: 0,
+            prepareToken: 0
         };
         let cropRenderFrame = 0;
         let pendingGuestbookPhoto = '';
@@ -2481,7 +2482,7 @@
             }
         }
 
-        function navigateToUser(u) {
+        function navigateToUser(u, destinationParams = {}) {
             checkBoardlyForUpdates();
             const targetUser = String(u || '').trim().replace(/^@+/, '');
             if (!targetUser) return;
@@ -2499,8 +2500,42 @@
             const destination = new URL(window.location.href);
             destination.search = '';
             destination.searchParams.set('user', targetUser);
+            Object.entries(destinationParams || {}).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && String(value) !== '') {
+                    destination.searchParams.set(key, String(value));
+                }
+            });
             destination.hash = '';
             setTimeout(() => { window.location.assign(destination.toString()); }, 90);
+        }
+
+        function openPendingBoardDestination(rawUrl = window.location.href) {
+            const url = new URL(rawUrl, window.location.href);
+            const cardId = url.searchParams.get('openCard');
+            if (!cardId) return false;
+            const card = document.getElementById(cardId);
+            if (!card) return false;
+            const commentTarget = url.searchParams.get('commentTarget') || '';
+            setTimeout(() => {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const commentCards = new Set([
+                    'card-about', 'card-philosophy', 'card-things', 'card-goals'
+                ]);
+                if (commentCards.has(cardId)) {
+                    let clickTarget = card;
+                    if (commentTarget) {
+                        clickTarget = Array.from(card.querySelectorAll('li'))
+                            .find(item => item.innerText.trim() === commentTarget) || card;
+                    }
+                    handleCardClick(card, { target: clickTarget });
+                } else {
+                    triggerCardWiggle(card);
+                }
+            }, 260);
+            url.searchParams.delete('openCard');
+            url.searchParams.delete('commentTarget');
+            history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+            return true;
         }
 
         /* SEARCH ENGINE WITH LIVE CARDS */
@@ -2598,6 +2633,7 @@
             requestAnimationFrame(() => {
                 document.getElementById('pageLoader').classList.add('hidden');
                 playBoardEntrance();
+                openPendingBoardDestination();
             });
         }
 
@@ -2761,26 +2797,25 @@
         function showGuestbookComposer(photoUrl, entry = null) {
             pendingGuestbookPhoto = photoUrl || '';
             pendingGuestbookTarget = viewingUser;
-            const stage = document.getElementById('guestbookPhotoStage');
-            const details = document.getElementById('guestbookDetails');
-            const preview = document.getElementById('guestbookPhotoPreview');
+            const noteInput = document.getElementById('guestbookNoteInput');
+            const effectSelect = document.getElementById('guestbookEffectSelect');
             const status = document.getElementById('guestbookPhotoStatus');
             if (!pendingGuestbookPhoto) {
-                stage.classList.remove('visible');
-                details.hidden = true;
+                noteInput.disabled = true;
+                effectSelect.disabled = true;
                 return;
             }
-            preview.src = pendingGuestbookPhoto;
-            stage.classList.add('visible');
-            details.hidden = false;
+            noteInput.disabled = false;
+            effectSelect.disabled = false;
             status.textContent = entry
-                ? 'Editing this Polaroid ✦ You can change the photo, story, or effect.'
-                : 'Photo ready ✦ Now add its little story below.';
-            document.getElementById('guestbookChoosePhotoBtn').textContent =
-                entry ? 'Change Photo ✦' : 'Choose Another Photo ✦';
+                ? '✦ Editing this Polaroid. Change the story, effect, or choose a new photo.'
+                : '✦ Photo ready. You may now write a caption—or leave it blank.';
+            document.getElementById('guestbookChoosePhotoBtn').textContent = 'Change Photo ✦';
             document.getElementById('guestbookSaveBtn').textContent =
                 entry ? 'Save Changes ✦' : 'Post Memory ✦';
-            requestAnimationFrame(() => document.getElementById('guestbookNoteInput').focus({ preventScroll: true }));
+            document.getElementById('guestbookSaveBtn').hidden = false;
+            document.getElementById('guestbookCancelBtn').hidden = false;
+            requestAnimationFrame(() => noteInput.focus({ preventScroll: true }));
         }
 
         function resetGuestbookComposer(event) {
@@ -2789,14 +2824,19 @@
             pendingGuestbookTarget = '';
             editingGuestbookEntryKey = '';
             editingGuestbookEntry = null;
-            const preview = document.getElementById('guestbookPhotoPreview');
-            preview.removeAttribute('src');
-            document.getElementById('guestbookPhotoStage').classList.remove('visible');
-            document.getElementById('guestbookDetails').hidden = true;
-            document.getElementById('guestbookNoteInput').value = '';
-            document.getElementById('guestbookEffectSelect').value = 'stars';
-            document.getElementById('guestbookChoosePhotoBtn').textContent = 'Choose Photo First ✦';
+            const noteInput = document.getElementById('guestbookNoteInput');
+            const effectSelect = document.getElementById('guestbookEffectSelect');
+            noteInput.value = '';
+            noteInput.disabled = true;
+            noteInput.placeholder = 'Upload a photo first, then write its tiny story…';
+            effectSelect.value = 'stars';
+            effectSelect.disabled = true;
+            document.getElementById('guestbookPhotoStatus').textContent =
+                '✦ Upload your photo first. The caption box will unlock after cropping.';
+            document.getElementById('guestbookChoosePhotoBtn').textContent = 'Add Photo ✦';
             document.getElementById('guestbookSaveBtn').textContent = 'Post Memory ✦';
+            document.getElementById('guestbookSaveBtn').hidden = true;
+            document.getElementById('guestbookCancelBtn').hidden = true;
         }
 
         function saveGuestbookEntry(event) {
@@ -3380,6 +3420,25 @@
 
         /* CARD ANIMATION & MODALS */
         function triggerCardWiggle(card) {
+            if (!card) return;
+            if (typeof card.animate === 'function') {
+                if (card._boardlyWiggleAnimation) card._boardlyWiggleAnimation.cancel();
+                card._boardlyWiggleAnimation = card.animate([
+                    { transform: 'translate3d(0,0,0) scale(1) rotate(0deg)' },
+                    { transform: 'translate3d(0,-2px,0) scale(1.008) rotate(-0.7deg)', offset: 0.18 },
+                    { transform: 'translate3d(0,-3px,0) scale(1.012) rotate(0.8deg)', offset: 0.38 },
+                    { transform: 'translate3d(0,-2px,0) scale(1.009) rotate(-0.45deg)', offset: 0.58 },
+                    { transform: 'translate3d(0,-1px,0) scale(1.004) rotate(0.25deg)', offset: 0.78 },
+                    { transform: 'translate3d(0,0,0) scale(1) rotate(0deg)' }
+                ], {
+                    duration: 520,
+                    easing: 'cubic-bezier(0.22, 0.75, 0.28, 1)'
+                });
+                card._boardlyWiggleAnimation.onfinish = () => {
+                    card._boardlyWiggleAnimation = null;
+                };
+                return;
+            }
             card.classList.remove('wiggle-effect');
             void card.offsetWidth;
             card.classList.add('wiggle-effect');
@@ -3519,43 +3578,113 @@
             });
         }
 
-        function optimizeHeroPhoto(file) {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    const originalDataUrl = await readMediaFileAsDataUrl(file);
-                    const image = new Image();
-                    image.onload = () => {
-                        const maxWidth = 1000;
-                        const maxHeight = 1500;
-                        const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
-                        const canvas = document.createElement('canvas');
-                        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-                        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-                        const context = canvas.getContext('2d');
-                        context.clearRect(0, 0, canvas.width, canvas.height);
-                        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const PHOTO_COMPRESSION_PROFILES = {
+            hero: { maxWidth: 1600, maxHeight: 2000, quality: 0.88, maxBytes: 2300000, type: 'image/webp' },
+            coverCrop: { maxWidth: 2400, maxHeight: 1500, quality: 0.9, maxBytes: 3400000, type: 'image/jpeg' },
+            timeline: { maxWidth: 1600, maxHeight: 1600, quality: 0.88, maxBytes: 2300000, type: 'image/jpeg' },
+            galleryCrop: { maxWidth: 1700, maxHeight: 1700, quality: 0.86, maxBytes: 1900000, type: 'image/jpeg' },
+            guestbookCrop: { maxWidth: 1200, maxHeight: 1200, quality: 0.8, maxBytes: 1000000, type: 'image/jpeg' },
+            avatarCrop: { maxWidth: 1400, maxHeight: 1400, quality: 0.84, maxBytes: 1300000, type: 'image/jpeg' }
+        };
 
-                        let optimized = canvas.toDataURL('image/webp', 0.82);
-                        if (optimized.length > 2500000) {
-                            const smaller = document.createElement('canvas');
-                            const downscale = Math.min(1, 760 / canvas.width, 1140 / canvas.height);
-                            smaller.width = Math.max(1, Math.round(canvas.width * downscale));
-                            smaller.height = Math.max(1, Math.round(canvas.height * downscale));
-                            smaller.getContext('2d').drawImage(canvas, 0, 0, smaller.width, smaller.height);
-                            optimized = smaller.toDataURL('image/webp', 0.72);
-                        }
-                        if (optimized.length > 3500000) {
-                            reject(new Error('This photo is still too large after optimization. Please choose a smaller image.'));
-                            return;
-                        }
-                        resolve(optimized);
-                    };
-                    image.onerror = () => reject(new Error('This photo format could not be opened.'));
-                    image.src = originalDataUrl;
-                } catch (error) {
-                    reject(error);
-                }
+        function canvasToPhotoBlob(canvas, type, quality) {
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(blob => {
+                    if (blob) resolve(blob);
+                    else reject(new Error('The photo could not be compressed.'));
+                }, type, quality);
             });
+        }
+
+        function photoBlobToDataUrl(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('The compressed photo could not be prepared.'));
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function decodePhotoFile(file) {
+            if (!file || !String(file.type || '').startsWith('image/')) {
+                throw new Error('Please choose a photo.');
+            }
+            if ('createImageBitmap' in window) {
+                try {
+                    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+                    return {
+                        source: bitmap,
+                        width: bitmap.width,
+                        height: bitmap.height,
+                        release: () => bitmap.close()
+                    };
+                } catch (_) {}
+            }
+            const objectUrl = URL.createObjectURL(file);
+            return new Promise((resolve, reject) => {
+                const image = new Image();
+                image.onload = () => resolve({
+                    source: image,
+                    width: image.naturalWidth,
+                    height: image.naturalHeight,
+                    release: () => URL.revokeObjectURL(objectUrl)
+                });
+                image.onerror = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    reject(new Error('This photo format could not be opened on this device.'));
+                };
+                image.src = objectUrl;
+            });
+        }
+
+        async function compressPhotoBlob(file, profileName = 'galleryCrop') {
+            const profile = PHOTO_COMPRESSION_PROFILES[profileName] ||
+                PHOTO_COMPRESSION_PROFILES.galleryCrop;
+            const decoded = await decodePhotoFile(file);
+            try {
+                let scale = Math.min(
+                    1,
+                    profile.maxWidth / decoded.width,
+                    profile.maxHeight / decoded.height
+                );
+                let width = Math.max(1, Math.round(decoded.width * scale));
+                let height = Math.max(1, Math.round(decoded.height * scale));
+                let quality = profile.quality;
+                let outputBlob = null;
+
+                for (let attempt = 0; attempt < 4; attempt++) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const context = canvas.getContext('2d', { alpha: profile.type !== 'image/jpeg' });
+                    context.imageSmoothingEnabled = true;
+                    context.imageSmoothingQuality = 'high';
+                    if (profile.type === 'image/jpeg') {
+                        context.fillStyle = '#ffffff';
+                        context.fillRect(0, 0, width, height);
+                    }
+                    context.drawImage(decoded.source, 0, 0, width, height);
+                    outputBlob = await canvasToPhotoBlob(canvas, profile.type, quality);
+                    canvas.width = 1;
+                    canvas.height = 1;
+                    if (outputBlob.size <= profile.maxBytes || attempt === 3) break;
+                    width = Math.max(1, Math.round(width * 0.82));
+                    height = Math.max(1, Math.round(height * 0.82));
+                    quality = Math.max(0.68, quality - 0.07);
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                }
+                return outputBlob;
+            } finally {
+                decoded.release();
+            }
+        }
+
+        async function compressPhotoDataUrl(file, profileName) {
+            return photoBlobToDataUrl(await compressPhotoBlob(file, profileName));
+        }
+
+        function optimizeHeroPhoto(file) {
+            return compressPhotoDataUrl(file, 'hero');
         }
 
         async function saveHeroPhotoAcrossDevices(dataUrl, mediaType = 'image') {
@@ -3603,12 +3732,7 @@
                     return;
                 }
 
-                if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-                    throw new Error('Please choose a JPG, PNG, WebP, GIF, or supported video.');
-                }
-                if (file.size > 12 * 1024 * 1024) {
-                    throw new Error('Please choose a photo smaller than 12 MB.');
-                }
+                if (!file.type.startsWith('image/')) throw new Error('Please choose a photo, GIF, or supported video.');
 
                 const optimizedDataUrl = await optimizeHeroPhoto(file);
                 await saveHeroPhotoAcrossDevices(optimizedDataUrl, 'image');
@@ -3632,19 +3756,31 @@
             e.target.value = '';
         }
 
-        function openImageCropper(file, target) {
-            const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-            if (!supportedTypes.includes(file.type)) {
-                alert("This photo format is not supported. Please use a JPG, PNG, or WebP image.");
+        async function openImageCropper(file, target) {
+            if (!file || !file.type.startsWith('image/')) {
+                alert("Please choose a photo.");
                 return;
             }
-            if (file.size > 12 * 1024 * 1024) {
-                alert("Please choose a photo smaller than 12 MB.");
+            const prepareToken = Date.now() + Math.random();
+            cropState.prepareToken = prepareToken;
+            const cropProfiles = {
+                cover: 'coverCrop',
+                avatar: 'avatarCrop',
+                guestbook: 'guestbookCrop',
+                gallery: 'galleryCrop'
+            };
+            let preparedBlob;
+            try {
+                preparedBlob = await compressPhotoBlob(file, cropProfiles[target] || 'galleryCrop');
+            } catch (error) {
+                if (cropState.prepareToken === prepareToken) {
+                    alert(error.message || "This photo could not be prepared.");
+                }
                 return;
             }
-
+            if (cropState.prepareToken !== prepareToken) return;
             if (cropState.objectUrl) URL.revokeObjectURL(cropState.objectUrl);
-            const objectUrl = URL.createObjectURL(file);
+            const objectUrl = URL.createObjectURL(preparedBlob);
             const image = document.getElementById('cropImage');
             const stage = document.getElementById('cropStage');
             cropState.target = target;
@@ -3682,7 +3818,7 @@
             image.onerror = () => {
                 URL.revokeObjectURL(objectUrl);
                 cropState.objectUrl = null;
-                alert("This photo could not be opened. It may be an unsupported HEIC/HEIF file. Please convert it to JPG or PNG first.");
+                alert("This photo could not be opened on this device.");
             };
             image.src = objectUrl;
         }
@@ -3701,7 +3837,7 @@
             if (!cropState.image) return;
             clampCropPosition();
             cropState.image.style.transform =
-                `translate3d(calc(-50% + ${cropState.x}px), calc(-50% + ${cropState.y}px), 0) scale(${cropState.scale})`;
+                `translate(calc(-50% + ${cropState.x}px), calc(-50% + ${cropState.y}px)) scale(${cropState.scale})`;
         }
 
         function scheduleCropRender() {
@@ -3731,11 +3867,13 @@
             const sourceHeight = rect.height / cropState.scale;
             const sourceX = image.naturalWidth / 2 - (rect.width / 2 + cropState.x) / cropState.scale;
             const sourceY = image.naturalHeight / 2 - (rect.height / 2 + cropState.y) / cropState.scale;
-            const output = cropState.target === 'cover'
-                ? { width: 1440, height: 600 }
-                : cropState.target === 'avatar'
-                    ? { width: 720, height: 720 }
-                    : { width: 1000, height: 1000 };
+            const cropOutputs = {
+                cover: { width: 1600, height: 667, quality: 0.9 },
+                avatar: { width: 640, height: 640, quality: 0.82 },
+                gallery: { width: 1000, height: 1000, quality: 0.85 },
+                guestbook: { width: 720, height: 720, quality: 0.78 }
+            };
+            const output = cropOutputs[cropState.target] || cropOutputs.gallery;
             const canvas = document.createElement('canvas');
             canvas.width = output.width;
             canvas.height = output.height;
@@ -3745,7 +3883,9 @@
                 sourceX, sourceY, sourceWidth, sourceHeight,
                 0, 0, output.width, output.height
             );
-            const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.86);
+            const croppedDataUrl = canvas.toDataURL('image/jpeg', output.quality);
+            canvas.width = 1;
+            canvas.height = 1;
             const target = cropState.target;
             closeCropModal();
 
@@ -3850,7 +3990,16 @@
                     : 'Write a comment...';
                 loadCardComments();
                 const context = activeCommentTarget ? ` on “${activeCommentTarget}”` : '';
-                sendNotification(viewingUser, `${currentUser} commented${context} on your card! 💬`, 'comment');
+                sendNotification(
+                    viewingUser,
+                    `${currentUser} commented${context} on your card! 💬`,
+                    'comment',
+                    {
+                        boardUser: viewingUser,
+                        cardId: activeCardId,
+                        commentTarget: activeCommentTarget || ''
+                    }
+                );
             });
         }
 
@@ -3986,6 +4135,26 @@
                 openTimelineNotificationActivity(notification, 'comments');
                 return;
             }
+            if (type === 'comment') {
+                const boardUser = notification.boardUser || currentUser;
+                if (notification.cardId) {
+                    navigateToUser(boardUser, {
+                        openCard: notification.cardId,
+                        commentTarget: notification.commentTarget || ''
+                    });
+                } else {
+                    navigateToUser(boardUser);
+                }
+                return;
+            }
+            if (type === 'memory-guestbook') {
+                navigateToUser(currentUser, { openCard: 'card-memory-guestbook' });
+                return;
+            }
+            if (type === 'chaos-note') {
+                navigateToUser(currentUser, { openCard: 'card-little-chaos' });
+                return;
+            }
             if (type === 'poke' && notification.from) {
                 launchPokeCelebration(`@${notification.from} POKED YOU! ✦`);
                 setTimeout(() => navigateToUser(notification.from), 950);
@@ -3993,10 +4162,6 @@
             }
             if (['visit', 'like', 'follow'].includes(type) && notification.from) {
                 navigateToUser(notification.from);
-                return;
-            }
-            if (['comment', 'memory-guestbook', 'chaos-note'].includes(type)) {
-                navigateToUser(currentUser);
                 return;
             }
             if (notification.from) navigateToUser(notification.from);
@@ -5598,39 +5763,24 @@
             return timelineProfilePromises[username];
         }
 
-        function handleTimelinePhoto(event) {
+        async function handleTimelinePhoto(event) {
             const file = event.target.files[0];
             event.target.value = '';
             if (!file) return;
-            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-                alert('Please use a JPG, PNG, or WebP photo.');
+            if (!file.type.startsWith('image/')) {
+                alert('Please choose a photo.');
                 return;
             }
-            if (file.size > 10 * 1024 * 1024) {
-                alert('Please choose a photo smaller than 10 MB.');
-                return;
+            try {
+                timelineDraftPhoto = await compressPhotoDataUrl(file, 'timeline');
+                document.getElementById('timelinePhotoPreview').src = timelineDraftPhoto;
+                document.getElementById('timelinePhotoPreviewWrap').style.display = 'block';
+                document.getElementById('timelinePolaroidStylePicker').classList.add('visible');
+                applyTimelinePolaroidPreviewStyle();
+                updateTimelinePhotoCaptionPreview();
+            } catch (error) {
+                alert(error.message || 'This photo could not be prepared.');
             }
-            const reader = new FileReader();
-            reader.onload = loadEvent => {
-                const image = new Image();
-                image.onload = () => {
-                    const maxSide = 1200;
-                    const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-                    const canvas = document.createElement('canvas');
-                    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-                    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-                    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-                    timelineDraftPhoto = canvas.toDataURL('image/jpeg', 0.82);
-                    document.getElementById('timelinePhotoPreview').src = timelineDraftPhoto;
-                    document.getElementById('timelinePhotoPreviewWrap').style.display = 'block';
-                    document.getElementById('timelinePolaroidStylePicker').classList.add('visible');
-                    applyTimelinePolaroidPreviewStyle();
-                    updateTimelinePhotoCaptionPreview();
-                };
-                image.onerror = () => alert('This photo could not be opened.');
-                image.src = loadEvent.target.result;
-            };
-            reader.readAsDataURL(file);
         }
 
         function clearTimelinePhoto() {
