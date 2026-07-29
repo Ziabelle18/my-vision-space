@@ -3903,17 +3903,19 @@
             const senderKey = safeChatKey(currentUser);
             const recipientKey = safeChatKey(activeChatUser);
             const savedMessage = { from: currentUser, text, timestamp };
+            if (!pendingDirectMessages.has(chatId)) pendingDirectMessages.set(chatId, new Map());
+            pendingDirectMessages.get(chatId).set(messageId, savedMessage);
+            sentMessageAnimationUntil.set(messageId, Date.now() + 1400);
             try {
                 await messageRef.set(savedMessage);
             } catch (error) {
+                pendingDirectMessages.get(chatId)?.delete(messageId);
+                sentMessageAnimationUntil.delete(messageId);
                 alert(`Secure chat access could not be updated: ${error.message || 'Please reopen this chat.'}`);
                 return;
             }
 
             input.value = '';
-            if (!pendingDirectMessages.has(chatId)) pendingDirectMessages.set(chatId, new Map());
-            pendingDirectMessages.get(chatId).set(messageId, savedMessage);
-            sentMessageAnimationUntil.set(messageId, Date.now() + 1400);
             renderSavedDirectMessage(messageId, savedMessage, chatId, activeChatUser);
             rememberLocalChat(activeChatUser, timestamp);
             stopChatTyping();
