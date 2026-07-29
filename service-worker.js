@@ -1,5 +1,5 @@
-const BOARDLY_CACHE = 'boardly-shell-v38-chat-animation-timing';
-const BOARDLY_VERSION = 'v38';
+const BOARDLY_CACHE = 'boardly-shell-v39-chat-hub';
+const BOARDLY_VERSION = 'v39';
 const BOARDLY_SHELL = [
   './',
   './index.html',
