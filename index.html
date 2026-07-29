@@ -1035,7 +1035,7 @@
             font: 500 0.84rem var(--font-body); line-height: 1.5;
         }
         .timeline-photo-preview-wrap {
-            --polaroid-bg: #f7d6e2;
+            --polaroid-bg: #fffdf8;
             position: relative; display: none; width: min(88%, 390px);
             margin: 14px auto 12px; padding: 9px 9px 13px;
             border: 1px solid rgba(116, 91, 55, 0.14); border-radius: 3px;
@@ -1052,7 +1052,7 @@
             min-height: 38px; margin-top: 6px; padding: 8px; color: #5f4a36;
             font: 700 1.04rem 'Caveat', cursive; line-height: 1.22;
             text-align: center; white-space: pre-wrap; word-break: break-word;
-            border-radius: 2px; background: rgba(255, 253, 248, 0.8);
+            border-radius: 2px; background: rgba(255, 253, 248, 0.48);
         }
         .timeline-photo-preview-caption.empty {
             color: rgba(95, 74, 54, 0.48); font-weight: 600;
@@ -1183,11 +1183,12 @@
             min-height: 42px; margin-top: 7px; padding: 9px 8px; color: #5f4a36;
             font: 700 1.13rem 'Caveat', cursive; line-height: 1.25;
             text-align: center; white-space: pre-wrap; word-break: break-word;
-            border-radius: 2px; background: rgba(255, 253, 248, 0.8);
+            border-radius: 2px; background: rgba(255, 253, 248, 0.48);
         }
         .timeline-polaroid-caption.is-placeholder {
             color: rgba(95, 74, 54, 0.55); font-weight: 600;
         }
+        .timeline-polaroid-caption.is-empty { min-height: 38px; }
         .timeline-board-card {
             margin-top: 10px; padding: 13px; border-radius: 12px;
             background: var(--card-pink); border: 1px dashed rgba(197,160,89,0.5);
@@ -1826,7 +1827,8 @@
                     <div class="polaroid-style-title">Style your Polaroid ✦</div>
                     <div class="polaroid-style-row">
                         <div class="polaroid-style-label">PASTEL COLOR</div>
-                        <button class="polaroid-color-choice active" data-color="pink" style="--swatch:#f7d6e2" onclick="selectTimelinePolaroidColor('pink')" aria-label="Pastel pink"></button>
+                        <button class="polaroid-color-choice active" data-color="classic" style="--swatch:#fffdf8" onclick="selectTimelinePolaroidColor('classic')" aria-label="Plain white"></button>
+                        <button class="polaroid-color-choice" data-color="pink" style="--swatch:#f7d6e2" onclick="selectTimelinePolaroidColor('pink')" aria-label="Pastel pink"></button>
                         <button class="polaroid-color-choice" data-color="blue" style="--swatch:#d9ecf8" onclick="selectTimelinePolaroidColor('blue')" aria-label="Pastel blue"></button>
                         <button class="polaroid-color-choice" data-color="purple" style="--swatch:#e7dcf5" onclick="selectTimelinePolaroidColor('purple')" aria-label="Pastel purple"></button>
                         <button class="polaroid-color-choice" data-color="red" style="--swatch:#f3d0d2" onclick="selectTimelinePolaroidColor('red')" aria-label="Pastel red"></button>
@@ -2012,7 +2014,7 @@
         let pendingGuestbookEffect = 'stars';
         let deferredInstallPrompt = null;
         let timelineDraftPhoto = '';
-        let timelineDraftPolaroidColor = 'pink';
+        let timelineDraftPolaroidColor = 'classic';
         let timelineDraftPolaroidPattern = 'plain';
         let timelineDraftIsBoardUpdate = false;
         let timelineFilter = 'following';
@@ -4834,7 +4836,7 @@
         }
 
         function selectTimelinePolaroidColor(colorName) {
-            if (!TIMELINE_POLAROID_COLORS[colorName] || colorName === 'classic') return;
+            if (!TIMELINE_POLAROID_COLORS[colorName]) return;
             timelineDraftPolaroidColor = colorName;
             applyTimelinePolaroidPreviewStyle();
         }
@@ -4860,7 +4862,7 @@
         }
 
         function resetTimelinePolaroidStyle() {
-            timelineDraftPolaroidColor = 'pink';
+            timelineDraftPolaroidColor = 'classic';
             timelineDraftPolaroidPattern = 'plain';
             applyTimelinePolaroidPreviewStyle();
         }
@@ -4910,11 +4912,6 @@
             const text = textInput.value.trim();
             if (!text && !timelineDraftPhoto && !timelineDraftIsBoardUpdate) {
                 alert('Write something, add a photo, or choose Board Update first.');
-                return;
-            }
-            if (timelineDraftPhoto && !text) {
-                alert('Please add a short description for your Polaroid photo. ✦');
-                textInput.focus();
                 return;
             }
             const privacy = document.getElementById('timelinePrivacy').value;
@@ -5114,12 +5111,12 @@
                 image.loading = 'lazy';
                 image.onclick = () => openLightbox(
                     post.imageUrl,
-                    post.text || `A little moment from @${profile.handle} ✦`
+                    post.text || ''
                 );
                 const caption = document.createElement('figcaption');
                 caption.className = 'timeline-polaroid-caption';
-                caption.textContent = post.text || `A little moment from @${profile.handle} ✦`;
-                if (!post.text) caption.classList.add('is-placeholder');
+                caption.textContent = post.text || '';
+                if (!post.text) caption.classList.add('is-empty');
                 polaroid.append(image, caption);
                 article.appendChild(polaroid);
             }
