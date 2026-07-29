@@ -863,7 +863,10 @@
             text-align: center; cursor: pointer;
         }
         .online-avatar-wrap {
-            position: relative; width: 48px; height: 48px; margin: 0 auto 5px;
+            position: relative; display: block; box-sizing: border-box;
+            width: 48px; height: 48px; min-width: 48px; min-height: 48px;
+            max-width: 48px; max-height: 48px; aspect-ratio: 1 / 1;
+            margin: 0 auto 5px; overflow: visible;
             border-radius: 50%; padding: 2px; background: var(--card-white);
             border: 1px solid var(--accent-gold);
             box-shadow: 0 5px 14px rgba(197,160,89,0.18);
@@ -871,7 +874,9 @@
         }
         .online-friend-card:hover .online-avatar-wrap { transform: translateY(-2px) scale(1.04); }
         .online-friend-avatar {
-            display: block; width: 100%; height: 100%; border-radius: 50%;
+            display: block; box-sizing: border-box; width: 42px; height: 42px;
+            min-width: 42px; min-height: 42px; max-width: 42px; max-height: 42px;
+            aspect-ratio: 1 / 1; border-radius: 50%;
             object-fit: cover; background: #e1e3e6;
         }
         .online-status-dot {
@@ -917,19 +922,16 @@
         .chat-bubble.theirs { align-self: flex-start; background: var(--card-pink); color: var(--text-color); border-bottom-left-radius: 4px; }
         @keyframes sentMessageWiggle {
             0% {
-                opacity: 0;
-                transform: translateX(38px) translateY(10px) scale(0.72) rotate(0deg);
+                opacity: 0.45;
+                transform: translateX(14px) translateY(4px) scale(0.93) rotate(0deg);
                 box-shadow: 0 0 0 rgba(197, 160, 89, 0);
             }
-            28% {
+            52% {
                 opacity: 1;
-                transform: translateX(-6px) translateY(-2px) scale(1.08) rotate(-3deg);
-                box-shadow: 0 8px 24px rgba(197, 160, 89, 0.42);
+                transform: translateX(-2px) translateY(0) scale(1.012) rotate(-0.35deg);
+                box-shadow: 0 7px 18px rgba(197, 160, 89, 0.2);
             }
-            44% { transform: translateX(4px) scale(1.04) rotate(2.6deg); }
-            59% { transform: translateX(-3px) scale(1.025) rotate(-2deg); }
-            73% { transform: translateX(2px) scale(1.015) rotate(1.25deg); }
-            86% { transform: translateX(-1px) scale(1.006) rotate(-0.6deg); }
+            76% { transform: translateX(1px) scale(0.998) rotate(0.2deg); }
             100% {
                 opacity: 1;
                 transform: translateX(0) translateY(0) scale(1) rotate(0deg);
@@ -937,7 +939,7 @@
             }
         }
         .chat-bubble.sent-wiggle {
-            animation: sentMessageWiggle 1.05s cubic-bezier(0.2, 0.82, 0.28, 1) both !important;
+            animation: sentMessageWiggle 0.62s cubic-bezier(0.2, 0.82, 0.28, 1) both !important;
             will-change: transform, opacity, box-shadow;
         }
         .chat-time { display: block; margin-top: 3px; font-size: 0.58rem; opacity: 0.72; }
@@ -1043,6 +1045,10 @@
             border-radius: 16px; background: var(--card-white);
             border: 1px solid rgba(197,160,89,0.36);
             box-shadow: var(--shadow-soft);
+        }
+        .timeline-post {
+            content-visibility: auto;
+            contain-intrinsic-size: auto 460px;
         }
         .drop-composer::before, .timeline-post::before {
             content: ""; position: absolute; width: 68px; height: 14px;
@@ -1339,7 +1345,7 @@
             .card.wiggle-effect { animation-duration: 0.52s !important; }
             .modal-overlay { animation-duration: 0.22s !important; }
             .modal-card { animation-duration: 0.3s !important; }
-            .chat-bubble.sent-wiggle { animation-duration: 1.05s !important; }
+            .chat-bubble.sent-wiggle { animation-duration: 0.01ms !important; }
         }
     </style>
 </head>
@@ -2051,11 +2057,13 @@
         let timelineDraftIsBoardUpdate = false;
         let timelineFilter = 'following';
         let timelineAllPosts = [];
+        let timelineLoadedCacheKey = '';
         let timelineVisibleCount = 12;
         let timelineLoadSequence = 0;
         let timelineRenderSequence = 0;
         let boardStyleLoadSequence = 0;
         const timelineProfileCache = {};
+        const timelineProfilePromises = {};
         const TIMELINE_POLAROID_COLORS = {
             classic: '#fffdf8',
             pink: '#f7d6e2',
@@ -2072,15 +2080,36 @@
         /* INDEXEDDB MEDIA VAULT */
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
         let idb = null;
+        let resolveBoardlyIdb;
+        const boardlyIdbReady = new Promise(resolve => { resolveBoardlyIdb = resolve; });
         idbReq.onupgradeneeded = e => { idb = e.target.result; if (!idb.objectStoreNames.contains("media")) idb.createObjectStore("media"); };
         idbReq.onsuccess = e => {
             idb = e.target.result;
+            resolveBoardlyIdb(idb);
             loadCachedProfileMedia();
+            loadBoardData();
+        };
+        idbReq.onerror = () => {
+            resolveBoardlyIdb(null);
             loadBoardData();
         };
 
         function saveMediaToIDB(key, val) { if (idb) { const tx = idb.transaction("media", "readwrite"); tx.objectStore("media").put(val, key); } }
         function getMediaFromIDB(key, cb) { if (!idb) return cb(null); const tx = idb.transaction("media", "readonly"); const req = tx.objectStore("media").get(key); req.onsuccess = () => cb(req.result); }
+        async function getMediaFromIDBPromise(key) {
+            await boardlyIdbReady;
+            if (!idb) return null;
+            return new Promise(resolve => {
+                try {
+                    const tx = idb.transaction("media", "readonly");
+                    const req = tx.objectStore("media").get(key);
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = () => resolve(null);
+                } catch (_) {
+                    resolve(null);
+                }
+            });
+        }
 
         function loadCachedProfileMedia() {
             getMediaFromIDB('coverImg_' + viewingUser, cachedCover => {
@@ -2174,6 +2203,7 @@
                     updates[`users/${u}`] = { uid, created: firebase.database.ServerValue.TIMESTAMP };
                     updates[`authUsers/${uid}/username`] = u;
                     await db.ref().update(updates);
+                    writeFollowingCache(u, []);
                     pendingAuthUsername = null;
                     loginUser(u);
                 } else {
@@ -2226,6 +2256,7 @@
             updates[`users/${username}`] = { uid: firebaseUser.uid, created: existing.val()?.created || firebase.database.ServerValue.TIMESTAMP };
             updates[`authUsers/${firebaseUser.uid}/username`] = username;
             await db.ref().update(updates);
+            writeFollowingCache(username, []);
             loginUser(username);
         }
 
@@ -2471,15 +2502,72 @@
             sendNotification(viewingUser, `${currentUser} liked your board! ❤️`, 'like');
         }
 
+        let followingRefreshPromise = null;
+
+        function followingCacheKey(username = currentUser) {
+            return `boardly_following_v1_${username}`;
+        }
+
+        function readFollowingCache(username = currentUser) {
+            if (!username) return null;
+            try {
+                const parsed = JSON.parse(localStorage.getItem(followingCacheKey(username)) || 'null');
+                return parsed && Array.isArray(parsed.users) ? parsed : null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function writeFollowingCache(username, users) {
+            if (!username) return;
+            const uniqueUsers = [...new Set((users || []).filter(user => user && user !== username))];
+            try {
+                localStorage.setItem(followingCacheKey(username), JSON.stringify({
+                    users: uniqueUsers,
+                    updatedAt: Date.now()
+                }));
+            } catch (_) {}
+        }
+
+        function updateFollowingCache(username, isFollowing) {
+            const cached = readFollowingCache(currentUser);
+            const users = new Set(cached?.users || []);
+            if (isFollowing) users.add(username);
+            else users.delete(username);
+            writeFollowingCache(currentUser, [...users]);
+        }
+
+        async function refreshFollowingCache() {
+            if (!currentUser) return [];
+            if (followingRefreshPromise) return followingRefreshPromise;
+            followingRefreshPromise = (async () => {
+                const usersSnap = await db.ref('users').once('value');
+                const usernames = usersSnap.exists()
+                    ? Object.keys(usersSnap.val()).filter(username => username !== currentUser)
+                    : [];
+                const checks = await Promise.all(usernames.map(username =>
+                    db.ref(`followers/${username}/${currentUser}`).once('value')
+                        .then(snapshot => snapshot.exists() ? username : null)
+                        .catch(() => null)
+                ));
+                const users = checks.filter(Boolean);
+                writeFollowingCache(currentUser, users);
+                return users;
+            })().finally(() => { followingRefreshPromise = null; });
+            return followingRefreshPromise;
+        }
+
         function toggleFollow() {
             if (!currentUser) { alert("Please login first!"); return; }
             const followRef = db.ref(`followers/${viewingUser}/${currentUser}`);
             followRef.once('value', snap => {
                 if (snap.exists()) {
-                    followRef.remove();
+                    followRef.remove().then(() => updateFollowingCache(viewingUser, false));
                 } else {
-                    followRef.set(true);
-                    sendNotification(viewingUser, `${currentUser} started following you! 👤`, 'follow');
+                    followRef.set(true).then(() => {
+                        updateFollowingCache(viewingUser, true);
+                        sendNotification(viewingUser, `${currentUser} started following you! 👤`, 'follow');
+                    });
                 }
             });
         }
@@ -2717,7 +2805,7 @@
                         container.innerHTML += `
                             <div class="polaroid-frame" onclick="openLightbox('${item.imgUrl}', '${item.caption}')">
                                 ${isOwner ? `<div class="polaroid-del-btn" onclick="deleteGalleryItem(event, '${key}')">&times;</div>` : ''}
-                                <img src="${item.imgUrl}" alt="Photo">
+                                <img src="${item.imgUrl}" alt="Photo" loading="lazy" decoding="async">
                                 <div>${item.caption}</div>
                             </div>
                         `;
@@ -2781,12 +2869,63 @@
             document.getElementById('dispNameText').innerText = displayName;
             document.getElementById('userHandleText').innerText = `@${profileHandle}`;
             localStorage.setItem('vspace_profile_' + viewingUser, JSON.stringify(profileData));
+            cacheBoardTextData(viewingUser, { ...(readBoardTextCache(viewingUser) || {}), ...profileData });
+            const cachedTimelineProfile = {
+                displayName,
+                handle: profileHandle,
+                avatarImg: document.getElementById('avatarImg').src || DEFAULT_AVATAR,
+                cachedAt: Date.now()
+            };
+            timelineProfileCache[viewingUser] = cachedTimelineProfile;
+            saveMediaToIDB(`timelineProfile_${viewingUser}`, cachedTimelineProfile);
             db.ref('boards/' + viewingUser).update(profileData);
             db.ref(`users/${viewingUser}/publicHandle`).set(profileHandle);
             closeEditProfileModal();
         }
 
         /* BOARD DATA & CLOUD STORAGE */
+        function boardTextCacheKey(username) {
+            return `boardly_board_text_v1_${username}`;
+        }
+
+        function readBoardTextCache(username) {
+            try {
+                return JSON.parse(localStorage.getItem(boardTextCacheKey(username)) || 'null');
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function cacheBoardTextData(username, data) {
+            if (!username || !data) return;
+            const cached = {
+                mainTitle: data.mainTitle || '',
+                mainQuote: data.mainQuote || '',
+                aboutHTML: data.aboutHTML || '',
+                thingsHTML: data.thingsHTML || '',
+                goalsHTML: data.goalsHTML || '',
+                philosophyText: data.philosophyText || '',
+                displayName: data.displayName || '',
+                profileHandle: data.profileHandle || '',
+                cachedAt: Date.now()
+            };
+            try {
+                localStorage.setItem(boardTextCacheKey(username), JSON.stringify(cached));
+            } catch (_) {}
+        }
+
+        function applyBoardTextData(data) {
+            if (!data) return;
+            if (data.mainTitle) document.getElementById('mainTitleText').innerText = data.mainTitle;
+            if (data.mainQuote) document.getElementById('mainQuoteText').innerText = data.mainQuote;
+            if (data.aboutHTML) document.getElementById('aboutList').innerHTML = data.aboutHTML;
+            if (data.thingsHTML) document.getElementById('thingsList').innerHTML = data.thingsHTML;
+            if (data.goalsHTML) document.getElementById('goalsList').innerHTML = data.goalsHTML;
+            if (data.philosophyText) document.getElementById('philosophyText').innerText = data.philosophyText;
+            if (data.displayName) document.getElementById('dispNameText').innerText = data.displayName;
+            if (data.profileHandle) document.getElementById('userHandleText').innerText = `@${data.profileHandle}`;
+        }
+
         function saveBoardData() {
             if (currentUser !== viewingUser) return;
             const data = {
@@ -2797,65 +2936,107 @@
                 goalsHTML: document.getElementById('goalsList').innerHTML,
                 philosophyText: document.getElementById('philosophyText').innerText
             };
+            cacheBoardTextData(viewingUser, {
+                ...readBoardTextCache(viewingUser),
+                ...data,
+                displayName: document.getElementById('dispNameText').innerText,
+                profileHandle: document.getElementById('userHandleText').innerText.replace(/^@/, '')
+            });
             db.ref('boards/' + viewingUser).update(data);
         }
 
-        function loadBoardData() {
-            db.ref('boards/' + viewingUser).once('value', snap => {
-                let cloudHeroMedia = null;
-                if (snap.exists()) {
-                    const d = snap.val();
-                    if (d.mainTitle) document.getElementById('mainTitleText').innerText = d.mainTitle;
-                    if (d.mainQuote) document.getElementById('mainQuoteText').innerText = d.mainQuote;
-                    if (d.aboutHTML) document.getElementById('aboutList').innerHTML = d.aboutHTML;
-                    if (d.thingsHTML) document.getElementById('thingsList').innerHTML = d.thingsHTML;
-                    if (d.goalsHTML) document.getElementById('goalsList').innerHTML = d.goalsHTML;
-                    if (d.philosophyText) document.getElementById('philosophyText').innerText = d.philosophyText;
-                    if (d.displayName) document.getElementById('dispNameText').innerText = d.displayName;
-                    if (d.profileHandle) document.getElementById('userHandleText').innerText = `@${d.profileHandle}`;
-                    if (d.displayName || d.profileHandle) {
-                        localStorage.setItem('vspace_profile_' + viewingUser, JSON.stringify({
-                            displayName: d.displayName || viewingUser,
-                            profileHandle: d.profileHandle || viewingUser
-                        }));
-                        if (currentUser === viewingUser && d.profileHandle) {
-                            db.ref('users/' + viewingUser + '/publicHandle').set(d.profileHandle);
-                        }
-                    }
-                    if (d.coverImg) {
-                        document.getElementById('coverDisplay').style.backgroundImage = `url('${d.coverImg}')`;
-                        saveMediaToIDB('coverImg_' + viewingUser, d.coverImg);
-                    }
-                    if (d.avatarImg) {
-                        document.getElementById('avatarImg').src = d.avatarImg;
-                        saveMediaToIDB('avatarImg_' + viewingUser, d.avatarImg);
-                    }
-                    if (d.heroMedia && d.heroMedia.dataUrl && !d.heroMedia.isVideo) cloudHeroMedia = d.heroMedia;
-                    if (d.musicTrack) applyMusicTrack(d.musicTrack);
-                    if (d.theme) setTheme(d.theme, true);
-                    if (d.fonts) {
-                        Object.entries(d.fonts).forEach(([name, value]) => applyFont(name, value, true));
+        async function loadBoardData() {
+            const username = viewingUser;
+            const cachedText = readBoardTextCache(username);
+            applyBoardTextData(cachedText);
+
+            getMediaFromIDB('coverImg_' + username, cachedCover => {
+                if (viewingUser === username && cachedCover) {
+                    document.getElementById('coverDisplay').style.backgroundImage = `url('${cachedCover}')`;
+                }
+            });
+            getMediaFromIDB('avatarImg_' + username, cachedAvatar => {
+                if (viewingUser === username && cachedAvatar) {
+                    document.getElementById('avatarImg').src = cachedAvatar;
+                }
+            });
+            getMediaFromIDB('heroImg_' + username, localMedia => {
+                if (viewingUser !== username) return;
+                const normalized = typeof localMedia === 'string'
+                    ? { dataUrl: localMedia, isVideo: localMedia.startsWith('data:video/'), updatedAt: 0 }
+                    : localMedia;
+                if (normalized?.dataUrl) processAndSetHeroMedia(normalized.dataUrl, !!normalized.isVideo);
+            });
+
+            const textFields = [
+                'mainTitle', 'mainQuote', 'aboutHTML', 'thingsHTML', 'goalsHTML',
+                'philosophyText', 'displayName', 'profileHandle'
+            ];
+            Promise.all(textFields.map(field =>
+                db.ref(`boards/${username}/${field}`).once('value')
+                    .then(snapshot => [field, snapshot.val()])
+                    .catch(() => [field, null])
+            )).then(entries => {
+                if (viewingUser !== username) return;
+                const data = Object.fromEntries(entries.filter(([, value]) => value !== null));
+                applyBoardTextData(data);
+                cacheBoardTextData(username, { ...(cachedText || {}), ...data });
+                if (data.displayName || data.profileHandle) {
+                    localStorage.setItem('vspace_profile_' + username, JSON.stringify({
+                        displayName: data.displayName || username,
+                        profileHandle: data.profileHandle || username
+                    }));
+                    if (currentUser === username && data.profileHandle) {
+                        db.ref(`users/${username}/publicHandle`).set(data.profileHandle);
                     }
                 }
+            });
+
+            Promise.all([
+                db.ref(`boards/${username}/theme`).once('value').catch(() => null),
+                db.ref(`boards/${username}/fonts`).once('value').catch(() => null),
+                db.ref(`boards/${username}/musicTrack`).once('value').catch(() => null)
+            ]).then(([themeSnap, fontsSnap, musicSnap]) => {
+                if (viewingUser !== username) return;
+                if (themeSnap?.exists()) setTheme(themeSnap.val(), true);
+                if (fontsSnap?.exists()) {
+                    Object.entries(fontsSnap.val()).forEach(([name, value]) => applyFont(name, value, true));
+                }
+                if (musicSnap?.exists()) applyMusicTrack(musicSnap.val());
                 scheduleBoardMusicAutoplay();
-                getMediaFromIDB('heroImg_' + viewingUser, localMedia => {
+            });
+
+            db.ref(`boards/${username}/coverImg`).once('value').then(snapshot => {
+                if (viewingUser !== username || !snapshot.exists()) return;
+                document.getElementById('coverDisplay').style.backgroundImage = `url('${snapshot.val()}')`;
+                saveMediaToIDB('coverImg_' + username, snapshot.val());
+            }).catch(() => {});
+            db.ref(`boards/${username}/avatarImg`).once('value').then(snapshot => {
+                if (viewingUser !== username || !snapshot.exists()) return;
+                document.getElementById('avatarImg').src = snapshot.val();
+                saveMediaToIDB('avatarImg_' + username, snapshot.val());
+            }).catch(() => {});
+            db.ref(`boards/${username}/heroMedia`).once('value').then(snapshot => {
+                if (viewingUser !== username || !snapshot.exists()) return;
+                const cloudMedia = snapshot.val();
+                if (!cloudMedia?.dataUrl || cloudMedia.isVideo) return;
+                getMediaFromIDB('heroImg_' + username, localMedia => {
+                    if (viewingUser !== username) return;
                     const normalizedLocal = typeof localMedia === 'string'
                         ? { dataUrl: localMedia, isVideo: localMedia.startsWith('data:video/'), updatedAt: 0 }
                         : localMedia;
-                    const localVideoIsNewer = normalizedLocal && normalizedLocal.isVideo &&
-                        Number(normalizedLocal.updatedAt || 0) > Number(cloudHeroMedia?.updatedAt || 0);
-                    const selectedMedia = localVideoIsNewer ? normalizedLocal : (cloudHeroMedia || normalizedLocal);
-                    if (!selectedMedia || !selectedMedia.dataUrl) return;
-                    processAndSetHeroMedia(selectedMedia.dataUrl, !!selectedMedia.isVideo);
-                    if (cloudHeroMedia && !localVideoIsNewer) {
-                        saveMediaToIDB('heroImg_' + viewingUser, {
-                            dataUrl: cloudHeroMedia.dataUrl,
+                    const localVideoIsNewer = normalizedLocal?.isVideo &&
+                        Number(normalizedLocal.updatedAt || 0) > Number(cloudMedia.updatedAt || 0);
+                    if (!localVideoIsNewer) {
+                        processAndSetHeroMedia(cloudMedia.dataUrl, false);
+                        saveMediaToIDB('heroImg_' + username, {
+                            dataUrl: cloudMedia.dataUrl,
                             isVideo: false,
-                            updatedAt: Number(cloudHeroMedia.updatedAt || 0)
+                            updatedAt: Number(cloudMedia.updatedAt || 0)
                         });
                     }
                 });
-            });
+            }).catch(() => {});
         }
 
         /* MULTILINE LIST EDITOR MODAL ENGINE */
@@ -3260,6 +3441,15 @@
             } else if (target === 'avatar') {
                 document.getElementById('avatarImg').src = croppedDataUrl;
                 saveMediaToIDB('avatarImg_' + viewingUser, croppedDataUrl);
+                const existingProfile = timelineProfileCache[viewingUser] || {};
+                const updatedProfile = {
+                    displayName: existingProfile.displayName || document.getElementById('dispNameText').innerText || viewingUser,
+                    handle: existingProfile.handle || document.getElementById('userHandleText').innerText.replace(/^@/, '') || viewingUser,
+                    avatarImg: croppedDataUrl,
+                    cachedAt: Date.now()
+                };
+                timelineProfileCache[viewingUser] = updatedProfile;
+                saveMediaToIDB(`timelineProfile_${viewingUser}`, updatedProfile);
                 db.ref('boards/' + viewingUser).update({ avatarImg: croppedDataUrl });
             } else if (target === 'guestbook') {
                 const entryKey = `${safeChatKey(currentUser)}_${getLocalDateKey()}`;
@@ -4075,6 +4265,7 @@
             loadOnlineFriends();
             clearInterval(onlineFriendsRefreshTimer);
             onlineFriendsRefreshTimer = setInterval(loadOnlineFriends, 20000);
+            renderChatContacts();
             loadChatContacts();
             loadGroupChatContacts();
         }
@@ -4120,12 +4311,12 @@
                 unread.textContent = contactData.unread > 99 ? '99+' : contactData.unread;
                 button.appendChild(unread);
             }
-            db.ref(`presence/${safeChatKey(user)}/state`).on('value', snap => {
+            db.ref(`presence/${safeChatKey(user)}/state`).once('value', snap => {
                 dot.classList.toggle('online', snap.val() === 'online');
             });
-            db.ref(`users/${user}/publicHandle`).once('value', snap => {
-                if (snap.exists()) name.textContent = `✦ @${snap.val()}`;
-            });
+            getTimelineAuthorProfile(user).then(profile => {
+                name.textContent = `✦ @${profile.handle || user}`;
+            }).catch(() => {});
             button.onclick = () => startChatWith(user);
             container.appendChild(button);
         }
@@ -4162,34 +4353,26 @@
             }
 
             try {
-                const [usersSnap, followersSnap, contactsSnap] = await Promise.all([
-                    db.ref('users').once('value'),
+                const followingCache = readFollowingCache(currentUser);
+                const [followersSnap, contactsSnap] = await Promise.all([
                     db.ref(`followers/${currentUser}`).once('value'),
                     db.ref(`chatContacts/${safeChatKey(currentUser)}`).once('value').catch(() => null)
                 ]);
-                const users = usersSnap.val() || {};
-                const allUsernames = Object.keys(users)
-                    .filter(username => username !== currentUser)
-                    .slice(0, 120);
                 const circle = new Set([
                     ...Object.keys(followersSnap.val() || {}),
                     ...Object.values(getLocalChatContacts()).map(item => item?.username).filter(Boolean),
-                    ...Object.values(contactsSnap?.val() || {}).map(item => item?.username).filter(Boolean)
+                    ...Object.values(contactsSnap?.val() || {}).map(item => item?.username).filter(Boolean),
+                    ...(followingCache?.users || [])
                 ]);
 
-                const followingChecks = await Promise.all(
-                    allUsernames.map(username =>
-                        db.ref(`followers/${username}/${currentUser}`).once('value')
-                            .then(snapshot => [username, snapshot.val() === true])
-                            .catch(() => [username, false])
-                    )
-                );
-                followingChecks.forEach(([username, isFollowing]) => {
-                    if (isFollowing) circle.add(username);
-                });
+                if (!followingCache || Date.now() - Number(followingCache.updatedAt || 0) > 5 * 60 * 1000) {
+                    refreshFollowingCache().then(() => {
+                        if (document.getElementById('chatPage').style.display === 'flex') loadOnlineFriends();
+                    }).catch(() => {});
+                }
 
                 const candidates = Array.from(circle)
-                    .filter(username => username && username !== currentUser && users[username])
+                    .filter(username => username && username !== currentUser)
                     .slice(0, 60);
                 const presenceChecks = await Promise.all(
                     candidates.map(username =>
@@ -4204,12 +4387,14 @@
 
                 const onlineProfiles = await Promise.all(
                     onlineNames.map(async username => {
-                        const boardSnap = await db.ref(`boards/${username}`).once('value').catch(() => null);
-                        const board = boardSnap?.val() || {};
+                        const profile = await getTimelineAuthorProfile(username).catch(() => ({
+                            handle: username,
+                            avatarImg: DEFAULT_AVATAR
+                        }));
                         return {
                             username,
-                            handle: users[username]?.publicHandle || board.profileHandle || username,
-                            avatarImg: board.avatarImg || DEFAULT_AVATAR
+                            handle: profile.handle || username,
+                            avatarImg: profile.avatarImg || DEFAULT_AVATAR
                         };
                     })
                 );
@@ -4232,6 +4417,7 @@
                     avatar.className = 'online-friend-avatar';
                     avatar.src = profile.avatarImg;
                     avatar.alt = `@${profile.handle}`;
+                    avatar.decoding = 'async';
                     const dot = document.createElement('span');
                     dot.className = 'online-status-dot';
                     avatarWrap.append(avatar, dot);
@@ -4417,11 +4603,11 @@
             bubble.dataset.messageId = messageId;
             const animationDeadline = sentMessageAnimationUntil.get(messageId) || 0;
             if (message.from === currentUser && animationDeadline > Date.now()) {
+                sentMessageAnimationUntil.delete(messageId);
                 bubble.classList.add('sent-wiggle');
                 setTimeout(() => {
                     bubble.classList.remove('sent-wiggle');
-                    sentMessageAnimationUntil.delete(messageId);
-                }, Math.max(600, animationDeadline - Date.now()));
+                }, 700);
             }
             if (scope.type === 'group' && message.from !== currentUser) {
                 const author = document.createElement('b');
@@ -4456,6 +4642,54 @@
             activeChatMessagesQuery = null;
             activeChatMessagesCallback = null;
             activeChatMessagesRef = null;
+        }
+
+        function directChatCacheKey(chatId) {
+            return `directChatMessages_${chatId}`;
+        }
+
+        function snapshotToCachedMessages(snapshot) {
+            const messages = [];
+            if (snapshot.exists()) {
+                snapshot.forEach(child => {
+                    messages.push({ id: child.key, value: child.val() });
+                });
+            }
+            return messages.slice(-60);
+        }
+
+        async function renderCachedDirectMessages(chatId, username) {
+            const cached = await getMediaFromIDBPromise(directChatCacheKey(chatId));
+            if (activeDirectChatId !== chatId || activeChatUser !== username || activeGroupId) return false;
+            if (!Array.isArray(cached) || !cached.length) return false;
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+            cached.forEach(item => {
+                if (item?.id && item?.value) {
+                    container.appendChild(
+                        buildChatBubble(item.value, item.id, { type: 'direct', id: chatId }, username)
+                    );
+                }
+            });
+            container.scrollTop = container.scrollHeight;
+            return true;
+        }
+
+        async function renderCachedGroupMessages(groupId) {
+            const cached = await getMediaFromIDBPromise(`groupChatMessages_${groupId}`);
+            if (activeGroupId !== groupId) return false;
+            if (!Array.isArray(cached) || !cached.length) return false;
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+            cached.forEach(item => {
+                if (item?.id && item?.value) {
+                    container.appendChild(
+                        buildChatBubble(item.value, item.id, { type: 'group', id: groupId })
+                    );
+                }
+            });
+            container.scrollTop = container.scrollHeight;
+            return true;
         }
 
         function renderChatSnapshot(snapshot, scope, otherUsername = '') {
@@ -4528,6 +4762,7 @@
 
             detachActiveChatMessages();
             const chatId = activeDirectChatId;
+            await renderCachedDirectMessages(chatId, username);
             try {
                 const [recipientSnap, publicHandleSnap] = await Promise.all([
                     db.ref(`users/${username}/uid`).once('value'),
@@ -4567,6 +4802,7 @@
             activeChatMessagesQuery = activeChatMessagesRef.limitToLast(100);
             activeChatMessagesCallback = snap => {
                 if (activeDirectChatId !== chatId || activeChatUser !== username || activeGroupId) return;
+                saveMediaToIDB(directChatCacheKey(chatId), snapshotToCachedMessages(snap));
                 renderChatSnapshot(snap, { type: 'direct', id: chatId }, username);
             };
             activeChatMessagesQuery.on('value', activeChatMessagesCallback, error => {
@@ -4600,7 +4836,7 @@
             const savedMessage = { from: currentUser, text, timestamp };
             if (!pendingDirectMessages.has(chatId)) pendingDirectMessages.set(chatId, new Map());
             pendingDirectMessages.get(chatId).set(messageId, savedMessage);
-            sentMessageAnimationUntil.set(messageId, Date.now() + 1400);
+            sentMessageAnimationUntil.set(messageId, Date.now() + 900);
             try {
                 await messageRef.set(savedMessage);
             } catch (error) {
@@ -4737,12 +4973,22 @@
             if (activeChatTypingRef) activeChatTypingRef.off();
             document.getElementById('chatTypingIndicator').classList.remove('visible');
             detachActiveChatMessages();
-            const groupSnap = await db.ref(`groupChats/${groupId}`).once('value');
-            if (!groupSnap.exists()) {
+            document.getElementById('chatMessages').innerHTML = '<div class="chat-empty">Loading messages...</div>';
+            await renderCachedGroupMessages(groupId);
+            const [nameSnap, memberNamesSnap, createdBySnap] = await Promise.all([
+                db.ref(`groupChats/${groupId}/name`).once('value'),
+                db.ref(`groupChats/${groupId}/memberNames`).once('value'),
+                db.ref(`groupChats/${groupId}/createdBy`).once('value')
+            ]);
+            if (!nameSnap.exists()) {
                 document.getElementById('chatMessages').innerHTML = '<div class="chat-empty">This group is no longer available.</div>';
                 return;
             }
-            activeGroupData = groupSnap.val();
+            activeGroupData = {
+                name: nameSnap.val(),
+                memberNames: memberNamesSnap.val() || {},
+                createdBy: createdBySnap.val() || ''
+            };
             const memberCount = Object.keys(activeGroupData.memberNames || {}).length;
             document.getElementById('chatWithName').innerHTML =
                 `${activeGroupData.name} ✦<span class="chat-presence-label">${memberCount} members</span>`;
@@ -4751,6 +4997,7 @@
             activeChatMessagesQuery = messagesRef.limitToLast(120);
             activeChatMessagesCallback = snap => {
                 if (activeGroupId !== groupId) return;
+                saveMediaToIDB(`groupChatMessages_${groupId}`, snapshotToCachedMessages(snap));
                 renderChatSnapshot(snap, { type: 'group', id: groupId });
             };
             activeChatMessagesQuery.on('value', activeChatMessagesCallback);
@@ -4763,7 +5010,7 @@
             if (!text) return;
             const timestamp = Date.now();
             const groupMessageRef = db.ref(`groupChats/${activeGroupId}/messages`).push();
-            sentMessageAnimationUntil.set(groupMessageRef.key, Date.now() + 1400);
+            sentMessageAnimationUntil.set(groupMessageRef.key, Date.now() + 900);
             await groupMessageRef.set({ from: currentUser, text, timestamp });
             const updates = {};
             Object.keys(activeGroupData.memberNames || {}).forEach(username => {
@@ -4821,27 +5068,67 @@
 
         async function prepareTimelineComposer() {
             if (!currentUser) return;
+            let savedProfile = {};
+            try {
+                savedProfile = JSON.parse(localStorage.getItem('vspace_profile_' + currentUser) || '{}');
+            } catch (_) {}
+            const cachedProfile = readBoardTextCache(currentUser) || savedProfile;
+            const boardAvatar = document.getElementById('avatarImg')?.src;
+            document.getElementById('timelineComposerAvatar').src = boardAvatar || DEFAULT_AVATAR;
+            document.getElementById('timelineComposerName').textContent =
+                `Create a Board Drop, ${cachedProfile.displayName || '@' + currentUser}`;
             const profile = await getTimelineAuthorProfile(currentUser);
             document.getElementById('timelineComposerAvatar').src = profile.avatarImg;
             document.getElementById('timelineComposerName').textContent =
                 `Create a Board Drop, ${profile.displayName || '@' + currentUser}`;
         }
 
-        async function getTimelineAuthorProfile(username) {
-            if (timelineProfileCache[username]) return timelineProfileCache[username];
-            const [boardSnap, userSnap] = await Promise.all([
-                db.ref(`boards/${username}`).once('value'),
-                db.ref(`users/${username}`).once('value')
+        async function fetchTimelineAuthorProfile(username) {
+            const [displayNameSnap, profileHandleSnap, avatarSnap, publicHandleSnap] = await Promise.all([
+                db.ref(`boards/${username}/displayName`).once('value'),
+                db.ref(`boards/${username}/profileHandle`).once('value'),
+                db.ref(`boards/${username}/avatarImg`).once('value'),
+                db.ref(`users/${username}/publicHandle`).once('value')
             ]);
-            const board = boardSnap.val() || {};
-            const user = userSnap.val() || {};
             const profile = {
-                displayName: board.displayName || username,
-                handle: user.publicHandle || board.profileHandle || username,
-                avatarImg: board.avatarImg || DEFAULT_AVATAR
+                displayName: displayNameSnap.val() || username,
+                handle: publicHandleSnap.val() || profileHandleSnap.val() || username,
+                avatarImg: avatarSnap.val() || DEFAULT_AVATAR,
+                cachedAt: Date.now()
             };
             timelineProfileCache[username] = profile;
+            saveMediaToIDB(`timelineProfile_${username}`, profile);
             return profile;
+        }
+
+        async function getTimelineAuthorProfile(username) {
+            if (timelineProfileCache[username]) return timelineProfileCache[username];
+            if (timelineProfilePromises[username]) return timelineProfilePromises[username];
+            timelineProfilePromises[username] = (async () => {
+                const cached = await getMediaFromIDBPromise(`timelineProfile_${username}`);
+                if (cached && cached.avatarImg) {
+                    timelineProfileCache[username] = cached;
+                    if (Date.now() - Number(cached.cachedAt || 0) > 3 * 60 * 1000) {
+                        fetchTimelineAuthorProfile(username).catch(() => {});
+                    }
+                    return cached;
+                }
+                try {
+                    return await fetchTimelineAuthorProfile(username);
+                } catch (_) {
+                    const fallback = {
+                        displayName: username,
+                        handle: username,
+                        avatarImg: DEFAULT_AVATAR,
+                        cachedAt: Date.now()
+                    };
+                    timelineProfileCache[username] = fallback;
+                    return fallback;
+                }
+            })().finally(() => {
+                delete timelineProfilePromises[username];
+            });
+            return timelineProfilePromises[username];
         }
 
         function handleTimelinePhoto(event) {
@@ -5016,14 +5303,8 @@
 
         async function getFollowedTimelineAuthors() {
             if (timelineFilter === 'mine') return [currentUser];
-            const usersSnap = await db.ref('users').once('value');
-            const usernames = usersSnap.exists() ? Object.keys(usersSnap.val()) : [];
-            const checks = await Promise.all(usernames.map(async username => {
-                if (username === currentUser) return username;
-                const followed = await db.ref(`followers/${username}/${currentUser}`).once('value');
-                return followed.exists() ? username : null;
-            }));
-            return checks.filter(Boolean);
+            const cached = readFollowingCache(currentUser);
+            return [currentUser, ...(cached?.users || [])];
         }
 
         async function readTimelineBucket(author, privacy) {
@@ -5044,12 +5325,11 @@
             }
         }
 
-        async function loadTimelineFeed() {
-            if (!currentUser) return;
-            const sequence = ++timelineLoadSequence;
-            const container = document.getElementById('timelinePosts');
-            container.innerHTML = '<div class="timeline-empty">Gathering Board Drops… ✦</div>';
-            const authors = await getFollowedTimelineAuthors();
+        function timelineFeedCacheKey() {
+            return `timelineFeed_${currentUser}_${timelineFilter}`;
+        }
+
+        async function readTimelinePostsForAuthors(authors) {
             const postGroups = await Promise.all(authors.flatMap(author => {
                 const buckets = [readTimelineBucket(author, 'public')];
                 if (author === currentUser || timelineFilter === 'following') {
@@ -5058,10 +5338,55 @@
                 if (author === currentUser) buckets.push(readTimelineBucket(author, 'private'));
                 return buckets;
             }));
-            if (sequence !== timelineLoadSequence) return;
-            timelineAllPosts = postGroups.flat()
+            return postGroups.flat()
                 .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
+        }
+
+        async function loadTimelineFeed() {
+            if (!currentUser) return;
+            const sequence = ++timelineLoadSequence;
+            const container = document.getElementById('timelinePosts');
+            const cacheKey = timelineFeedCacheKey();
+            let showedCachedPosts = false;
+            if (timelineLoadedCacheKey === cacheKey && timelineAllPosts.length) {
+                await renderTimelinePosts();
+                showedCachedPosts = true;
+            } else {
+                const cachedPosts = await getMediaFromIDBPromise(cacheKey);
+                if (sequence !== timelineLoadSequence) return;
+                if (Array.isArray(cachedPosts) && cachedPosts.length) {
+                    timelineAllPosts = cachedPosts;
+                    timelineLoadedCacheKey = cacheKey;
+                    await renderTimelinePosts();
+                    showedCachedPosts = true;
+                }
+            }
+            if (!showedCachedPosts) {
+                container.innerHTML = '<div class="timeline-empty">Gathering Board Drops… ✦</div>';
+            }
+
+            const authors = await getFollowedTimelineAuthors();
+            const freshPosts = await readTimelinePostsForAuthors(authors);
+            if (sequence !== timelineLoadSequence) return;
+            timelineAllPosts = freshPosts;
+            timelineLoadedCacheKey = cacheKey;
+            saveMediaToIDB(cacheKey, freshPosts);
             await renderTimelinePosts();
+
+            if (timelineFilter === 'following') {
+                const followingCache = readFollowingCache(currentUser);
+                if (!followingCache || Date.now() - Number(followingCache.updatedAt || 0) > 5 * 60 * 1000) {
+                    refreshFollowingCache().then(async users => {
+                        if (sequence !== timelineLoadSequence || timelineFilter !== 'following') return;
+                        const refreshedPosts = await readTimelinePostsForAuthors([currentUser, ...users]);
+                        if (sequence !== timelineLoadSequence || timelineFilter !== 'following') return;
+                        timelineAllPosts = refreshedPosts;
+                        timelineLoadedCacheKey = cacheKey;
+                        saveMediaToIDB(cacheKey, refreshedPosts);
+                        await renderTimelinePosts();
+                    }).catch(() => {});
+                }
+            }
         }
 
         function formatTimelineTime(timestamp) {
@@ -5119,6 +5444,7 @@
             avatar.className = 'timeline-avatar';
             avatar.src = profile.avatarImg;
             avatar.alt = `@${profile.handle}`;
+            avatar.decoding = 'async';
             avatar.onclick = () => navigateToUser(post.author);
             const person = document.createElement('div');
             person.className = 'timeline-post-person';
@@ -5165,6 +5491,7 @@
                 image.src = post.imageUrl;
                 image.alt = `Photo shared by @${profile.handle}`;
                 image.loading = 'lazy';
+                image.decoding = 'async';
                 image.onclick = () => openLightbox(
                     post.imageUrl,
                     post.text || ''
