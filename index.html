@@ -369,6 +369,35 @@
             min-height: 250px; display: flex; align-items: center; justify-content: center;
             isolation: isolate;
         }
+        .hero-blank-placeholder {
+            position: relative; width: min(100%, 430px); min-height: 300px;
+            display: grid; place-items: center; overflow: hidden;
+            border: 1px dashed rgba(197,160,89,0.46); border-radius: 18px;
+            background:
+                radial-gradient(circle at 18% 22%, rgba(247,214,226,0.52) 0 32px, transparent 33px),
+                radial-gradient(circle at 82% 76%, rgba(217,236,248,0.54) 0 42px, transparent 43px),
+                linear-gradient(145deg, rgba(255,253,248,0.96), rgba(247,240,231,0.82));
+            box-shadow: inset 0 0 0 8px rgba(255,255,255,0.28), var(--shadow-soft);
+        }
+        .hero-blank-placeholder::before,
+        .hero-blank-placeholder::after {
+            content: "✦"; position: absolute; color: rgba(197,160,89,0.36);
+            font-family: serif;
+        }
+        .hero-blank-placeholder::before { top: 24px; right: 29px; font-size: 1.25rem; }
+        .hero-blank-placeholder::after { bottom: 30px; left: 31px; font-size: 0.9rem; }
+        .hero-blank-mark {
+            width: 72px; height: 72px; display: grid; place-items: center;
+            border: 1px solid rgba(197,160,89,0.42); border-radius: 50%;
+            background: rgba(255,255,255,0.44); color: var(--accent-gold);
+            font-size: 1.7rem; box-shadow: 0 8px 22px rgba(91,66,36,0.1);
+        }
+        body.dark-mode .hero-blank-placeholder {
+            background:
+                radial-gradient(circle at 18% 22%, rgba(126,86,109,0.28) 0 32px, transparent 33px),
+                radial-gradient(circle at 82% 76%, rgba(76,103,124,0.3) 0 42px, transparent 43px),
+                linear-gradient(145deg, rgba(38,35,39,0.98), rgba(25,24,28,0.92));
+        }
         
         .hero-girl, .hero-canvas {
             width: 100%; height: auto; max-height: 480px; object-fit: contain; display: block; margin: 0 auto;
@@ -1423,6 +1452,7 @@
 
             <div class="social-bar">
                 <div class="social-chip" onclick="likeProfile()">❤️ <span id="likesCount">0</span> Likes</div>
+                <div class="social-chip" id="messageBtn" style="display:none;" onclick="messageProfile()">💌 Message</div>
                 <div class="social-chip" id="followBtn" onclick="toggleFollow()">👤 Follow</div>
                 <div class="social-chip"><span id="followersCount">0</span> Followers</div>
                 <div class="social-chip owner-only" onclick="openVisitorsModal()">👀 Visitors</div>
@@ -1484,9 +1514,9 @@
                         <span class="edit-btn owner-only" onclick="enableListCardEdit('aboutList', event)">✦</span>
                     </div>
                     <ul class="scrap-list" id="aboutList">
-                        <li>Welcome to my personal vision space!</li>
-                        <li>Passionate performer and creative artist ✨</li>
-                        <li>Living my best dreams every single day ✦</li>
+                        <li>Add a few words about yourself</li>
+                        <li>Share what makes you feel most like you</li>
+                        <li>Tap ✦ to edit this card</li>
                     </ul>
                 </div>
             </div>
@@ -1495,9 +1525,11 @@
             <div class="column col-center">
                 <div class="hero-wrapper" id="heroMediaContainer">
                     <div id="heroMediaDisplay" style="width:100%">
-                        <img src="girl.png" alt="Character" class="hero-girl" id="heroImg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80';">
+                        <div class="hero-blank-placeholder" aria-label="Empty photo, GIF, or video space">
+                            <span class="hero-blank-mark">✦</span>
+                        </div>
                     </div>
-                    <div class="photo-upload-badge owner-only" onclick="triggerPhotoSelect(event)">✦ Change Media</div>
+                    <div class="photo-upload-badge owner-only" onclick="triggerPhotoSelect(event)">✦ Add Media</div>
                 </div>
 
                 <div class="card card-pink" id="card-philosophy" onclick="handleCardClick(this, event)" style="text-align:center;">
@@ -1506,7 +1538,7 @@
                         <div class="card-title">✦ MY PHILOSOPHY</div>
                         <span class="edit-btn owner-only" onclick="enableHeaderEdit('philosophyText', event)">✦</span>
                     </div>
-                    <p style="font-family:var(--font-main-title); font-size:1.45rem;" id="philosophyText">"Create the life you love waking up to..."</p>
+                    <p style="font-family:var(--font-main-title); font-size:1.45rem;" id="philosophyText">"Add a quote or reminder that inspires you..."</p>
                 </div>
             </div>
 
@@ -1521,9 +1553,9 @@
                         <span class="edit-btn owner-only" onclick="enableListCardEdit('thingsList', event)">✦</span>
                     </div>
                     <ul class="scrap-list" id="thingsList">
-                        <li>Singing & Live Performances 🎵</li>
-                        <li>Cozy Lofi Vibes & Hot Coffee ☕</li>
-                        <li>Creating Digital Graphics & Web Projects 🎨</li>
+                        <li>List the little things you love</li>
+                        <li>Add favorite hobbies, music, food, or people</li>
+                        <li>Tap ✦ to make this space yours</li>
                     </ul>
                 </div>
 
@@ -1535,9 +1567,9 @@
                         <span class="edit-btn owner-only" onclick="enableListCardEdit('goalsList', event)">✦</span>
                     </div>
                     <ul class="scrap-list" id="goalsList">
-                        <li>Travel to dream destinations ✈️</li>
-                        <li>Build my dream creative studio ✨</li>
-                        <li>Master new creative skills & tech ✦</li>
+                        <li>Add a place you want to visit</li>
+                        <li>Write a dream you want to build</li>
+                        <li>Save a goal you want to remember</li>
                     </ul>
                 </div>
 
@@ -1893,7 +1925,7 @@
         <div class="chat-shell">
             <aside class="chat-sidebar">
                 <div class="chat-search-row">
-                    <input type="text" id="chatFriendSearch" placeholder="Search username...">
+                    <input type="text" id="chatFriendSearch" placeholder="Search username..." onkeydown="if(event.key==='Enter'){event.preventDefault();searchChatFriends();}">
                     <button class="nav-btn" onclick="searchChatFriends()">Search</button>
                 </div>
                 <div id="chatSearchResults"></div>
@@ -2362,6 +2394,7 @@
             if (cachedProfile.displayName) document.getElementById('dispNameText').innerText = cachedProfile.displayName;
             if (cachedProfile.profileHandle) document.getElementById('userHandleText').innerText = `@${cachedProfile.profileHandle}`;
             document.getElementById('pokeBtn').style.display = (!isOwner && currentUser) ? 'inline-flex' : 'none';
+            document.getElementById('messageBtn').style.display = (!isOwner && currentUser) ? 'inline-flex' : 'none';
 
             if (!isOwner && currentUser) {
                 recordVisitor();
@@ -2721,6 +2754,17 @@
             if (currentUser === viewingUser) return;
             sendNotification(viewingUser, `${currentUser} sent you a cute poke! 🫶✨`, 'poke');
             alert(`You poked @${viewingUser}! ✦`);
+        }
+
+        function messageProfile() {
+            if (!currentUser) {
+                alert('Please login first!');
+                return;
+            }
+            if (!viewingUser || currentUser === viewingUser) return;
+            const recipient = viewingUser;
+            openChatPage();
+            setTimeout(() => startChatWith(recipient), 120);
         }
 
         function closeEditProfileModal() {
@@ -4087,13 +4131,20 @@
         }
 
         function searchChatFriends() {
-            const query = document.getElementById('chatFriendSearch').value.trim().toLowerCase();
+            const query = document.getElementById('chatFriendSearch').value
+                .trim().replace(/^@+/, '').toLowerCase();
             const results = document.getElementById('chatSearchResults');
             results.innerHTML = '';
             if (!query) return;
             db.ref('users').once('value', snap => {
+                const users = snap.val() || {};
                 const matches = snap.exists()
-                    ? Object.keys(snap.val()).filter(user => user !== currentUser && user.includes(query)).slice(0, 12)
+                    ? Object.keys(users).filter(user => {
+                        if (user === currentUser) return false;
+                        const username = String(user).toLowerCase();
+                        const publicHandle = String(users[user]?.publicHandle || '').toLowerCase();
+                        return username.includes(query) || publicHandle.includes(query);
+                    }).slice(0, 12)
                     : [];
                 if (!matches.length) {
                     results.innerHTML = '<div style="font-size:0.75rem; opacity:0.6; padding:6px;">No user found.</div>';
@@ -4472,17 +4523,22 @@
             activeChatUser = username;
             activeChatRecipientUid = null;
             activeDirectChatId = getChatId(currentUser, username);
-            document.getElementById('chatWithName').textContent = `Chatting with @${username} ✦`;
+            document.getElementById('chatWithName').textContent = 'Opening private chat… ✦';
             document.getElementById('chatMessages').innerHTML = '<div class="chat-empty">Loading messages...</div>';
 
             detachActiveChatMessages();
             const chatId = activeDirectChatId;
             try {
-                const recipientSnap = await db.ref(`users/${username}/uid`).once('value');
+                const [recipientSnap, publicHandleSnap] = await Promise.all([
+                    db.ref(`users/${username}/uid`).once('value'),
+                    db.ref(`users/${username}/publicHandle`).once('value')
+                ]);
                 activeChatRecipientUid = recipientSnap.val();
                 if (!auth.currentUser || !activeChatRecipientUid) {
                     throw new Error('This friend still needs to activate secure Boardly login before chatting.');
                 }
+                const publicHandle = publicHandleSnap.val() || username;
+                document.getElementById('chatWithName').textContent = `Chatting with @${publicHandle} ✦`;
                 const chatSetup = {
                     migrationOther: username,
                     participantUids: {
