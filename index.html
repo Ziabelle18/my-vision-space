@@ -3736,9 +3736,13 @@
                 if (!auth.currentUser || !activeChatRecipientUid) {
                     throw new Error('This friend still needs to activate secure Boardly login before chatting.');
                 }
-                const chatSetup = { migrationOther: username };
-                chatSetup[`participantUids/${auth.currentUser.uid}`] = true;
-                chatSetup[`participantUids/${activeChatRecipientUid}`] = true;
+                const chatSetup = {
+                    migrationOther: username,
+                    participantUids: {
+                        [auth.currentUser.uid]: true,
+                        [activeChatRecipientUid]: true
+                    }
+                };
                 await db.ref(`chats/${chatId}`).update(chatSetup);
                 rememberLocalChat(username);
                 await db.ref(`chatContacts/${safeChatKey(currentUser)}/${safeChatKey(username)}`).update({
@@ -3799,8 +3803,17 @@
             const recipientKey = safeChatKey(activeChatUser);
             try {
                 await messageRef.set({ from: currentUser, text, timestamp });
-                input.value = '';
-                rememberLocalChat(activeChatUser, timestamp);
+            } catch (error) {
+                alert(`Secure chat access could not be updated: ${error.message || 'Please reopen this chat.'}`);
+                return;
+            }
+
+            input.value = '';
+            rememberLocalChat(activeChatUser, timestamp);
+            stopChatTyping();
+            playCuteSound('send');
+
+            try {
                 const contactUpdates = {};
                 contactUpdates[`chatContacts/${senderKey}/${recipientKey}/username`] = activeChatUser;
                 contactUpdates[`chatContacts/${senderKey}/${recipientKey}/timestamp`] = timestamp;
@@ -3813,10 +3826,8 @@
                 await db.ref(`chatContacts/${recipientKey}/${senderKey}/unread`)
                     .transaction(value => Number(value || 0) + 1);
                 sendNotification(activeChatUser, `${currentUser} sent you a private message ✦`, 'chat');
-                stopChatTyping();
-                playCuteSound('send');
             } catch (error) {
-                alert(`Message was not sent: ${error.message || 'Please try again.'}`);
+                console.warn('Message was saved, but chat notifications could not fully update:', error);
             }
         }
 
