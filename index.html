@@ -942,6 +942,17 @@
             animation: sentMessageWiggle 0.62s cubic-bezier(0.2, 0.82, 0.28, 1) both !important;
             will-change: transform, opacity, box-shadow;
         }
+        @keyframes receivedMessageWiggle {
+            0% { opacity: 0.42; transform: translateX(-13px) translateY(3px) scale(0.95); }
+            58% { opacity: 1; transform: translateX(2px) translateY(0) scale(1.01); }
+            80% { transform: translateX(-1px) scale(0.998); }
+            100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        .chat-bubble.received-wiggle {
+            transform-origin: bottom left;
+            animation: receivedMessageWiggle 0.58s cubic-bezier(0.18, 0.84, 0.28, 1) both !important;
+            will-change: transform, opacity;
+        }
         .chat-time { display: block; margin-top: 3px; font-size: 0.58rem; opacity: 0.72; }
         .chat-status { display: block; margin-top: 2px; font-size: 0.55rem; opacity: 0.78; text-align: right; }
         .chat-reaction-wrap { position: relative; margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
@@ -1236,6 +1247,11 @@
             min-height: 25px; padding: 8px 2px 5px; display: flex;
             justify-content: space-between; font-size: 0.66rem; opacity: 0.7;
         }
+        .timeline-count-button {
+            padding: 2px 4px; border: 0; background: transparent; color: inherit;
+            font: inherit; cursor: pointer;
+        }
+        .timeline-count-button:hover { color: var(--accent-gold); text-decoration: underline; }
         .timeline-post-actions {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
             padding-top: 8px; border-top: 1px solid rgba(197,160,89,0.22);
@@ -1256,6 +1272,31 @@
             font-size: 0.72rem; line-height: 1.4;
         }
         .timeline-comment-body { flex: 1; min-width: 0; word-break: break-word; }
+        .timeline-comment.is-reply { margin-left: 22px; background: var(--card-pink); }
+        .timeline-comment-author {
+            border: 0; padding: 0; background: transparent; color: var(--accent-gold);
+            font: 700 0.72rem var(--font-body); cursor: pointer;
+        }
+        .timeline-comment-meta { display: block; margin-top: 3px; font-size: 0.6rem; opacity: 0.58; }
+        .timeline-comment-reply {
+            display: block; margin-top: 4px; border: 0; padding: 0; background: transparent;
+            color: var(--accent-gold); font: 700 0.62rem var(--font-body); cursor: pointer;
+        }
+        .timeline-reply-target {
+            display: none; align-items: center; justify-content: space-between; gap: 8px;
+            margin: 8px 0 5px; padding: 7px 9px; border-radius: 9px;
+            background: var(--card-pink); color: var(--accent-gold); font-size: 0.66rem;
+        }
+        .timeline-reply-target.visible { display: flex; }
+        .timeline-like-person {
+            width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 4px;
+            border: 0; border-bottom: 1px dashed rgba(197,160,89,.28);
+            background: transparent; color: var(--text-color); text-align: left; cursor: pointer;
+        }
+        .timeline-like-person img {
+            width: 38px; height: 38px; border-radius: 50%; object-fit: cover;
+            border: 1px solid var(--accent-gold);
+        }
         .timeline-comment-delete {
             border: 0; background: transparent; color: var(--accent-gold); cursor: pointer;
         }
@@ -1346,6 +1387,7 @@
             .modal-overlay { animation-duration: 0.22s !important; }
             .modal-card { animation-duration: 0.3s !important; }
             .chat-bubble.sent-wiggle { animation-duration: 0.01ms !important; }
+            .chat-bubble.received-wiggle { animation-duration: 0.01ms !important; }
         }
     </style>
 </head>
@@ -1703,6 +1745,26 @@
         </div>
     </div>
 
+    <!-- TIMELINE LIKES & COMMENT THREAD -->
+    <div class="modal-overlay" id="timelineInteractionModal" onclick="closeTimelineInteractionModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeTimelineInteractionModal()">&times;</button>
+            <h3 id="timelineInteractionTitle" style="color:var(--accent-gold);">Board Drop activity ✦</h3>
+            <div id="timelineInteractionList" style="margin-top:14px; max-height:55vh; overflow-y:auto;"></div>
+            <div id="timelineCommentComposer" style="display:none;">
+                <div class="timeline-reply-target" id="timelineReplyTarget">
+                    <span id="timelineReplyTargetText"></span>
+                    <button class="timeline-comment-delete" onclick="clearTimelineReplyTarget()" type="button">×</button>
+                </div>
+                <div class="timeline-comment-compose">
+                    <input id="timelineModalCommentInput" maxlength="300" placeholder="Write a comment..."
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();postTimelineComment();}">
+                    <button class="nav-btn" onclick="postTimelineComment()">Send ✦</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- RECENT VISITORS MODAL -->
     <div class="modal-overlay" id="visitorsModal" onclick="closeVisitorsModal()">
         <div class="modal-card" onclick="event.stopPropagation()">
@@ -2034,6 +2096,10 @@
         let activeDirectChatId = null;
         const pendingDirectMessages = new Map();
         const sentMessageAnimationUntil = new Map();
+        const receivedMessageAnimationUntil = new Map();
+        const knownChatMessageIds = new Map();
+        const handledIncomingFeedback = new Map();
+        let foregroundMessagingUnsubscribe = null;
         let activeChatTypingRef = null;
         let activeChatPresenceRef = null;
         let chatContactsRef = null;
@@ -2061,6 +2127,9 @@
         let timelineVisibleCount = 12;
         let timelineLoadSequence = 0;
         let timelineRenderSequence = 0;
+        let activeTimelineInteractionPost = null;
+        let activeTimelineInteractionMode = '';
+        let activeTimelineReplyTarget = null;
         let boardStyleLoadSequence = 0;
         const timelineProfileCache = {};
         const timelineProfilePromises = {};
@@ -3653,6 +3722,26 @@
         }
         function closeNotifModal() { document.getElementById('notifModal').style.display = 'none'; }
 
+        async function openTimelineNotificationActivity(notification, mode) {
+            openTimelinePage();
+            if (!notification.postId || !notification.postAuthor) return;
+            try {
+                const privacy = notification.postPrivacy || 'public';
+                const snap = await db.ref(
+                    `timelinePosts/${notification.postAuthor}/${privacy}/${notification.postId}`
+                ).once('value');
+                if (!snap.exists()) return;
+                const post = {
+                    ...snap.val(),
+                    postId: notification.postId,
+                    storageAuthor: notification.postAuthor,
+                    storagePrivacy: privacy
+                };
+                if (mode === 'likes') openTimelineLikes(post);
+                else openTimelineComments(post);
+            } catch (_) {}
+        }
+
         function openNotificationDestination(notificationKey, notification) {
             if (!currentUser || !notification) return;
             db.ref(`notifications/${currentUser}/${notificationKey}`).remove();
@@ -3669,8 +3758,12 @@
                 setTimeout(() => startGroupChat(notification.groupId), 180);
                 return;
             }
-            if (type === 'timeline-like' || type === 'timeline-comment') {
-                openTimelinePage();
+            if (type === 'timeline-like') {
+                openTimelineNotificationActivity(notification, 'likes');
+                return;
+            }
+            if (type === 'timeline-comment') {
+                openTimelineNotificationActivity(notification, 'comments');
                 return;
             }
             if (['visit', 'like', 'follow', 'poke'].includes(type) && notification.from) {
@@ -3996,8 +4089,70 @@
             return [safeChatKey(userA), safeChatKey(userB)].sort().join('__');
         }
 
+        function incomingFeedbackKey(messageId, fallback = '') {
+            return String(messageId || fallback || '').slice(0, 220);
+        }
+
+        async function showIncomingChatNotification({ title, body, tag, url }) {
+            if (!('Notification' in window) || !('serviceWorker' in navigator) ||
+                Notification.permission !== 'granted') return;
+            try {
+                const registration = boardlySWRegistration || await navigator.serviceWorker.ready;
+                await registration.showNotification(title || 'New Boardly message ✦', {
+                    body: body || 'Open Boardly to read your new message.',
+                    tag: tag || 'boardly-chat',
+                    renotify: true,
+                    silent: false,
+                    vibrate: [55, 30, 55],
+                    icon: './boardly-192.png',
+                    badge: './boardly-192.png',
+                    data: { url: url || './#chat' }
+                });
+            } catch (error) {
+                console.warn('Boardly could not show the incoming message alert:', error);
+            }
+        }
+
+        function handleIncomingChatFeedback(details = {}) {
+            const key = incomingFeedbackKey(details.messageId, `${details.tag || ''}:${details.body || ''}`);
+            if (key && handledIncomingFeedback.has(key)) return;
+            if (key) {
+                handledIncomingFeedback.set(key, Date.now());
+                setTimeout(() => handledIncomingFeedback.delete(key), 12000);
+            }
+            playCuteSound('receive');
+            if ('vibrate' in navigator) navigator.vibrate([45, 28, 45]);
+
+            const chatPageOpen = document.getElementById('chatPage')?.style.display === 'flex';
+            const conversationOpen = details.type === 'group'
+                ? chatPageOpen && activeGroupId === details.conversationId
+                : chatPageOpen && activeDirectChatId === details.conversationId;
+            if (document.hidden || !conversationOpen) {
+                showIncomingChatNotification(details);
+            }
+        }
+
+        function setupForegroundMessagingHandler() {
+            if (foregroundMessagingUnsubscribe) return;
+            const messaging = getBoardlyMessaging();
+            if (!messaging) return;
+            foregroundMessagingUnsubscribe = messaging.onMessage(payload => {
+                const data = payload.data || {};
+                handleIncomingChatFeedback({
+                    messageId: data.messageId || '',
+                    conversationId: data.conversationId || '',
+                    type: data.type || 'direct',
+                    title: data.title || 'New Boardly message ✦',
+                    body: data.body || 'Open Boardly to read your new message.',
+                    tag: data.tag || 'boardly-chat',
+                    url: data.url || './#chat'
+                });
+            });
+        }
+
         function setupRealtimeChatAccount() {
             if (!currentUser) return;
+            setupForegroundMessagingHandler();
 
             const connectedRef = db.ref('.info/connected');
             presenceRef = db.ref(`presence/${safeChatKey(currentUser)}`);
@@ -4024,15 +4179,16 @@
                 }
                 db.ref(`chats/${incoming.chatId}/messages/${incoming.messageId}/delivered/${safeChatKey(currentUser)}`)
                     .set(firebase.database.ServerValue.TIMESTAMP);
-                const fullPushEnabled = localStorage.getItem('boardly_push_uid') === auth.currentUser?.uid;
-                if (!fullPushEnabled && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-                    new Notification(`Boardly ✦ @${incoming.from || 'friend'}`, {
-                        body: incoming.preview || 'Sent you a message',
-                        tag: `boardly-${incoming.chatId}`,
-                        icon: './boardly-192.png',
-                        badge: './boardly-192.png'
-                    });
-                }
+                receivedMessageAnimationUntil.set(incoming.messageId, Date.now() + 2200);
+                handleIncomingChatFeedback({
+                    messageId: incoming.messageId,
+                    conversationId: incoming.chatId,
+                    type: 'direct',
+                    title: `Boardly ✦ @${incoming.from || 'friend'}`,
+                    body: incoming.preview || 'Sent you a message',
+                    tag: `boardly-chat-${incoming.chatId}`,
+                    url: `./?pushChat=${encodeURIComponent(incoming.from || '')}#chat`
+                });
                 snap.ref.remove();
             });
 
@@ -4088,6 +4244,16 @@
 
         function askForChatNotifications() {
             updateChatAlertButton();
+            if (!isBoardlyPushConfigured() || !('Notification' in window)) return;
+            if (Notification.permission === 'granted') {
+                refreshBoardlyPushToken();
+                return;
+            }
+            if (Notification.permission === 'default' &&
+                sessionStorage.getItem('boardly_alert_prompted') !== 'true') {
+                sessionStorage.setItem('boardly_alert_prompted', 'true');
+                enablePushNotifications();
+            }
         }
 
         async function enablePushNotifications() {
@@ -4597,6 +4763,35 @@
             });
         }
 
+        function prepareIncomingChatAnimations(snapshot, scope, otherUsername = '') {
+            const scopeKey = `${scope.type}:${scope.id}`;
+            const previousIds = knownChatMessageIds.get(scopeKey);
+            const currentIds = new Set();
+            snapshot.forEach(child => {
+                currentIds.add(child.key);
+                const message = child.val() || {};
+                if (previousIds && !previousIds.has(child.key) && message.from !== currentUser) {
+                    receivedMessageAnimationUntil.set(child.key, Date.now() + 1800);
+                    handleIncomingChatFeedback({
+                        messageId: child.key,
+                        conversationId: scope.id,
+                        type: scope.type,
+                        title: scope.type === 'group'
+                            ? `@${message.from || 'friend'} sent a group message ✦`
+                            : `Boardly ✦ @${otherUsername || message.from || 'friend'}`,
+                        body: message.text || 'Sent you a message',
+                        tag: scope.type === 'group'
+                            ? `boardly-group-${scope.id}`
+                            : `boardly-chat-${scope.id}`,
+                        url: scope.type === 'group'
+                            ? `./?pushGroup=${encodeURIComponent(scope.id)}#chat`
+                            : `./?pushChat=${encodeURIComponent(otherUsername || message.from || '')}#chat`
+                    });
+                }
+            });
+            knownChatMessageIds.set(scopeKey, currentIds);
+        }
+
         function buildChatBubble(message, messageId, scope, otherUsername = '') {
             const bubble = document.createElement('div');
             bubble.className = `chat-bubble ${message.from === currentUser ? 'mine' : 'theirs'}`;
@@ -4608,6 +4803,12 @@
                 setTimeout(() => {
                     bubble.classList.remove('sent-wiggle');
                 }, 700);
+            }
+            const receivedAnimationDeadline = receivedMessageAnimationUntil.get(messageId) || 0;
+            if (message.from !== currentUser && receivedAnimationDeadline > Date.now()) {
+                receivedMessageAnimationUntil.delete(messageId);
+                bubble.classList.add('received-wiggle');
+                setTimeout(() => bubble.classList.remove('received-wiggle'), 650);
             }
             if (scope.type === 'group' && message.from !== currentUser) {
                 const author = document.createElement('b');
@@ -4762,6 +4963,7 @@
 
             detachActiveChatMessages();
             const chatId = activeDirectChatId;
+            knownChatMessageIds.delete(`direct:${chatId}`);
             await renderCachedDirectMessages(chatId, username);
             try {
                 const [recipientSnap, publicHandleSnap] = await Promise.all([
@@ -4803,6 +5005,7 @@
             activeChatMessagesCallback = snap => {
                 if (activeDirectChatId !== chatId || activeChatUser !== username || activeGroupId) return;
                 saveMediaToIDB(directChatCacheKey(chatId), snapshotToCachedMessages(snap));
+                prepareIncomingChatAnimations(snap, { type: 'direct', id: chatId }, username);
                 renderChatSnapshot(snap, { type: 'direct', id: chatId }, username);
             };
             activeChatMessagesQuery.on('value', activeChatMessagesCallback, error => {
@@ -4851,6 +5054,7 @@
             rememberLocalChat(activeChatUser, timestamp);
             stopChatTyping();
             playCuteSound('send');
+            sendNotification(activeChatUser, `${currentUser} sent you a private message ✦`, 'chat');
 
             try {
                 const contactUpdates = {};
@@ -4864,7 +5068,6 @@
                 await db.ref().update(contactUpdates);
                 await db.ref(`chatContacts/${recipientKey}/${senderKey}/unread`)
                     .transaction(value => Number(value || 0) + 1);
-                sendNotification(activeChatUser, `${currentUser} sent you a private message ✦`, 'chat');
             } catch (error) {
                 console.warn('Message was saved, but chat notifications could not fully update:', error);
             }
@@ -4973,6 +5176,7 @@
             if (activeChatTypingRef) activeChatTypingRef.off();
             document.getElementById('chatTypingIndicator').classList.remove('visible');
             detachActiveChatMessages();
+            knownChatMessageIds.delete(`group:${groupId}`);
             document.getElementById('chatMessages').innerHTML = '<div class="chat-empty">Loading messages...</div>';
             await renderCachedGroupMessages(groupId);
             const [nameSnap, memberNamesSnap, createdBySnap] = await Promise.all([
@@ -4998,6 +5202,7 @@
             activeChatMessagesCallback = snap => {
                 if (activeGroupId !== groupId) return;
                 saveMediaToIDB(`groupChatMessages_${groupId}`, snapshotToCachedMessages(snap));
+                prepareIncomingChatAnimations(snap, { type: 'group', id: groupId });
                 renderChatSnapshot(snap, { type: 'group', id: groupId });
             };
             activeChatMessagesQuery.on('value', activeChatMessagesCallback);
@@ -5517,10 +5722,16 @@
 
             const counts = document.createElement('div');
             counts.className = 'timeline-counts';
-            const likeCount = document.createElement('span');
+            const likeCount = document.createElement('button');
+            likeCount.type = 'button';
+            likeCount.className = 'timeline-count-button';
             likeCount.id = `timeline-like-count-${post.postId}`;
-            const commentCount = document.createElement('span');
+            likeCount.onclick = () => openTimelineLikes(post);
+            const commentCount = document.createElement('button');
+            commentCount.type = 'button';
+            commentCount.className = 'timeline-count-button';
             commentCount.id = `timeline-comment-count-${post.postId}`;
+            commentCount.onclick = () => openTimelineComments(post);
             counts.append(likeCount, commentCount);
             article.appendChild(counts);
 
@@ -5534,38 +5745,13 @@
             const commentButton = document.createElement('button');
             commentButton.className = 'timeline-action';
             commentButton.textContent = '✦ Comment';
-            commentButton.onclick = () => toggleTimelineComments(post);
+            commentButton.onclick = () => openTimelineComments(post);
             const visitButton = document.createElement('button');
             visitButton.className = 'timeline-action';
             visitButton.textContent = 'Visit Board';
             visitButton.onclick = () => navigateToUser(post.author);
             actions.append(likeButton, commentButton, visitButton);
             article.appendChild(actions);
-
-            const comments = document.createElement('div');
-            comments.className = 'timeline-comments';
-            comments.id = `timeline-comments-${post.postId}`;
-            const list = document.createElement('div');
-            list.id = `timeline-comment-list-${post.postId}`;
-            const compose = document.createElement('div');
-            compose.className = 'timeline-comment-compose';
-            const input = document.createElement('input');
-            input.id = `timeline-comment-input-${post.postId}`;
-            input.maxLength = 300;
-            input.placeholder = 'Write a comment...';
-            input.onkeydown = event => {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    postTimelineComment(post);
-                }
-            };
-            const send = document.createElement('button');
-            send.className = 'nav-btn';
-            send.textContent = 'Send ✦';
-            send.onclick = () => postTimelineComment(post);
-            compose.append(input, send);
-            comments.append(list, compose);
-            article.appendChild(comments);
             return article;
         }
 
@@ -5591,7 +5777,16 @@
                     ref.set(true).then(() => {
                         refreshTimelineLikeState(post);
                         playCuteSound('like');
-                        sendNotification(post.author, `${currentUser} liked your Board Drop! ♡`, 'timeline-like');
+                        sendNotification(
+                            post.author,
+                            `${currentUser} liked your Board Drop! ♡`,
+                            'timeline-like',
+                            {
+                                postId: post.postId,
+                                postAuthor: post.author,
+                                postPrivacy: post.storagePrivacy || post.privacy || 'public'
+                            }
+                        );
                     });
                 }
             });
@@ -5604,62 +5799,210 @@
             if (element) element.textContent = count ? `${count} ${count === 1 ? 'comment' : 'comments'}` : '';
         }
 
-        function toggleTimelineComments(post) {
-            const box = document.getElementById(`timeline-comments-${post.postId}`);
-            const opening = box.style.display !== 'block';
-            box.style.display = opening ? 'block' : 'none';
-            if (opening) loadTimelineComments(post);
+        function closeTimelineInteractionModal() {
+            document.getElementById('timelineInteractionModal').style.display = 'none';
+            activeTimelineInteractionPost = null;
+            activeTimelineInteractionMode = '';
+            clearTimelineReplyTarget();
         }
 
-        async function loadTimelineComments(post) {
+        async function openTimelineLikes(post) {
+            activeTimelineInteractionPost = post;
+            activeTimelineInteractionMode = 'likes';
+            clearTimelineReplyTarget();
+            document.getElementById('timelineInteractionTitle').textContent = 'People who liked this ♡';
+            document.getElementById('timelineCommentComposer').style.display = 'none';
+            const modal = document.getElementById('timelineInteractionModal');
+            const list = document.getElementById('timelineInteractionList');
+            modal.style.display = 'flex';
+            list.innerHTML = '<div class="chat-empty" style="padding:24px;">Loading likes…</div>';
+            const snap = await db.ref(`timelinePostLikes/${post.postId}`).once('value');
+            if (activeTimelineInteractionPost?.postId !== post.postId || activeTimelineInteractionMode !== 'likes') return;
+            const usernames = snap.exists() ? Object.keys(snap.val()) : [];
+            list.innerHTML = '';
+            if (!usernames.length) {
+                list.innerHTML = '<div class="chat-empty" style="padding:24px;">No likes yet.</div>';
+                return;
+            }
+            const profiles = await Promise.all(usernames.map(username => getTimelineAuthorProfile(username)));
+            if (activeTimelineInteractionPost?.postId !== post.postId || activeTimelineInteractionMode !== 'likes') return;
+            usernames.forEach((username, index) => {
+                const profile = profiles[index];
+                const person = document.createElement('button');
+                person.type = 'button';
+                person.className = 'timeline-like-person';
+                const avatar = document.createElement('img');
+                avatar.src = profile.avatarImg || DEFAULT_AVATAR;
+                avatar.alt = `@${profile.handle || username}`;
+                avatar.decoding = 'async';
+                const label = document.createElement('span');
+                const displayName = document.createElement('b');
+                displayName.textContent = profile.displayName || username;
+                const handle = document.createElement('small');
+                handle.style.display = 'block';
+                handle.textContent = `@${profile.handle || username}`;
+                label.append(displayName, handle);
+                person.append(avatar, label);
+                person.onclick = () => navigateToUser(username);
+                list.appendChild(person);
+            });
+        }
+
+        function openTimelineComments(post) {
+            activeTimelineInteractionPost = post;
+            activeTimelineInteractionMode = 'comments';
+            clearTimelineReplyTarget();
+            document.getElementById('timelineInteractionTitle').textContent = 'Comments & replies ✦';
+            document.getElementById('timelineCommentComposer').style.display = 'block';
+            document.getElementById('timelineInteractionModal').style.display = 'flex';
+            document.getElementById('timelineModalCommentInput').value = '';
+            loadTimelineComments(post);
+        }
+
+        function setTimelineReplyTarget(commentId, comment) {
+            const rootCommentId = comment.parentCommentId || commentId;
+            activeTimelineReplyTarget = {
+                parentCommentId: rootCommentId,
+                replyTo: comment.author
+            };
+            document.getElementById('timelineReplyTargetText').textContent = `Replying to @${comment.author}`;
+            getTimelineAuthorProfile(comment.author).then(profile => {
+                if (activeTimelineReplyTarget?.replyTo === comment.author) {
+                    document.getElementById('timelineReplyTargetText').textContent =
+                        `Replying to @${profile.handle || comment.author}`;
+                }
+            }).catch(() => {});
+            document.getElementById('timelineReplyTarget').classList.add('visible');
+            const input = document.getElementById('timelineModalCommentInput');
+            input.placeholder = `Reply to @${comment.author}...`;
+            input.focus();
+        }
+
+        function clearTimelineReplyTarget() {
+            activeTimelineReplyTarget = null;
+            const target = document.getElementById('timelineReplyTarget');
+            const input = document.getElementById('timelineModalCommentInput');
+            if (target) target.classList.remove('visible');
+            if (input) input.placeholder = 'Write a comment...';
+        }
+
+        function buildTimelineCommentRow(post, commentId, comment, isReply = false) {
+            const row = document.createElement('div');
+            row.className = `timeline-comment${isReply ? ' is-reply' : ''}`;
+            const body = document.createElement('div');
+            body.className = 'timeline-comment-body';
+            const author = document.createElement('button');
+            author.type = 'button';
+            author.className = 'timeline-comment-author';
+            author.textContent = `@${comment.author}`;
+            author.onclick = () => navigateToUser(comment.author);
+            getTimelineAuthorProfile(comment.author).then(profile => {
+                author.textContent = `@${profile.handle || comment.author}`;
+            }).catch(() => {});
+            body.appendChild(author);
+            if (isReply && comment.replyTo) {
+                body.appendChild(document.createTextNode(` replied to @${comment.replyTo}: `));
+            } else {
+                body.appendChild(document.createTextNode(' '));
+            }
+            body.appendChild(document.createTextNode(comment.text || ''));
+            const meta = document.createElement('span');
+            meta.className = 'timeline-comment-meta';
+            meta.textContent = comment.timestamp ? new Date(comment.timestamp).toLocaleString() : 'Just now';
+            const reply = document.createElement('button');
+            reply.type = 'button';
+            reply.className = 'timeline-comment-reply';
+            reply.textContent = '↳ Reply';
+            reply.onclick = () => setTimelineReplyTarget(commentId, comment);
+            body.append(meta, reply);
+            row.appendChild(body);
+            if (currentUser === post.author || currentUser === comment.author) {
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'timeline-comment-delete';
+                remove.textContent = '×';
+                remove.onclick = () => deleteTimelineComment(post, commentId);
+                row.appendChild(remove);
+            }
+            return row;
+        }
+
+        async function loadTimelineComments(post = activeTimelineInteractionPost) {
+            if (!post) return;
+            const list = document.getElementById('timelineInteractionList');
+            list.innerHTML = '<div class="chat-empty" style="padding:24px;">Loading comments…</div>';
             const snap = await db.ref(`timelinePostComments/${post.postId}`).once('value');
-            const list = document.getElementById(`timeline-comment-list-${post.postId}`);
-            if (!list) return;
+            if (activeTimelineInteractionPost?.postId !== post.postId || activeTimelineInteractionMode !== 'comments') return;
             list.innerHTML = '';
             if (!snap.exists()) {
-                list.innerHTML = '<div style="font-size:0.68rem; opacity:0.58; margin-bottom:7px;">No comments yet.</div>';
+                list.innerHTML = '<div class="chat-empty" style="padding:24px;">No comments yet.<br>Start the conversation! ✦</div>';
                 return;
             }
             const comments = [];
-            snap.forEach(child => {
-                comments.push([child.key, child.val()]);
-            });
+            snap.forEach(child => comments.push([child.key, child.val()]));
             comments.sort((a, b) => Number(a[1].timestamp || 0) - Number(b[1].timestamp || 0));
-            comments.forEach(([commentId, comment]) => {
-                const row = document.createElement('div');
-                row.className = 'timeline-comment';
-                const body = document.createElement('div');
-                body.className = 'timeline-comment-body';
-                const author = document.createElement('b');
-                author.textContent = `@${comment.author} `;
-                body.append(author, document.createTextNode(comment.text));
-                row.appendChild(body);
-                if (currentUser === post.author || currentUser === comment.author) {
-                    const remove = document.createElement('button');
-                    remove.className = 'timeline-comment-delete';
-                    remove.textContent = '×';
-                    remove.onclick = () => deleteTimelineComment(post, commentId);
-                    row.appendChild(remove);
-                }
-                list.appendChild(row);
+            const topLevel = comments.filter(([, comment]) => !comment.parentCommentId);
+            const repliesByParent = {};
+            comments.filter(([, comment]) => comment.parentCommentId).forEach(item => {
+                const parentId = item[1].parentCommentId;
+                (repliesByParent[parentId] ||= []).push(item);
+            });
+            topLevel.forEach(([commentId, comment]) => {
+                list.appendChild(buildTimelineCommentRow(post, commentId, comment, false));
+                (repliesByParent[commentId] || []).forEach(([replyId, reply]) => {
+                    list.appendChild(buildTimelineCommentRow(post, replyId, reply, true));
+                });
+                delete repliesByParent[commentId];
+            });
+            Object.values(repliesByParent).flat().forEach(([replyId, reply]) => {
+                list.appendChild(buildTimelineCommentRow(post, replyId, reply, true));
             });
         }
 
-        async function postTimelineComment(post) {
-            const input = document.getElementById(`timeline-comment-input-${post.postId}`);
+        async function postTimelineComment() {
+            const post = activeTimelineInteractionPost;
+            const input = document.getElementById('timelineModalCommentInput');
+            if (!post || activeTimelineInteractionMode !== 'comments' || !input) return;
             const text = input.value.trim();
             if (!text) return;
-            await db.ref(`timelinePostComments/${post.postId}`).push({
+            const replyTarget = activeTimelineReplyTarget ? { ...activeTimelineReplyTarget } : null;
+            const payload = {
                 author: currentUser,
                 postAuthor: post.author,
                 text,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
+            };
+            if (replyTarget) {
+                payload.parentCommentId = replyTarget.parentCommentId;
+                payload.replyTo = replyTarget.replyTo;
+            }
+            await db.ref(`timelinePostComments/${post.postId}`).push(payload);
             input.value = '';
+            clearTimelineReplyTarget();
             loadTimelineComments(post);
             refreshTimelineCommentCount(post);
             playCuteSound('comment');
-            sendNotification(post.author, `${currentUser} commented on your Board Drop! ✦`, 'timeline-comment');
+            const notificationExtra = {
+                postId: post.postId,
+                postAuthor: post.author,
+                postPrivacy: post.storagePrivacy || post.privacy || 'public'
+            };
+            if (replyTarget && replyTarget.replyTo !== currentUser) {
+                sendNotification(
+                    replyTarget.replyTo,
+                    `${currentUser} replied to your comment! ✦`,
+                    'timeline-comment',
+                    notificationExtra
+                );
+            }
+            if (post.author !== currentUser && (!replyTarget || replyTarget.replyTo !== post.author)) {
+                sendNotification(
+                    post.author,
+                    `${currentUser} commented on your Board Drop! ✦`,
+                    'timeline-comment',
+                    notificationExtra
+                );
+            }
         }
 
         async function deleteTimelineComment(post, commentId) {
@@ -5791,15 +6134,15 @@
             }
         }
 
-        function playCuteSound(kind = 'tap') {
+        async function playCuteSound(kind = 'tap') {
             try {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 if (!AudioCtx) return;
                 cuteAudioContext = cuteAudioContext || new AudioCtx();
-                if (cuteAudioContext.state === 'suspended') cuteAudioContext.resume();
+                if (cuteAudioContext.state === 'suspended') await cuteAudioContext.resume();
                 const notes = {
                     like: [660, 880], comment: [520, 700],
-                    send: [740, 990], reaction: [620, 830]
+                    send: [740, 990], receive: [880, 660, 990], reaction: [620, 830]
                 }[kind] || [600, 760];
                 const now = cuteAudioContext.currentTime;
                 notes.forEach((frequency, index) => {
