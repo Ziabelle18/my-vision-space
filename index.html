@@ -2097,6 +2097,7 @@
         const pendingDirectMessages = new Map();
         const sentMessageAnimationUntil = new Map();
         const receivedMessageAnimationUntil = new Map();
+        const handledReceivedAnimations = new Set();
         const knownChatMessageIds = new Map();
         const handledIncomingFeedback = new Map();
         let foregroundMessagingUnsubscribe = null;
@@ -4177,9 +4178,14 @@
                     snap.ref.remove();
                     return;
                 }
-                db.ref(`chats/${incoming.chatId}/messages/${incoming.messageId}/delivered/${safeChatKey(currentUser)}`)
-                    .set(firebase.database.ServerValue.TIMESTAMP);
-                receivedMessageAnimationUntil.set(incoming.messageId, Date.now() + 2200);
+                queueReceivedMessageAnimation(incoming.messageId);
+                const incomingConversationOpen =
+                    document.getElementById('chatPage')?.style.display === 'flex' &&
+                    activeDirectChatId === incoming.chatId;
+                if (!incomingConversationOpen) {
+                    db.ref(`chats/${incoming.chatId}/messages/${incoming.messageId}/delivered/${safeChatKey(currentUser)}`)
+                        .set(firebase.database.ServerValue.TIMESTAMP);
+                }
                 handleIncomingChatFeedback({
                     messageId: incoming.messageId,
                     conversationId: incoming.chatId,
@@ -4763,6 +4769,27 @@
             });
         }
 
+        function queueReceivedMessageAnimation(messageId) {
+            if (!messageId || handledReceivedAnimations.has(messageId)) return;
+            const existingBubble = document.querySelector(
+                `#chatMessages .chat-bubble.theirs[data-message-id="${messageId}"]`
+            );
+            if (existingBubble) {
+                handledReceivedAnimations.add(messageId);
+                receivedMessageAnimationUntil.delete(messageId);
+                existingBubble.classList.remove('received-wiggle');
+                void existingBubble.offsetWidth;
+                existingBubble.classList.add('received-wiggle');
+                setTimeout(() => existingBubble.classList.remove('received-wiggle'), 650);
+            } else {
+                receivedMessageAnimationUntil.set(messageId, Date.now() + 2200);
+            }
+            setTimeout(() => {
+                handledReceivedAnimations.delete(messageId);
+                receivedMessageAnimationUntil.delete(messageId);
+            }, 5000);
+        }
+
         function prepareIncomingChatAnimations(snapshot, scope, otherUsername = '') {
             const scopeKey = `${scope.type}:${scope.id}`;
             const previousIds = knownChatMessageIds.get(scopeKey);
@@ -4770,8 +4797,11 @@
             snapshot.forEach(child => {
                 currentIds.add(child.key);
                 const message = child.val() || {};
-                if (previousIds && !previousIds.has(child.key) && message.from !== currentUser) {
-                    receivedMessageAnimationUntil.set(child.key, Date.now() + 1800);
+                const isNewAfterInitialLoad = previousIds && !previousIds.has(child.key);
+                const isFreshOnInitialLoad = !previousIds && message.from !== currentUser &&
+                    Date.now() - Number(message.timestamp || 0) < 2600;
+                if (message.from !== currentUser && (isNewAfterInitialLoad || isFreshOnInitialLoad)) {
+                    queueReceivedMessageAnimation(child.key);
                     handleIncomingChatFeedback({
                         messageId: child.key,
                         conversationId: scope.id,
@@ -4807,6 +4837,7 @@
             const receivedAnimationDeadline = receivedMessageAnimationUntil.get(messageId) || 0;
             if (message.from !== currentUser && receivedAnimationDeadline > Date.now()) {
                 receivedMessageAnimationUntil.delete(messageId);
+                handledReceivedAnimations.add(messageId);
                 bubble.classList.add('received-wiggle');
                 setTimeout(() => bubble.classList.remove('received-wiggle'), 650);
             }
@@ -4934,7 +4965,14 @@
             } else {
                 container.scrollTop = container.scrollHeight;
             }
-            if (scope.type === 'direct') markActiveChatSeen(scope.id, snapshot);
+            if (scope.type === 'direct') {
+                const seenDelay = container.querySelector('.received-wiggle') ? 680 : 0;
+                setTimeout(() => {
+                    if (!activeGroupId && activeDirectChatId === scope.id) {
+                        markActiveChatSeen(scope.id, snapshot);
+                    }
+                }, seenDelay);
+            }
         }
 
         function renderSavedDirectMessage(messageId, message, chatId, username) {
@@ -5939,7 +5977,9 @@
                 return;
             }
             const comments = [];
-            snap.forEach(child => comments.push([child.key, child.val()]));
+            snap.forEach(child => {
+                comments.push([child.key, child.val()]);
+            });
             comments.sort((a, b) => Number(a[1].timestamp || 0) - Number(b[1].timestamp || 0));
             const topLevel = comments.filter(([, comment]) => !comment.parentCommentId);
             const repliesByParent = {};
