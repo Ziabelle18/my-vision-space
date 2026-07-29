@@ -153,14 +153,6 @@
             transition: transform 0.2s, background 0.2s; white-space: nowrap;
         }
         .nav-btn:hover { transform: scale(1.05); }
-        .refresh-btn {
-            min-width: 38px; padding-inline: 9px; font-size: 1rem;
-        }
-        .refresh-btn.refreshing {
-            pointer-events: none; opacity: .7;
-        }
-        .refresh-btn.refreshing span { display: inline-block; animation: spin .8s linear infinite; }
-
         /* AUTH OVERLAY MODAL */
         .auth-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -1109,7 +1101,6 @@
             </div>
 
             <button class="nav-btn" onclick="openNotifModal()">🔔 <span id="notifBadge">0</span></button>
-            <button class="nav-btn refresh-btn" onclick="refreshBoardlyApp(this)" aria-label="Refresh Boardly" title="Refresh Boardly"><span>↻</span></button>
             <button class="nav-btn owner-only" onclick="openSettingsModal()">⚙️</button>
             <button class="nav-btn owner-only" onclick="toggleDarkMode()">✦ Dark</button>
             <button class="nav-btn" id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
@@ -1531,7 +1522,6 @@
         <div class="timeline-topbar">
             <button class="nav-btn" onclick="goMyBoard()">✦ MY BOARD</button>
             <div class="timeline-brand">BOARDLY</div>
-            <button class="nav-btn refresh-btn" onclick="refreshBoardlyApp(this)" aria-label="Refresh Boardly" title="Refresh Boardly"><span>↻</span></button>
             <button class="nav-btn" onclick="openNotifModal()">🔔 <span id="timelineNotifBadge">0</span></button>
         </div>
         <div class="timeline-shell">
@@ -1904,12 +1894,14 @@
         }
         function goHome() { openTimelinePage(); }
         function goMyBoard() {
+            checkBoardlyForUpdates();
             if (!currentUser) {
                 document.getElementById('authGate').style.display = 'flex';
                 return;
             }
             closeTimelinePage();
             if (viewingUser === currentUser) {
+                loadBoardData();
                 history.replaceState(null, '', `?user=${encodeURIComponent(currentUser)}`);
                 window.scrollTo(0, 0);
             } else {
@@ -1918,6 +1910,7 @@
         }
 
         function navigateToUser(u) {
+            checkBoardlyForUpdates();
             const targetUser = String(u || '').trim().replace(/^@+/, '');
             if (!targetUser) return;
             sessionStorage.setItem('boardly_pending_profile', targetUser);
@@ -3459,6 +3452,7 @@
 
         function openChatPage() {
             if (!currentUser) { alert("Please login to use chats!"); return; }
+            checkBoardlyForUpdates();
             pauseBoardMusic();
             askForChatNotifications();
             chatScrollPosition = window.scrollY || 0;
@@ -3742,10 +3736,10 @@
                 if (!auth.currentUser || !activeChatRecipientUid) {
                     throw new Error('This friend still needs to activate secure Boardly login before chatting.');
                 }
-                const participants = {};
-                participants[auth.currentUser.uid] = true;
-                participants[activeChatRecipientUid] = true;
-                await db.ref(`chats/${chatId}/participantUids`).update(participants);
+                const chatSetup = { migrationOther: username };
+                chatSetup[`participantUids/${auth.currentUser.uid}`] = true;
+                chatSetup[`participantUids/${activeChatRecipientUid}`] = true;
+                await db.ref(`chats/${chatId}`).update(chatSetup);
                 rememberLocalChat(username);
                 await db.ref(`chatContacts/${safeChatKey(currentUser)}/${safeChatKey(username)}`).update({
                     username,
@@ -3980,6 +3974,7 @@
 
         /* BOARDLY HOME TIMELINE & BOARD DROPS */
         async function openTimelinePage(updateHash = true) {
+            checkBoardlyForUpdates();
             if (!currentUser) {
                 document.getElementById('authGate').style.display = 'flex';
                 return;
@@ -4602,6 +4597,18 @@
         }
 
         let boardlyUpdateReloading = false;
+        let boardlySWRegistration = null;
+
+        async function checkBoardlyForUpdates() {
+            if (!('serviceWorker' in navigator) || !navigator.onLine) return;
+            try {
+                const registration = boardlySWRegistration || await navigator.serviceWorker.getRegistration();
+                if (!registration) return;
+                boardlySWRegistration = registration;
+                await registration.update();
+                if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } catch (_) {}
+        }
 
         function reloadForBoardlyUpdate() {
             if (boardlyUpdateReloading) return;
@@ -4611,36 +4618,6 @@
             window.location.reload();
         }
 
-        async function refreshBoardlyApp(button) {
-            if (button) button.classList.add('refreshing');
-            if (!navigator.onLine) {
-                if (button) button.classList.remove('refreshing');
-                alert('Boardly is offline right now. Connect to the internet, then tap refresh again.');
-                return;
-            }
-            const loader = document.getElementById('pageLoader');
-            if (loader) loader.classList.remove('hidden');
-            try {
-                await fetch(`./index.html?boardly-refresh=${Date.now()}`, { cache: 'no-store' });
-                if ('caches' in window) {
-                    const keys = await caches.keys();
-                    await Promise.all(
-                        keys.filter(key => key.startsWith('boardly-shell-')).map(key => caches.delete(key))
-                    );
-                }
-                if ('serviceWorker' in navigator) {
-                    const registration = await navigator.serviceWorker.getRegistration();
-                    if (registration) {
-                        await registration.update();
-                        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                    }
-                }
-            } catch (error) {
-                console.warn('Boardly refresh check failed:', error);
-            }
-            reloadForBoardlyUpdate();
-        }
-
         async function setupBoardlyUpdates() {
             if (!('serviceWorker' in navigator)) return;
             const hadController = Boolean(navigator.serviceWorker.controller);
@@ -4648,6 +4625,7 @@
                 const registration = await navigator.serviceWorker.register('./service-worker.js', {
                     updateViaCache: 'none'
                 });
+                boardlySWRegistration = registration;
                 const requestUpdate = () => registration.update().catch(() => {});
                 requestUpdate();
                 if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
