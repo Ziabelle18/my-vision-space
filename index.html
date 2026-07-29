@@ -2494,7 +2494,9 @@
                     return;
                 }
                 const notes = [];
-                snap.forEach(child => notes.push([child.key, child.val()]));
+                snap.forEach(child => {
+                    notes.push([child.key, child.val()]);
+                });
                 notes.reverse().forEach(([key, note]) => {
                     const row = document.createElement('div');
                     row.className = 'chaos-note';
@@ -4826,12 +4828,14 @@
             try {
                 const snap = await db.ref(`timelinePosts/${author}/${privacy}`).limitToLast(30).once('value');
                 const posts = [];
-                snap.forEach(child => posts.push({
-                    ...child.val(),
-                    postId: child.key,
-                    storageAuthor: author,
-                    storagePrivacy: privacy
-                }));
+                snap.forEach(child => {
+                    posts.push({
+                        ...child.val(),
+                        postId: child.key,
+                        storageAuthor: author,
+                        storagePrivacy: privacy
+                    });
+                });
                 return posts;
             } catch (error) {
                 return [];
@@ -5084,7 +5088,9 @@
                 return;
             }
             const comments = [];
-            snap.forEach(child => comments.push([child.key, child.val()]));
+            snap.forEach(child => {
+                comments.push([child.key, child.val()]);
+            });
             comments.sort((a, b) => Number(a[1].timestamp || 0) - Number(b[1].timestamp || 0));
             comments.forEach(([commentId, comment]) => {
                 const row = document.createElement('div');
