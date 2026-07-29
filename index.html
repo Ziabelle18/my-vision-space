@@ -153,6 +153,13 @@
             transition: transform 0.2s, background 0.2s; white-space: nowrap;
         }
         .nav-btn:hover { transform: scale(1.05); }
+        .refresh-btn {
+            min-width: 38px; padding-inline: 9px; font-size: 1rem;
+        }
+        .refresh-btn.refreshing {
+            pointer-events: none; opacity: .7;
+        }
+        .refresh-btn.refreshing span { display: inline-block; animation: spin .8s linear infinite; }
 
         /* AUTH OVERLAY MODAL */
         .auth-overlay {
@@ -339,7 +346,14 @@
         .vinyl-container {
             display: flex; align-items: center; gap: 6px; background: var(--card-white);
             border: 1px solid var(--accent-gold); padding: 4px 10px 4px 6px; border-radius: 30px;
-            box-shadow: var(--shadow-soft); cursor: pointer;
+            box-shadow: var(--shadow-soft); cursor: pointer; transition: box-shadow .25s ease, transform .25s ease;
+        }
+        .vinyl-container.playing {
+            box-shadow: 0 0 0 3px rgba(197,160,89,.18), 0 0 18px rgba(197,160,89,.68);
+            transform: scale(1.045);
+        }
+        .vinyl-container.playing .vinyl-record {
+            filter: drop-shadow(0 0 5px var(--accent-gold));
         }
         .vinyl-record {
             width: 24px; height: 24px; border-radius: 50%;
@@ -559,6 +573,17 @@
             width: 22px; height: 22px; flex: 0 0 auto; border-radius: 50%;
             border: 1px solid var(--accent-gold); background: transparent;
             color: var(--accent-gold); cursor: pointer; font-size: 0.7rem;
+        }
+        .comment-reply-btn {
+            margin-top: 4px; padding: 0; border: 0; background: transparent;
+            color: var(--accent-gold); cursor: pointer; font: 700 0.64rem var(--font-body);
+        }
+        .comment-item.is-reply {
+            margin-left: 18px; padding-left: 9px; border-left: 2px solid rgba(197,160,89,.32);
+        }
+        .comment-reply-context {
+            display: block; margin-bottom: 3px; color: var(--accent-gold);
+            font-size: 0.62rem; opacity: .8;
         }
         .notification-item {
             width: 100%; padding: 10px 8px; display: flex; align-items: center;
@@ -1078,14 +1103,15 @@
 
         <div class="nav-items">
             <div class="vinyl-wrapper">
-                <div class="vinyl-container" onclick="toggleMusic()">
+                <div class="vinyl-container" id="vinylControl" onclick="toggleMusic()">
                     <div class="vinyl-record" id="vinylDisk"></div>
                 </div>
             </div>
 
             <button class="nav-btn" onclick="openNotifModal()">🔔 <span id="notifBadge">0</span></button>
-            <button class="nav-btn" onclick="openSettingsModal()">⚙️</button>
-            <button class="nav-btn" onclick="toggleDarkMode()">✦ Dark</button>
+            <button class="nav-btn refresh-btn" onclick="refreshBoardlyApp(this)" aria-label="Refresh Boardly" title="Refresh Boardly"><span>↻</span></button>
+            <button class="nav-btn owner-only" onclick="openSettingsModal()">⚙️</button>
+            <button class="nav-btn owner-only" onclick="toggleDarkMode()">✦ Dark</button>
             <button class="nav-btn" id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
         </div>
     </div>
@@ -1354,6 +1380,7 @@
             <hr style="margin:15px 0; border:none; border-top:1px dashed var(--accent-gold);">
             <h4>Comments 💬</h4>
             <div class="comment-target-label" id="commentTargetLabel"></div>
+            <div class="comment-target-label" id="commentReplyTargetLabel"></div>
             <div id="cardCommentsList" style="margin:10px 0; font-size:0.8rem;"></div>
             <div style="display:flex; gap:6px;">
                 <input type="text" id="cardCommentInput" placeholder="Write a comment..." style="flex:1; padding:6px; border:1px solid var(--accent-gold); border-radius:4px;">
@@ -1504,6 +1531,7 @@
         <div class="timeline-topbar">
             <button class="nav-btn" onclick="goMyBoard()">✦ MY BOARD</button>
             <div class="timeline-brand">BOARDLY</div>
+            <button class="nav-btn refresh-btn" onclick="refreshBoardlyApp(this)" aria-label="Refresh Boardly" title="Refresh Boardly"><span>↻</span></button>
             <button class="nav-btn" onclick="openNotifModal()">🔔 <span id="timelineNotifBadge">0</span></button>
         </div>
         <div class="timeline-shell">
@@ -1640,6 +1668,8 @@
         let pendingAuthUsername = null;
         let activeCardId = null;
         let activeCommentTarget = '';
+        let activeReplyCommentKey = '';
+        let activeReplyUser = '';
         let activeEditListId = null;
         let ytPlayer = null;
         let isYtReady = false;
@@ -1717,9 +1747,7 @@
                         if (boardMusicShouldAutoplay) tryStartBoardMusic();
                     },
                     'onStateChange': e => {
-                        const disk = document.getElementById('vinylDisk');
-                        if (e.data === YT.PlayerState.PLAYING) disk.classList.add('spinning');
-                        else disk.classList.remove('spinning');
+                        setVinylPlaying(e.data === YT.PlayerState.PLAYING);
                     }
                 }
             });
@@ -2482,6 +2510,8 @@
             activeCommentTarget = clickedItem ? clickedItem.innerText.trim() : '';
             setTimeout(() => {
                 activeCardId = card.id;
+                activeReplyCommentKey = '';
+                activeReplyUser = '';
                 const body = document.getElementById('modalBody');
                 const clone = card.cloneNode(true);
                 clone.querySelectorAll('.edit-btn, .gallery-add-control').forEach(b => b.remove());
@@ -2497,6 +2527,7 @@
                 }
                 body.innerHTML = clone.innerHTML;
                 const targetLabel = document.getElementById('commentTargetLabel');
+                document.getElementById('commentReplyTargetLabel').style.display = 'none';
                 targetLabel.style.display = activeCommentTarget ? 'block' : 'none';
                 targetLabel.textContent = activeCommentTarget ? `✦ Commenting on: “${activeCommentTarget}”` : '';
                 document.getElementById('cardCommentInput').placeholder = activeCommentTarget
@@ -2507,7 +2538,11 @@
             }, 480);
         }
 
-        function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
+        function closeModal() {
+            activeReplyCommentKey = '';
+            activeReplyUser = '';
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
 
         /* AUTOMATIC WHITE BACKGROUND REMOVER & CHROMA KEY PROCESSOR */
         function triggerPhotoSelect(e) { if (e) e.stopPropagation(); document.getElementById('heroImageInput').click(); }
@@ -2918,10 +2953,18 @@
                 user: currentUser,
                 text: txt,
                 target: activeCommentTarget || '',
+                replyTo: activeReplyCommentKey || '',
+                replyUser: activeReplyUser || '',
                 date: new Date().toLocaleDateString(),
                 timestamp: Date.now()
             }, () => {
                 document.getElementById('cardCommentInput').value = '';
+                activeReplyCommentKey = '';
+                activeReplyUser = '';
+                document.getElementById('commentReplyTargetLabel').style.display = 'none';
+                document.getElementById('cardCommentInput').placeholder = activeCommentTarget
+                    ? `Comment about “${activeCommentTarget}”...`
+                    : 'Write a comment...';
                 loadCardComments();
                 const context = activeCommentTarget ? ` on “${activeCommentTarget}”` : '';
                 sendNotification(viewingUser, `${currentUser} commented${context} on your card! 💬`, 'comment');
@@ -2943,8 +2986,15 @@
                     comments.forEach(([key, comment]) => {
                         const row = document.createElement('div');
                         row.className = 'comment-item';
+                        if (comment.replyTo) row.classList.add('is-reply');
                         const content = document.createElement('div');
                         content.className = 'comment-content';
+                        if (comment.replyUser) {
+                            const replyContext = document.createElement('span');
+                            replyContext.className = 'comment-reply-context';
+                            replyContext.textContent = `↳ Replying to @${comment.replyUser}`;
+                            content.appendChild(replyContext);
+                        }
                         if (comment.target) {
                             const tag = document.createElement('span');
                             tag.className = 'comment-specific-tag';
@@ -2959,6 +3009,12 @@
                         date.style.cssText = 'font-size:0.62rem; opacity:0.6; margin-top:3px;';
                         date.textContent = comment.date || '';
                         content.append(author, message, date);
+                        const replyButton = document.createElement('button');
+                        replyButton.className = 'comment-reply-btn';
+                        replyButton.type = 'button';
+                        replyButton.textContent = '↳ Reply';
+                        replyButton.onclick = () => selectCommentReply(key, comment.user);
+                        content.appendChild(replyButton);
                         row.appendChild(content);
 
                         if (currentUser === viewingUser || currentUser === comment.user) {
@@ -2976,6 +3032,17 @@
                     list.innerHTML = '<div style="opacity:0.6;">No comments yet.</div>';
                 }
             });
+        }
+
+        function selectCommentReply(commentKey, username) {
+            activeReplyCommentKey = commentKey;
+            activeReplyUser = username;
+            const label = document.getElementById('commentReplyTargetLabel');
+            label.style.display = 'block';
+            label.textContent = `↳ Replying to @${username}`;
+            const input = document.getElementById('cardCommentInput');
+            input.placeholder = `Reply to @${username}...`;
+            input.focus();
         }
 
         function deleteCardComment(commentKey) {
@@ -3099,7 +3166,10 @@
         function closeVisitorsModal() { document.getElementById('visitorsModal').style.display = 'none'; }
 
         /* SETTINGS & FONTS */
-        function openSettingsModal() { document.getElementById('settingsModal').style.display = 'flex'; }
+        function openSettingsModal() {
+            if (!currentUser || currentUser !== viewingUser) return;
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
         function closeSettingsModal() { document.getElementById('settingsModal').style.display = 'none'; }
 
         function readSavedFonts(username) {
@@ -3191,6 +3261,7 @@
         }
 
         function toggleDarkMode() {
+            if (!currentUser || currentUser !== viewingUser) return;
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('vspace_dark_mode', document.body.classList.contains('dark-mode'));
             updateAppThemeColor();
@@ -3464,20 +3535,43 @@
             });
         }
 
+        function rememberLocalChat(username, timestamp = Date.now()) {
+            if (!currentUser || !username) return;
+            const key = `boardly_recent_chats_${currentUser}`;
+            const saved = JSON.parse(localStorage.getItem(key) || '{}');
+            saved[username] = { username, timestamp };
+            localStorage.setItem(key, JSON.stringify(saved));
+        }
+
+        function getLocalChatContacts() {
+            if (!currentUser) return {};
+            return JSON.parse(localStorage.getItem(`boardly_recent_chats_${currentUser}`) || '{}');
+        }
+
+        function renderChatContacts(cloudContacts = {}) {
+            const container = document.getElementById('chatContacts');
+            const merged = { ...getLocalChatContacts(), ...cloudContacts };
+            container.innerHTML = '';
+            const entries = Object.entries(merged)
+                .filter(([, item]) => item && item.username && item.username !== currentUser)
+                .sort((a, b) => Number(b[1].timestamp || 0) - Number(a[1].timestamp || 0));
+            if (!entries.length) {
+                container.innerHTML = '<div style="font-size:0.75rem; opacity:0.6;">No chats yet.</div>';
+                return;
+            }
+            entries.forEach(([key, item]) => makeChatPersonButton(item.username || key, container, item));
+        }
+
         function loadChatContacts() {
             if (chatContactsRef) chatContactsRef.off();
             chatContactsRef = db.ref(`chatContacts/${safeChatKey(currentUser)}`);
             chatContactsRef.on('value', snap => {
-                const container = document.getElementById('chatContacts');
-                container.innerHTML = '';
-                if (!snap.exists()) {
-                    container.innerHTML = '<div style="font-size:0.75rem; opacity:0.6;">No chats yet.</div>';
-                    return;
-                }
-                Object.entries(snap.val())
-                    .sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0))
-                    .forEach(([key, item]) => makeChatPersonButton(item.username || key, container, item));
-            });
+                const cloudContacts = snap.val() || {};
+                Object.values(cloudContacts).forEach(item => {
+                    if (item?.username) rememberLocalChat(item.username, item.timestamp || 0);
+                });
+                renderChatContacts(cloudContacts);
+            }, () => renderChatContacts());
         }
 
         function watchUnreadMessages() {
@@ -3573,7 +3667,7 @@
             toggle.textContent = '✦ react';
             const picker = document.createElement('div');
             picker.className = 'chat-reaction-picker';
-            ['(*˘︶˘*) ♡', '(≧▽≦)'].forEach(label => {
+            ['(*˘︶˘*)', '♡', '(≧▽≦)'].forEach(label => {
                 const option = document.createElement('button');
                 option.className = 'chat-reaction-option';
                 option.textContent = label;
@@ -3652,6 +3746,11 @@
                 participants[auth.currentUser.uid] = true;
                 participants[activeChatRecipientUid] = true;
                 await db.ref(`chats/${chatId}/participantUids`).update(participants);
+                rememberLocalChat(username);
+                await db.ref(`chatContacts/${safeChatKey(currentUser)}/${safeChatKey(username)}`).update({
+                    username,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                }).catch(() => {});
             } catch (error) {
                 const container = document.getElementById('chatMessages');
                 container.innerHTML = '';
@@ -3676,6 +3775,9 @@
                 ));
                 container.scrollTop = container.scrollHeight;
                 markActiveChatSeen(chatId, snap);
+            }, error => {
+                const container = document.getElementById('chatMessages');
+                container.innerHTML = `<div class="chat-empty">Messages could not load.<br>${error.message || 'Please reopen this chat.'}</div>`;
             });
         }
 
@@ -3701,23 +3803,27 @@
             const messageId = messageRef.key;
             const senderKey = safeChatKey(currentUser);
             const recipientKey = safeChatKey(activeChatUser);
-            const updates = {};
-            updates[`chats/${chatId}/participantUids/${auth.currentUser.uid}`] = true;
-            updates[`chats/${chatId}/participantUids/${activeChatRecipientUid}`] = true;
-            updates[`chats/${chatId}/messages/${messageId}`] = { from: currentUser, text, timestamp };
-            updates[`chatContacts/${senderKey}/${recipientKey}/username`] = activeChatUser;
-            updates[`chatContacts/${senderKey}/${recipientKey}/timestamp`] = timestamp;
-            updates[`chatContacts/${recipientKey}/${senderKey}/username`] = currentUser;
-            updates[`chatContacts/${recipientKey}/${senderKey}/timestamp`] = timestamp;
-            updates[`chatInbox/${recipientKey}/${messageId}`] = {
-                chatId, messageId, from: currentUser, preview: text.slice(0, 100), timestamp
-            };
-            await db.ref().update(updates);
-            db.ref(`chatContacts/${recipientKey}/${senderKey}/unread`).transaction(value => Number(value || 0) + 1);
-            sendNotification(activeChatUser, `${currentUser} sent you a private message ✦`, 'chat');
-            input.value = '';
-            stopChatTyping();
-            playCuteSound('send');
+            try {
+                await messageRef.set({ from: currentUser, text, timestamp });
+                input.value = '';
+                rememberLocalChat(activeChatUser, timestamp);
+                const contactUpdates = {};
+                contactUpdates[`chatContacts/${senderKey}/${recipientKey}/username`] = activeChatUser;
+                contactUpdates[`chatContacts/${senderKey}/${recipientKey}/timestamp`] = timestamp;
+                contactUpdates[`chatContacts/${recipientKey}/${senderKey}/username`] = currentUser;
+                contactUpdates[`chatContacts/${recipientKey}/${senderKey}/timestamp`] = timestamp;
+                contactUpdates[`chatInbox/${recipientKey}/${messageId}`] = {
+                    chatId, messageId, from: currentUser, preview: text.slice(0, 100), timestamp
+                };
+                await db.ref().update(contactUpdates);
+                await db.ref(`chatContacts/${recipientKey}/${senderKey}/unread`)
+                    .transaction(value => Number(value || 0) + 1);
+                sendNotification(activeChatUser, `${currentUser} sent you a private message ✦`, 'chat');
+                stopChatTyping();
+                playCuteSound('send');
+            } catch (error) {
+                alert(`Message was not sent: ${error.message || 'Please try again.'}`);
+            }
         }
 
         function openCreateGroupModal() {
@@ -4385,6 +4491,7 @@
         }
 
         function bindMusicUnlock() {
+            if (sessionStorage.getItem('boardly_music_manual_off') === 'true') return;
             if (musicUnlockBound) return;
             musicUnlockBound = true;
             const unlock = () => {
@@ -4397,12 +4504,15 @@
 
         function tryStartBoardMusic() {
             if (!boardPageIsVisible()) return;
+            if (sessionStorage.getItem('boardly_music_manual_off') === 'true') {
+                pauseBoardMusic();
+                return;
+            }
             boardMusicShouldAutoplay = true;
-            const disk = document.getElementById('vinylDisk');
             if (activeMusicType === 'youtube') {
                 if (ytPlayer && isYtReady) {
                     ytPlayer.playVideo();
-                    disk.classList.add('spinning');
+                    setVinylPlaying(true);
                 } else {
                     bindMusicUnlock();
                 }
@@ -4410,11 +4520,12 @@
             }
             const audio = document.getElementById('bgMusic');
             audio.play()
-                .then(() => disk.classList.add('spinning'))
+                .then(() => setVinylPlaying(true))
                 .catch(() => bindMusicUnlock());
         }
 
         function scheduleBoardMusicAutoplay() {
+            if (sessionStorage.getItem('boardly_music_manual_off') === 'true') return;
             boardMusicShouldAutoplay = true;
             setTimeout(tryStartBoardMusic, 420);
         }
@@ -4423,31 +4534,43 @@
             boardMusicShouldAutoplay = false;
             document.getElementById('bgMusic').pause();
             if (ytPlayer && isYtReady) ytPlayer.pauseVideo();
-            document.getElementById('vinylDisk').classList.remove('spinning');
+            setVinylPlaying(false);
+        }
+
+        function setVinylPlaying(isPlaying) {
+            document.getElementById('vinylDisk').classList.toggle('spinning', isPlaying);
+            const control = document.getElementById('vinylControl');
+            if (control) {
+                control.classList.toggle('playing', isPlaying);
+                control.title = isPlaying ? 'Music is playing — tap to turn off' : 'Tap to play music';
+            }
         }
 
         function toggleMusic() {
-            const disk = document.getElementById('vinylDisk');
             if (activeMusicType === 'youtube' && ytPlayer && isYtReady) {
                 const state = ytPlayer.getPlayerState();
                 if (state === YT.PlayerState.PLAYING) {
+                    sessionStorage.setItem('boardly_music_manual_off', 'true');
                     ytPlayer.pauseVideo();
                     boardMusicShouldAutoplay = false;
-                    disk.classList.remove('spinning');
+                    setVinylPlaying(false);
                 } else {
+                    sessionStorage.removeItem('boardly_music_manual_off');
                     ytPlayer.playVideo();
                     boardMusicShouldAutoplay = true;
-                    disk.classList.add('spinning');
+                    setVinylPlaying(true);
                 }
             } else {
                 const audio = document.getElementById('bgMusic');
                 if (audio.paused) {
+                    sessionStorage.removeItem('boardly_music_manual_off');
                     boardMusicShouldAutoplay = true;
-                    audio.play().then(() => disk.classList.add('spinning')).catch(() => {});
+                    audio.play().then(() => setVinylPlaying(true)).catch(() => {});
                 } else {
+                    sessionStorage.setItem('boardly_music_manual_off', 'true');
                     audio.pause();
                     boardMusicShouldAutoplay = false;
-                    disk.classList.remove('spinning');
+                    setVinylPlaying(false);
                 }
             }
         }
@@ -4478,15 +4601,81 @@
             } catch (_) {}
         }
 
+        let boardlyUpdateReloading = false;
+
+        function reloadForBoardlyUpdate() {
+            if (boardlyUpdateReloading) return;
+            boardlyUpdateReloading = true;
+            const loader = document.getElementById('pageLoader');
+            if (loader) loader.classList.remove('hidden');
+            window.location.reload();
+        }
+
+        async function refreshBoardlyApp(button) {
+            if (button) button.classList.add('refreshing');
+            if (!navigator.onLine) {
+                if (button) button.classList.remove('refreshing');
+                alert('Boardly is offline right now. Connect to the internet, then tap refresh again.');
+                return;
+            }
+            const loader = document.getElementById('pageLoader');
+            if (loader) loader.classList.remove('hidden');
+            try {
+                await fetch(`./index.html?boardly-refresh=${Date.now()}`, { cache: 'no-store' });
+                if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(
+                        keys.filter(key => key.startsWith('boardly-shell-')).map(key => caches.delete(key))
+                    );
+                }
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        await registration.update();
+                        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                }
+            } catch (error) {
+                console.warn('Boardly refresh check failed:', error);
+            }
+            reloadForBoardlyUpdate();
+        }
+
+        async function setupBoardlyUpdates() {
+            if (!('serviceWorker' in navigator)) return;
+            const hadController = Boolean(navigator.serviceWorker.controller);
+            try {
+                const registration = await navigator.serviceWorker.register('./service-worker.js', {
+                    updateViaCache: 'none'
+                });
+                const requestUpdate = () => registration.update().catch(() => {});
+                requestUpdate();
+                if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (hadController) reloadForBoardlyUpdate();
+                });
+                navigator.serviceWorker.addEventListener('message', event => {
+                    if (hadController && event.data?.type === 'BOARDLY_UPDATED') reloadForBoardlyUpdate();
+                });
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') requestUpdate();
+                });
+                window.addEventListener('focus', requestUpdate);
+                window.addEventListener('pageshow', event => {
+                    if (event.persisted) requestUpdate();
+                });
+                setInterval(requestUpdate, 5 * 60 * 1000);
+            } catch (error) {
+                console.warn('Boardly app update service could not start:', error);
+            }
+        }
+
         /* STARTUP ENGINE */
         document.addEventListener('DOMContentLoaded', () => {
             setupCropEditor();
             updateAppThemeColor();
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./service-worker.js').catch(error => {
-                    console.warn('Boardly app service worker could not start:', error);
-                });
-            }
+            setupBoardlyUpdates();
             if (isIosDevice() && !isBoardlyStandalone()) {
                 setTimeout(showInstallCard, 1800);
             }
