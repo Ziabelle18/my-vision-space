@@ -2239,13 +2239,21 @@
         let activeTimelineInteractionMode = '';
         let activeTimelineReplyTarget = null;
         const timelineCommentCountCache = new Map();
+        const timelineCommentCountUpdatedAt = new Map();
         const timelineCommentCountPromises = new Map();
+        const timelineLikeStateCache = new Map();
+        const timelineLikeStatePromises = new Map();
+        let timelineLikeCacheOwner = '';
+        let notificationsRef = null;
+        let notificationsQuery = null;
+        let notificationSnapshotCache = {};
         try {
             const savedCounts = JSON.parse(localStorage.getItem('boardly_timeline_comment_counts') || '{}');
             Object.entries(savedCounts).forEach(([postId, record]) => {
                 if (Date.now() - Number(record?.savedAt || 0) < 7 * 24 * 60 * 60 * 1000 &&
                     Number.isFinite(Number(record?.count))) {
                     timelineCommentCountCache.set(postId, Number(record.count));
+                    timelineCommentCountUpdatedAt.set(postId, Number(record.savedAt || 0));
                 }
             });
         } catch (_) {}
@@ -2269,23 +2277,38 @@
         const idbReq = indexedDB.open("VisionBoardMediaDB", 1);
         let idb = null;
         let resolveBoardlyIdb;
+        let initialBoardLoadStarted = false;
         const boardlyIdbReady = new Promise(resolve => { resolveBoardlyIdb = resolve; });
         idbReq.onupgradeneeded = e => { idb = e.target.result; if (!idb.objectStoreNames.contains("media")) idb.createObjectStore("media"); };
+        function startInitialBoardLoad() {
+            if (initialBoardLoadStarted) return;
+            initialBoardLoadStarted = true;
+            if (idb) loadCachedProfileMedia();
+            loadBoardData();
+        }
         idbReq.onsuccess = e => {
             idb = e.target.result;
             resolveBoardlyIdb(idb);
-            loadCachedProfileMedia();
-            loadBoardData();
+            if (initialBoardLoadStarted) loadCachedProfileMedia();
+            else startInitialBoardLoad();
         };
         idbReq.onerror = () => {
             resolveBoardlyIdb(null);
-            loadBoardData();
+            startInitialBoardLoad();
         };
+        idbReq.onblocked = () => {
+            resolveBoardlyIdb(null);
+            startInitialBoardLoad();
+        };
+        setTimeout(startInitialBoardLoad, 320);
 
         function saveMediaToIDB(key, val) { if (idb) { const tx = idb.transaction("media", "readwrite"); tx.objectStore("media").put(val, key); } }
         function getMediaFromIDB(key, cb) { if (!idb) return cb(null); const tx = idb.transaction("media", "readonly"); const req = tx.objectStore("media").get(key); req.onsuccess = () => cb(req.result); }
         async function getMediaFromIDBPromise(key) {
-            await boardlyIdbReady;
+            await Promise.race([
+                boardlyIdbReady,
+                new Promise(resolve => setTimeout(resolve, 220))
+            ]);
             if (!idb) return null;
             return new Promise(resolve => {
                 try {
@@ -2683,6 +2706,50 @@
 
         /* SEARCH ENGINE WITH LIVE CARDS */
         let userSearchSequence = 0;
+        let userDirectoryCache = null;
+        let userDirectoryPromise = null;
+
+        function readUserDirectoryCache() {
+            if (userDirectoryCache) return userDirectoryCache;
+            try {
+                const cached = JSON.parse(localStorage.getItem('boardly_user_directory') || 'null');
+                if (cached?.users && typeof cached.users === 'object') {
+                    userDirectoryCache = cached;
+                    return cached;
+                }
+            } catch (_) {}
+            return null;
+        }
+
+        async function refreshUserDirectory() {
+            if (userDirectoryPromise) return userDirectoryPromise;
+            userDirectoryPromise = db.ref('users').once('value')
+                .then(snapshot => {
+                    const cached = {
+                        users: snapshot.val() || {},
+                        savedAt: Date.now()
+                    };
+                    userDirectoryCache = cached;
+                    try {
+                        localStorage.setItem('boardly_user_directory', JSON.stringify(cached));
+                    } catch (_) {}
+                    return cached.users;
+                })
+                .finally(() => { userDirectoryPromise = null; });
+            return userDirectoryPromise;
+        }
+
+        async function getUserDirectory() {
+            const cached = readUserDirectoryCache();
+            if (cached) {
+                if (Date.now() - Number(cached.savedAt || 0) > 2 * 60 * 1000) {
+                    refreshUserDirectory().catch(() => {});
+                }
+                return cached.users;
+            }
+            return refreshUserDirectory();
+        }
+
         async function searchUsers(q, dropdownId = 'searchResults') {
             const dropdown = document.getElementById(dropdownId);
             if (!dropdown) return;
@@ -2690,32 +2757,30 @@
             const requestId = ++userSearchSequence;
             if (!query) { dropdown.style.display = 'none'; return; }
 
-            const usersSnap = await db.ref('users').once('value');
+            let users = await getUserDirectory();
             if (requestId !== userSearchSequence) return;
-            const users = usersSnap.val() || {};
-            const matches = Object.keys(users)
+            let matches = Object.keys(users)
                 .filter(username => {
                     const publicHandle = String(users[username]?.publicHandle || username).toLowerCase();
                     return username.includes(query) || publicHandle.includes(query);
                 })
                 .slice(0, 12);
-            const profiles = await Promise.all(
-                matches.map(async username => {
-                    const [displayNameSnap, avatarSnap] = await Promise.all([
-                        db.ref(`boards/${username}/displayName`).once('value'),
-                        db.ref(`boards/${username}/avatarImg`).once('value')
-                    ]);
-                    return {
-                        displayName: displayNameSnap.val() || '',
-                        avatarImg: avatarSnap.val() || ''
-                    };
-                })
-            );
+            if (!matches.length && readUserDirectoryCache()) {
+                users = await refreshUserDirectory().catch(() => users);
+                if (requestId !== userSearchSequence) return;
+                matches = Object.keys(users)
+                    .filter(username => {
+                        const publicHandle =
+                            String(users[username]?.publicHandle || username).toLowerCase();
+                        return username.includes(query) || publicHandle.includes(query);
+                    })
+                    .slice(0, 12);
+            }
             if (requestId !== userSearchSequence) return;
 
             dropdown.innerHTML = '';
-            matches.forEach((username, index) => {
-                const profile = profiles[index] || {};
+            matches.forEach(username => {
+                const profile = getImmediateTimelineAuthorProfile(username);
                 const publicHandle = users[username]?.publicHandle || username;
                 const card = document.createElement('div');
                 card.className = 'search-card';
@@ -2741,6 +2806,12 @@
                 info.append(name, sub);
                 card.append(avatar, info);
                 dropdown.appendChild(card);
+                getTimelineAuthorProfile(username).then(freshProfile => {
+                    if (requestId !== userSearchSequence) return;
+                    avatar.src = freshProfile.avatarImg || DEFAULT_AVATAR;
+                    name.textContent = `@${freshProfile.handle || publicHandle}`;
+                    sub.textContent = freshProfile.displayName || 'Boardly profile';
+                }).catch(() => {});
             });
             dropdown.style.display = matches.length ? 'block' : 'none';
         }
@@ -4394,12 +4465,108 @@
         /* NOTIFICATIONS & VISITORS */
         function openNotifModal() {
             document.getElementById('notifModal').style.display = 'flex';
+            markAllNotificationsRead();
         }
         function closeNotifModal() { document.getElementById('notifModal').style.display = 'none'; }
+
+        function notificationCacheKey() {
+            return `boardly_notifications_${currentUser || 'guest'}`;
+        }
+
+        function updateNotificationBadges(unreadCount = 0) {
+            const displayCount = unreadCount > 99 ? '99+' : String(unreadCount);
+            const badge = document.getElementById('notifBadge');
+            const timelineBadge = document.getElementById('timelineNotifBadge');
+            if (badge) badge.innerText = displayCount;
+            if (timelineBadge) timelineBadge.innerText = displayCount;
+        }
+
+        function persistNotificationCache(notifications) {
+            try {
+                const entries = Object.entries(notifications || {})
+                    .sort((a, b) => Number(b[1]?.timestamp || 0) - Number(a[1]?.timestamp || 0))
+                    .slice(0, 80);
+                localStorage.setItem(notificationCacheKey(), JSON.stringify(Object.fromEntries(entries)));
+            } catch (_) {}
+        }
+
+        function renderNotifications(notifications = {}) {
+            notificationSnapshotCache = notifications || {};
+            const list = document.getElementById('notifList');
+            if (!list) return;
+            list.innerHTML = '';
+            const entries = Object.entries(notificationSnapshotCache)
+                .sort((a, b) => Number(b[1]?.timestamp || 0) - Number(a[1]?.timestamp || 0));
+            const unreadCount = entries.filter(([, item]) => item?.read !== true).length;
+            updateNotificationBadges(unreadCount);
+            if (!entries.length) {
+                list.innerHTML = '<div style="font-size:0.8rem; opacity:0.6;">No notifications yet.</div>';
+                return;
+            }
+            entries.forEach(([key, notification]) => {
+                const item = document.createElement('button');
+                item.className = `notification-item ${notification.read === true ? 'read' : 'unread'}`;
+                item.type = 'button';
+                const message = document.createElement('span');
+                message.className = 'notification-message';
+                message.textContent = `✦ ${notification.message}`;
+                const arrow = document.createElement('span');
+                arrow.className = 'notification-arrow';
+                arrow.textContent = '›';
+                item.append(message, arrow);
+                item.onclick = () => openNotificationDestination(key, notification);
+                list.appendChild(item);
+            });
+        }
+
+        function markNotificationRead(notificationKey) {
+            if (!notificationKey || !notificationSnapshotCache[notificationKey]) return;
+            if (notificationSnapshotCache[notificationKey].read === true) return;
+            notificationSnapshotCache[notificationKey] = {
+                ...notificationSnapshotCache[notificationKey],
+                read: true
+            };
+            renderNotifications(notificationSnapshotCache);
+            persistNotificationCache(notificationSnapshotCache);
+            const ref = notificationsRef || db.ref(`notifications/${currentUser}`);
+            ref.child(notificationKey).update({ read: true }).catch(() => {});
+        }
+
+        function markAllNotificationsRead() {
+            if (!currentUser) return;
+            const unreadKeys = Object.entries(notificationSnapshotCache)
+                .filter(([, notification]) => notification?.read !== true)
+                .map(([key]) => key);
+            if (!unreadKeys.length) {
+                updateNotificationBadges(0);
+                return;
+            }
+            const updates = {};
+            unreadKeys.forEach(key => {
+                notificationSnapshotCache[key] = {
+                    ...notificationSnapshotCache[key],
+                    read: true
+                };
+                updates[`${key}/read`] = true;
+            });
+            renderNotifications(notificationSnapshotCache);
+            persistNotificationCache(notificationSnapshotCache);
+            const ref = notificationsRef || db.ref(`notifications/${currentUser}`);
+            ref.update(updates).catch(() => {});
+        }
 
         async function openTimelineNotificationActivity(notification, mode) {
             openTimelinePage();
             if (!notification.postId || !notification.postAuthor) return;
+            const cachedPost = timelineAllPosts.find(post =>
+                post.postId === notification.postId &&
+                (post.storageAuthor || post.author) === notification.postAuthor
+            );
+            if (cachedPost) {
+                if (mode === 'likes') openTimelineLikes(cachedPost);
+                else openTimelineComments(cachedPost);
+                return;
+            }
             try {
                 const privacy = notification.postPrivacy || 'public';
                 const snap = await db.ref(
@@ -4419,7 +4586,7 @@
 
         function openNotificationDestination(notificationKey, notification) {
             if (!currentUser || !notification) return;
-            db.ref(`notifications/${currentUser}/${notificationKey}`).update({ read: true });
+            markNotificationRead(notificationKey);
             closeNotifModal();
             const type = notification.type || '';
 
@@ -4490,35 +4657,21 @@
 
         function loadNotifications() {
             if (!currentUser) return;
-            db.ref(`notifications/${currentUser}`).on('value', snap => {
-                const list = document.getElementById('notifList');
-                const badge = document.getElementById('notifBadge');
-                const timelineBadge = document.getElementById('timelineNotifBadge');
-                list.innerHTML = '';
-                if (snap.exists()) {
-                    const notifications = snap.val();
-                    const unreadCount = Object.values(notifications).filter(item => item.read !== true).length;
-                    badge.innerText = unreadCount;
-                    if (timelineBadge) timelineBadge.innerText = unreadCount;
-                    Object.keys(notifications).reverse().forEach(k => {
-                        const notification = notifications[k];
-                        const item = document.createElement('button');
-                        item.className = `notification-item ${notification.read === true ? 'read' : 'unread'}`;
-                        item.type = 'button';
-                        const message = document.createElement('span');
-                        message.className = 'notification-message';
-                        message.textContent = `✦ ${notification.message}`;
-                        const arrow = document.createElement('span');
-                        arrow.className = 'notification-arrow';
-                        arrow.textContent = '›';
-                        item.append(message, arrow);
-                        item.onclick = () => openNotificationDestination(k, notification);
-                        list.appendChild(item);
-                    });
-                } else {
-                    badge.innerText = '0';
-                    if (timelineBadge) timelineBadge.innerText = '0';
-                    list.innerHTML = '<div style="font-size:0.8rem; opacity:0.6;">No notifications yet.</div>';
+            try {
+                const cached = JSON.parse(localStorage.getItem(notificationCacheKey()) || '{}');
+                renderNotifications(cached);
+            } catch (_) {
+                renderNotifications({});
+            }
+            if (notificationsQuery) notificationsQuery.off();
+            notificationsRef = db.ref(`notifications/${currentUser}`);
+            notificationsQuery = notificationsRef.limitToLast(80);
+            notificationsQuery.on('value', snap => {
+                const notifications = snap.val() || {};
+                renderNotifications(notifications);
+                persistNotificationCache(notifications);
+                if (document.getElementById('notifModal')?.style.display === 'flex') {
+                    markAllNotificationsRead();
                 }
             });
         }
@@ -5203,28 +5356,35 @@
             container.appendChild(button);
         }
 
-        function searchChatFriends() {
+        async function searchChatFriends() {
             const query = document.getElementById('chatFriendSearch').value
                 .trim().replace(/^@+/, '').toLowerCase();
             const results = document.getElementById('chatSearchResults');
             results.innerHTML = '';
             if (!query) return;
-            db.ref('users').once('value', snap => {
-                const users = snap.val() || {};
-                const matches = snap.exists()
-                    ? Object.keys(users).filter(user => {
-                        if (user === currentUser) return false;
-                        const username = String(user).toLowerCase();
-                        const publicHandle = String(users[user]?.publicHandle || '').toLowerCase();
-                        return username.includes(query) || publicHandle.includes(query);
-                    }).slice(0, 12)
-                    : [];
-                if (!matches.length) {
-                    results.innerHTML = '<div style="font-size:0.75rem; opacity:0.6; padding:6px;">No user found.</div>';
-                    return;
-                }
-                matches.forEach(user => makeChatPersonButton(user, results));
-            });
+            results.innerHTML = '<div style="font-size:0.75rem; opacity:0.6; padding:6px;">Searching…</div>';
+            let users = await getUserDirectory().catch(() => ({}));
+            let matches = Object.keys(users).filter(user => {
+                if (user === currentUser) return false;
+                const username = String(user).toLowerCase();
+                const publicHandle = String(users[user]?.publicHandle || '').toLowerCase();
+                return username.includes(query) || publicHandle.includes(query);
+            }).slice(0, 12);
+            if (!matches.length && readUserDirectoryCache()) {
+                users = await refreshUserDirectory().catch(() => users);
+                matches = Object.keys(users).filter(user => {
+                    if (user === currentUser) return false;
+                    const username = String(user).toLowerCase();
+                    const publicHandle = String(users[user]?.publicHandle || '').toLowerCase();
+                    return username.includes(query) || publicHandle.includes(query);
+                }).slice(0, 12);
+            }
+            results.innerHTML = '';
+            if (!matches.length) {
+                results.innerHTML = '<div style="font-size:0.75rem; opacity:0.6; padding:6px;">No user found.</div>';
+                return;
+            }
+            matches.forEach(user => makeChatPersonButton(user, results));
         }
 
         async function loadOnlineFriends() {
@@ -6350,9 +6510,7 @@
                 document.getElementById('timelineLoadMore').style.display = 'none';
                 return;
             }
-            const postElements = await Promise.all(
-                visiblePosts.map(post => buildTimelinePostElement(post))
-            );
+            const postElements = visiblePosts.map(post => buildTimelinePostElement(post));
             if (renderSequence !== timelineRenderSequence) return;
             const fragment = document.createDocumentFragment();
             postElements.forEach(postElement => fragment.appendChild(postElement));
@@ -6370,14 +6528,22 @@
             renderTimelinePosts();
         }
 
-        async function buildTimelinePostElement(post) {
-            const commentCountPromise = Number.isFinite(timelineCommentCountCache.get(post.postId))
-                ? Promise.resolve(timelineCommentCountCache.get(post.postId))
-                : refreshTimelineCommentCount(post);
-            const [profile] = await Promise.all([
-                getTimelineAuthorProfile(post.author),
-                commentCountPromise
-            ]);
+        function getImmediateTimelineAuthorProfile(username) {
+            if (timelineProfileCache[username]) return timelineProfileCache[username];
+            let saved = {};
+            try {
+                saved = JSON.parse(localStorage.getItem(`vspace_profile_${username}`) || '{}');
+            } catch (_) {}
+            return {
+                displayName: saved.displayName || username,
+                handle: saved.profileHandle || username,
+                avatarImg: DEFAULT_AVATAR,
+                cachedAt: 0
+            };
+        }
+
+        function buildTimelinePostElement(post) {
+            const profile = getImmediateTimelineAuthorProfile(post.author);
             const article = document.createElement('article');
             article.className = 'timeline-post';
             article.dataset.postId = post.postId;
@@ -6417,6 +6583,8 @@
             type.className = 'timeline-post-type';
             type.textContent = post.type === 'board-update' ? '✦ BOARD UPDATE' : '✦ BOARD DROP';
             article.appendChild(type);
+            let postImage = null;
+            let boardTitle = null;
             if (post.text && !post.imageUrl) {
                 const text = document.createElement('div');
                 text.className = 'timeline-post-text';
@@ -6431,6 +6599,7 @@
                     ? post.polaroidPattern
                     : 'plain';
                 const image = document.createElement('img');
+                postImage = image;
                 image.className = 'timeline-post-image';
                 image.src = post.imageUrl;
                 image.alt = `Photo shared by @${profile.handle}`;
@@ -6451,6 +6620,7 @@
                 const boardCard = document.createElement('div');
                 boardCard.className = 'timeline-board-card';
                 const title = document.createElement('h3');
+                boardTitle = title;
                 title.textContent = post.boardTitle || `${profile.displayName}'s board`;
                 const quote = document.createElement('p');
                 quote.textContent = post.boardQuote || 'A fresh little update is waiting on this board.';
@@ -6465,6 +6635,8 @@
             likeCount.type = 'button';
             likeCount.className = 'timeline-count-button';
             likeCount.id = `timeline-like-count-${post.postId}`;
+            const cachedLikeState = getCachedTimelineLikeState(post.postId);
+            likeCount.textContent = formatTimelineLikeCount(cachedLikeState?.count || 0);
             likeCount.onclick = () => openTimelineLikes(post);
             const commentCount = document.createElement('button');
             commentCount.type = 'button';
@@ -6473,7 +6645,7 @@
             const cachedCommentCount = timelineCommentCountCache.get(post.postId);
             commentCount.textContent = Number.isFinite(cachedCommentCount)
                 ? formatTimelineCommentCount(cachedCommentCount)
-                : 'Comments';
+                : formatTimelineCommentCount(0);
             commentCount.onclick = () => openTimelineComments(post);
             counts.append(likeCount, commentCount);
             article.appendChild(counts);
@@ -6483,7 +6655,8 @@
             const likeButton = document.createElement('button');
             likeButton.className = 'timeline-action';
             likeButton.id = `timeline-like-btn-${post.postId}`;
-            likeButton.textContent = '♡ Like';
+            likeButton.classList.toggle('liked', cachedLikeState?.liked === true);
+            likeButton.textContent = cachedLikeState?.liked ? '♥ Liked' : '♡ Like';
             likeButton.onclick = () => toggleTimelineLike(post);
             const commentButton = document.createElement('button');
             commentButton.className = 'timeline-action';
@@ -6495,20 +6668,106 @@
             visitButton.onclick = () => navigateToUser(post.author);
             actions.append(likeButton, commentButton, visitButton);
             article.appendChild(actions);
+            getTimelineAuthorProfile(post.author).then(freshProfile => {
+                avatar.src = freshProfile.avatarImg || DEFAULT_AVATAR;
+                avatar.alt = `@${freshProfile.handle || post.author}`;
+                name.textContent =
+                    `${freshProfile.displayName || post.author} · @${freshProfile.handle || post.author}`;
+                if (postImage) postImage.alt = `Photo shared by @${freshProfile.handle || post.author}`;
+                if (boardTitle && !post.boardTitle) {
+                    boardTitle.textContent = `${freshProfile.displayName || post.author}'s board`;
+                }
+            }).catch(() => {});
             return article;
         }
 
-        async function refreshTimelineLikeState(post) {
-            const snap = await db.ref(`timelinePostLikes/${post.postId}`).once('value');
-            const count = snap.exists() ? snap.numChildren() : 0;
-            const countElement = document.getElementById(`timeline-like-count-${post.postId}`);
-            const button = document.getElementById(`timeline-like-btn-${post.postId}`);
-            if (countElement) countElement.textContent = count ? `♡ ${count} ${count === 1 ? 'like' : 'likes'}` : '';
+        function ensureTimelineLikeCache() {
+            if (timelineLikeCacheOwner === currentUser) return;
+            timelineLikeCacheOwner = currentUser || '';
+            timelineLikeStateCache.clear();
+            if (!currentUser) return;
+            try {
+                const saved = JSON.parse(
+                    localStorage.getItem(`boardly_timeline_likes_${currentUser}`) || '{}'
+                );
+                Object.entries(saved).forEach(([postId, state]) => {
+                    if (Date.now() - Number(state?.savedAt || 0) < 7 * 24 * 60 * 60 * 1000 &&
+                        Number.isFinite(Number(state?.count))) {
+                        timelineLikeStateCache.set(postId, {
+                            count: Number(state.count),
+                            liked: state.liked === true,
+                            savedAt: Number(state.savedAt || 0)
+                        });
+                    }
+                });
+            } catch (_) {}
+        }
+
+        function getCachedTimelineLikeState(postId) {
+            ensureTimelineLikeCache();
+            return timelineLikeStateCache.get(postId) || null;
+        }
+
+        function persistTimelineLikeState(postId, state) {
+            ensureTimelineLikeCache();
+            const record = {
+                count: Number(state?.count || 0),
+                liked: state?.liked === true,
+                savedAt: Date.now()
+            };
+            timelineLikeStateCache.set(postId, record);
+            try {
+                const saved = {};
+                [...timelineLikeStateCache.entries()]
+                    .sort((a, b) => Number(b[1]?.savedAt || 0) - Number(a[1]?.savedAt || 0))
+                    .slice(0, 200)
+                    .forEach(([key, value]) => { saved[key] = value; });
+                localStorage.setItem(
+                    `boardly_timeline_likes_${currentUser}`,
+                    JSON.stringify(saved)
+                );
+            } catch (_) {}
+            return record;
+        }
+
+        function formatTimelineLikeCount(count) {
+            const value = Number(count || 0);
+            return `♡ ${value} ${value === 1 ? 'like' : 'likes'}`;
+        }
+
+        function applyTimelineLikeState(postId, state) {
+            const countElement = document.getElementById(`timeline-like-count-${postId}`);
+            const button = document.getElementById(`timeline-like-btn-${postId}`);
+            if (countElement) countElement.textContent = formatTimelineLikeCount(state?.count || 0);
             if (button) {
-                const liked = snap.hasChild(currentUser);
+                const liked = state?.liked === true;
                 button.classList.toggle('liked', liked);
                 button.textContent = liked ? '♥ Liked' : '♡ Like';
             }
+        }
+
+        async function refreshTimelineLikeState(post) {
+            const cached = getCachedTimelineLikeState(post.postId);
+            if (cached) applyTimelineLikeState(post.postId, cached);
+            if (cached && Date.now() - Number(cached.savedAt || 0) < 15000) {
+                return cached;
+            }
+            if (timelineLikeStatePromises.has(post.postId)) {
+                return timelineLikeStatePromises.get(post.postId);
+            }
+            const request = db.ref(`timelinePostLikes/${post.postId}`).once('value')
+                .then(snap => {
+                    const state = persistTimelineLikeState(post.postId, {
+                        count: snap.exists() ? snap.numChildren() : 0,
+                        liked: snap.hasChild(currentUser)
+                    });
+                    applyTimelineLikeState(post.postId, state);
+                    return state;
+                })
+                .catch(() => cached || { count: 0, liked: false })
+                .finally(() => timelineLikeStatePromises.delete(post.postId));
+            timelineLikeStatePromises.set(post.postId, request);
+            return request;
         }
 
         function toggleTimelineLike(post) {
@@ -6540,6 +6799,7 @@
         }
 
         function persistTimelineCommentCount(postId, count) {
+            timelineCommentCountUpdatedAt.set(postId, Date.now());
             try {
                 const storageKey = 'boardly_timeline_comment_counts';
                 const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
@@ -6559,6 +6819,10 @@
             const initialElement = document.getElementById(`timeline-comment-count-${postId}`);
             if (Number.isFinite(cachedCount) && initialElement) {
                 initialElement.textContent = formatTimelineCommentCount(cachedCount);
+            }
+            if (Number.isFinite(cachedCount) &&
+                Date.now() - Number(timelineCommentCountUpdatedAt.get(postId) || 0) < 15000) {
+                return cachedCount;
             }
             if (timelineCommentCountPromises.has(postId)) {
                 return timelineCommentCountPromises.get(postId);
@@ -6595,28 +6859,17 @@
             clearTimelineReplyTarget();
         }
 
-        async function openTimelineLikes(post) {
-            activeTimelineInteractionPost = post;
-            activeTimelineInteractionMode = 'likes';
-            clearTimelineReplyTarget();
-            document.getElementById('timelineInteractionTitle').textContent = 'People who liked this ♡';
-            document.getElementById('timelineCommentComposer').style.display = 'none';
-            const modal = document.getElementById('timelineInteractionModal');
+        function renderTimelineLikePeople(post, usernames) {
+            if (activeTimelineInteractionPost?.postId !== post.postId ||
+                activeTimelineInteractionMode !== 'likes') return;
             const list = document.getElementById('timelineInteractionList');
-            modal.style.display = 'flex';
-            list.innerHTML = '<div class="chat-empty" style="padding:24px;">Loading likes…</div>';
-            const snap = await db.ref(`timelinePostLikes/${post.postId}`).once('value');
-            if (activeTimelineInteractionPost?.postId !== post.postId || activeTimelineInteractionMode !== 'likes') return;
-            const usernames = snap.exists() ? Object.keys(snap.val()) : [];
             list.innerHTML = '';
             if (!usernames.length) {
                 list.innerHTML = '<div class="chat-empty" style="padding:24px;">No likes yet.</div>';
                 return;
             }
-            const profiles = await Promise.all(usernames.map(username => getTimelineAuthorProfile(username)));
-            if (activeTimelineInteractionPost?.postId !== post.postId || activeTimelineInteractionMode !== 'likes') return;
-            usernames.forEach((username, index) => {
-                const profile = profiles[index];
+            usernames.forEach(username => {
+                const profile = getImmediateTimelineAuthorProfile(username);
                 const person = document.createElement('button');
                 person.type = 'button';
                 person.className = 'timeline-like-person';
@@ -6634,7 +6887,47 @@
                 person.append(avatar, label);
                 person.onclick = () => navigateToUser(username);
                 list.appendChild(person);
+                getTimelineAuthorProfile(username).then(freshProfile => {
+                    avatar.src = freshProfile.avatarImg || DEFAULT_AVATAR;
+                    avatar.alt = `@${freshProfile.handle || username}`;
+                    displayName.textContent = freshProfile.displayName || username;
+                    handle.textContent = `@${freshProfile.handle || username}`;
+                }).catch(() => {});
             });
+        }
+
+        async function openTimelineLikes(post) {
+            activeTimelineInteractionPost = post;
+            activeTimelineInteractionMode = 'likes';
+            clearTimelineReplyTarget();
+            document.getElementById('timelineInteractionTitle').textContent = 'People who liked this ♡';
+            document.getElementById('timelineCommentComposer').style.display = 'none';
+            const modal = document.getElementById('timelineInteractionModal');
+            const list = document.getElementById('timelineInteractionList');
+            modal.style.display = 'flex';
+            list.innerHTML = '<div class="chat-empty" style="padding:24px;">Loading likes…</div>';
+            const remoteRequest = db.ref(`timelinePostLikes/${post.postId}`).once('value')
+                .catch(() => null);
+            const cached = await getMediaFromIDBPromise(`timelineLikes_${post.postId}`);
+            if (Array.isArray(cached?.usernames) &&
+                activeTimelineInteractionPost?.postId === post.postId &&
+                activeTimelineInteractionMode === 'likes') {
+                renderTimelineLikePeople(post, cached.usernames);
+            }
+            const snap = await remoteRequest;
+            if (activeTimelineInteractionPost?.postId !== post.postId || activeTimelineInteractionMode !== 'likes') return;
+            if (!snap) {
+                if (!Array.isArray(cached?.usernames)) {
+                    list.innerHTML = '<div class="chat-empty" style="padding:24px;">Likes could not load yet.<br>Please try again. ✦</div>';
+                }
+                return;
+            }
+            const usernames = snap.exists() ? Object.keys(snap.val()) : [];
+            saveMediaToIDB(`timelineLikes_${post.postId}`, {
+                usernames,
+                savedAt: Date.now()
+            });
+            renderTimelineLikePeople(post, usernames);
         }
 
         function openTimelineComments(post) {
@@ -6716,35 +7009,20 @@
             return row;
         }
 
-        async function loadTimelineComments(post = activeTimelineInteractionPost) {
-            if (!post) return;
+        function renderTimelineCommentEntries(post, comments) {
+            if (activeTimelineInteractionPost?.postId !== post.postId ||
+                activeTimelineInteractionMode !== 'comments') return;
             const list = document.getElementById('timelineInteractionList');
-            list.innerHTML = '<div class="chat-empty" style="padding:24px;">Loading comments…</div>';
-            let snap;
-            try {
-                snap = await db.ref(`timelinePostComments/${post.postId}`).once('value');
-            } catch (_) {
-                if (activeTimelineInteractionPost?.postId === post.postId &&
-                    activeTimelineInteractionMode === 'comments') {
-                    list.innerHTML = '<div class="chat-empty" style="padding:24px;">Comments could not load yet.<br>Please tap Comment to try again. ✦</div>';
-                }
-                return;
-            }
-            if (activeTimelineInteractionPost?.postId !== post.postId || activeTimelineInteractionMode !== 'comments') return;
-            const loadedCount = snap.exists() ? snap.numChildren() : 0;
+            const loadedCount = comments.length;
             timelineCommentCountCache.set(post.postId, loadedCount);
             persistTimelineCommentCount(post.postId, loadedCount);
             const countElement = document.getElementById(`timeline-comment-count-${post.postId}`);
             if (countElement) countElement.textContent = formatTimelineCommentCount(loadedCount);
             list.innerHTML = '';
-            if (!snap.exists()) {
+            if (!comments.length) {
                 list.innerHTML = '<div class="chat-empty" style="padding:24px;">No comments yet.<br>Start the conversation! ✦</div>';
                 return;
             }
-            const comments = [];
-            snap.forEach(child => {
-                comments.push([child.key, child.val()]);
-            });
             comments.sort((a, b) => Number(a[1].timestamp || 0) - Number(b[1].timestamp || 0));
             const topLevel = comments.filter(([, comment]) => !comment.parentCommentId);
             const repliesByParent = {};
@@ -6762,6 +7040,36 @@
             Object.values(repliesByParent).flat().forEach(([replyId, reply]) => {
                 list.appendChild(buildTimelineCommentRow(post, replyId, reply, true));
             });
+        }
+
+        async function loadTimelineComments(post = activeTimelineInteractionPost) {
+            if (!post) return;
+            const list = document.getElementById('timelineInteractionList');
+            list.innerHTML = '<div class="chat-empty" style="padding:24px;">Loading comments…</div>';
+            const remoteRequest = db.ref(`timelinePostComments/${post.postId}`).once('value')
+                .catch(() => null);
+            const cached = await getMediaFromIDBPromise(`timelineComments_${post.postId}`);
+            if (Array.isArray(cached?.comments)) {
+                renderTimelineCommentEntries(post, cached.comments);
+            }
+            const snap = await remoteRequest;
+            if (!snap) {
+                if (!Array.isArray(cached?.comments) &&
+                    activeTimelineInteractionPost?.postId === post.postId &&
+                    activeTimelineInteractionMode === 'comments') {
+                    list.innerHTML = '<div class="chat-empty" style="padding:24px;">Comments could not load yet.<br>Please tap Comment to try again. ✦</div>';
+                }
+                return;
+            }
+            if (activeTimelineInteractionPost?.postId !== post.postId ||
+                activeTimelineInteractionMode !== 'comments') return;
+            const comments = [];
+            snap.forEach(child => comments.push([child.key, child.val()]));
+            saveMediaToIDB(`timelineComments_${post.postId}`, {
+                comments,
+                savedAt: Date.now()
+            });
+            renderTimelineCommentEntries(post, comments);
         }
 
         async function postTimelineComment() {
@@ -6785,7 +7093,6 @@
             input.value = '';
             clearTimelineReplyTarget();
             loadTimelineComments(post);
-            refreshTimelineCommentCount(post);
             playCuteSound('comment');
             const notificationExtra = {
                 postId: post.postId,
@@ -6814,7 +7121,6 @@
             if (!confirm('Delete this comment?')) return;
             await db.ref(`timelinePostComments/${post.postId}/${commentId}`).remove();
             loadTimelineComments(post);
-            refreshTimelineCommentCount(post);
         }
 
         async function deleteTimelinePost(post) {
