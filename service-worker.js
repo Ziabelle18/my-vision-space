@@ -54,8 +54,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v62-instant-notifications-timeline-speed';
-const BOARDLY_VERSION = 'v62';
+const BOARDLY_CACHE = 'boardly-shell-v63-locked-comments-notification-states';
+const BOARDLY_VERSION = 'v63';
 const BOARDLY_SHELL = [
   './',
   './index.html',
