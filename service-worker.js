@@ -54,8 +54,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v61-chat-wiggle-music-persistence';
-const BOARDLY_VERSION = 'v61';
+const BOARDLY_CACHE = 'boardly-shell-v62-instant-notifications-timeline-speed';
+const BOARDLY_VERSION = 'v62';
 const BOARDLY_SHELL = [
   './',
   './index.html',
