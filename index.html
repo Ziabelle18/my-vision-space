@@ -1481,8 +1481,8 @@
             .card.wiggle-effect { animation-duration: 0.52s !important; }
             .modal-overlay { animation-duration: 0.22s !important; }
             .modal-card { animation-duration: 0.3s !important; }
-            .chat-bubble.sent-wiggle { animation-duration: 0.01ms !important; }
-            .chat-bubble.received-wiggle { animation-duration: 0.01ms !important; }
+            .chat-bubble.sent-wiggle { animation-duration: 0.62s !important; }
+            .chat-bubble.received-wiggle { animation-duration: 0.58s !important; }
         }
     </style>
 </head>
@@ -2205,11 +2205,6 @@
         let chatContactsRef = null;
         let groupContactsRef = null;
         let inboxRef = null;
-        let notificationsRef = null;
-        let notificationMetaRef = null;
-        let notificationSnapshot = {};
-        let notificationSeenAt = 0;
-        let notificationPanelSeenThrough = 0;
         let typingTimer = null;
         let onlineFriendsRefreshTimer = null;
         let presenceRef = null;
@@ -2803,8 +2798,7 @@
             if (targetUser === currentUser) return;
             db.ref(`notifications/${targetUser}`).push({
                 from: currentUser, message: msg, type,
-                timestamp: firebase.database.ServerValue.TIMESTAMP,
-                read: false, ...extra
+                timestamp: Date.now(), read: false, ...extra
             });
         }
 
@@ -3465,7 +3459,7 @@
             if (!viewingUser || currentUser === viewingUser) return;
             const recipient = viewingUser;
             openChatPage();
-            requestAnimationFrame(() => startChatWith(recipient));
+            setTimeout(() => startChatWith(recipient), 120);
         }
 
         function closeEditProfileModal() {
@@ -4399,25 +4393,9 @@
 
         /* NOTIFICATIONS & VISITORS */
         function openNotifModal() {
-            notificationPanelSeenThrough = Object.values(notificationSnapshot)
-                .reduce((latest, item) => Math.max(latest, Number(item?.timestamp || 0)), notificationSeenAt);
             document.getElementById('notifModal').style.display = 'flex';
         }
-        function closeNotifModal() {
-            document.getElementById('notifModal').style.display = 'none';
-            if (notificationPanelSeenThrough > notificationSeenAt && currentUser) {
-                notificationSeenAt = notificationPanelSeenThrough;
-                localStorage.setItem(
-                    `boardly_notification_seen_${currentUser}`,
-                    String(notificationSeenAt)
-                );
-                renderNotificationList();
-                db.ref(`notificationMeta/${currentUser}/seenAt`)
-                    .set(notificationSeenAt)
-                    .catch(() => {});
-            }
-            notificationPanelSeenThrough = 0;
-        }
+        function closeNotifModal() { document.getElementById('notifModal').style.display = 'none'; }
 
         async function openTimelineNotificationActivity(notification, mode) {
             openTimelinePage();
@@ -4447,12 +4425,12 @@
 
             if (type === 'chat') {
                 openChatPage();
-                if (notification.from) requestAnimationFrame(() => startChatWith(notification.from));
+                if (notification.from) setTimeout(() => startChatWith(notification.from), 180);
                 return;
             }
             if (type === 'group-chat' && notification.groupId) {
                 openChatPage();
-                requestAnimationFrame(() => startGroupChat(notification.groupId));
+                setTimeout(() => startGroupChat(notification.groupId), 180);
                 return;
             }
             if (type === 'timeline-like') {
@@ -4510,60 +4488,38 @@
             if (notification.from) navigateToUser(notification.from);
         }
 
-        function renderNotificationList() {
-            const list = document.getElementById('notifList');
-            const badge = document.getElementById('notifBadge');
-            const timelineBadge = document.getElementById('timelineNotifBadge');
-            const entries = Object.entries(notificationSnapshot)
-                .sort((a, b) => Number(b[1]?.timestamp || 0) - Number(a[1]?.timestamp || 0));
-            const newCount = entries.filter(([, item]) =>
-                item.read !== true && Number(item.timestamp || 0) > notificationSeenAt
-            ).length;
-            badge.innerText = newCount;
-            if (timelineBadge) timelineBadge.innerText = newCount;
-            list.innerHTML = '';
-            if (!entries.length) {
-                list.innerHTML = '<div style="font-size:0.8rem; opacity:0.6;">No notifications yet.</div>';
-                return;
-            }
-            entries.forEach(([key, notification]) => {
-                const item = document.createElement('button');
-                item.className = `notification-item ${notification.read === true ? 'read' : 'unread'}`;
-                item.type = 'button';
-                const message = document.createElement('span');
-                message.className = 'notification-message';
-                message.textContent = `✦ ${notification.message}`;
-                const arrow = document.createElement('span');
-                arrow.className = 'notification-arrow';
-                arrow.textContent = '›';
-                item.append(message, arrow);
-                item.onclick = () => openNotificationDestination(key, notification);
-                list.appendChild(item);
-            });
-        }
-
         function loadNotifications() {
             if (!currentUser) return;
-            const username = currentUser;
-            if (notificationsRef) notificationsRef.off();
-            if (notificationMetaRef) notificationMetaRef.off();
-            notificationsRef = db.ref(`notifications/${username}`);
-            notificationMetaRef = db.ref(`notificationMeta/${username}/seenAt`);
-            notificationSeenAt = Number(
-                localStorage.getItem(`boardly_notification_seen_${username}`) || 0
-            );
-            notificationSnapshot = {};
-            renderNotificationList();
-            notificationMetaRef.on('value', snap => {
-                if (currentUser !== username) return;
-                notificationSeenAt = Math.max(notificationSeenAt, Number(snap.val() || 0));
-                localStorage.setItem(`boardly_notification_seen_${username}`, String(notificationSeenAt));
-                renderNotificationList();
-            });
-            notificationsRef.on('value', snap => {
-                if (currentUser !== username) return;
-                notificationSnapshot = snap.val() || {};
-                renderNotificationList();
+            db.ref(`notifications/${currentUser}`).on('value', snap => {
+                const list = document.getElementById('notifList');
+                const badge = document.getElementById('notifBadge');
+                const timelineBadge = document.getElementById('timelineNotifBadge');
+                list.innerHTML = '';
+                if (snap.exists()) {
+                    const notifications = snap.val();
+                    const unreadCount = Object.values(notifications).filter(item => item.read !== true).length;
+                    badge.innerText = unreadCount;
+                    if (timelineBadge) timelineBadge.innerText = unreadCount;
+                    Object.keys(notifications).reverse().forEach(k => {
+                        const notification = notifications[k];
+                        const item = document.createElement('button');
+                        item.className = `notification-item ${notification.read === true ? 'read' : 'unread'}`;
+                        item.type = 'button';
+                        const message = document.createElement('span');
+                        message.className = 'notification-message';
+                        message.textContent = `✦ ${notification.message}`;
+                        const arrow = document.createElement('span');
+                        arrow.className = 'notification-arrow';
+                        arrow.textContent = '›';
+                        item.append(message, arrow);
+                        item.onclick = () => openNotificationDestination(k, notification);
+                        list.appendChild(item);
+                    });
+                } else {
+                    badge.innerText = '0';
+                    if (timelineBadge) timelineBadge.innerText = '0';
+                    list.innerHTML = '<div style="font-size:0.8rem; opacity:0.6;">No notifications yet.</div>';
+                }
             });
         }
 
@@ -4928,32 +4884,26 @@
             inboxRef = db.ref(`chatInbox/${safeChatKey(currentUser)}`);
             inboxRef.on('child_added', snap => {
                 const incoming = snap.val() || {};
-                const isGroupMessage = incoming.type === 'group';
-                const conversationId = isGroupMessage ? incoming.groupId : incoming.chatId;
-                if (!conversationId || !incoming.messageId) {
+                if (!incoming.chatId || !incoming.messageId) {
                     snap.ref.remove();
                     return;
                 }
                 queueReceivedMessageAnimation(incoming.messageId);
                 const incomingConversationOpen =
                     document.getElementById('chatPage')?.style.display === 'flex' &&
-                    (isGroupMessage
-                        ? activeGroupId === incoming.groupId
-                        : activeDirectChatId === incoming.chatId);
-                if (!isGroupMessage && !incomingConversationOpen) {
+                    activeDirectChatId === incoming.chatId;
+                if (!incomingConversationOpen) {
                     db.ref(`chats/${incoming.chatId}/messages/${incoming.messageId}/delivered/${safeChatKey(currentUser)}`)
                         .set(firebase.database.ServerValue.TIMESTAMP);
                 }
                 handleIncomingChatFeedback({
                     messageId: incoming.messageId,
-                    conversationId,
-                    type: isGroupMessage ? 'group' : 'direct',
+                    conversationId: incoming.chatId,
+                    type: 'direct',
                     title: `Boardly ✦ @${incoming.from || 'friend'}`,
                     body: incoming.preview || 'Sent you a message',
-                    tag: `boardly-chat-${conversationId}`,
-                    url: isGroupMessage
-                        ? `./?pushGroup=${encodeURIComponent(incoming.groupId)}#chat`
-                        : `./?pushChat=${encodeURIComponent(incoming.from || '')}#chat`
+                    tag: `boardly-chat-${incoming.chatId}`,
+                    url: `./?pushChat=${encodeURIComponent(incoming.from || '')}#chat`
                 });
                 snap.ref.remove();
             });
@@ -5149,10 +5099,10 @@
             if (!directUsername && !groupId) return false;
 
             openChatPage();
-            requestAnimationFrame(() => {
+            setTimeout(() => {
                 if (groupId) startGroupChat(groupId);
                 else if (directUsername) startChatWith(directUsername);
-            });
+            }, 220);
 
             url.searchParams.delete('pushChat');
             url.searchParams.delete('pushGroup');
@@ -5783,7 +5733,7 @@
                 };
                 await db.ref(`chats/${chatId}`).update(chatSetup);
                 rememberLocalChat(username);
-                db.ref(`chatContacts/${safeChatKey(currentUser)}/${safeChatKey(username)}`).update({
+                await db.ref(`chatContacts/${safeChatKey(currentUser)}/${safeChatKey(username)}`).update({
                     username,
                     timestamp: firebase.database.ServerValue.TIMESTAMP
                 }).catch(() => {});
@@ -5835,52 +5785,40 @@
             const senderKey = safeChatKey(currentUser);
             const recipientKey = safeChatKey(activeChatUser);
             const savedMessage = { from: currentUser, text, timestamp };
-            const notificationRef = db.ref(`notifications/${recipientKey}`).push();
-            const updates = {};
-            updates[`chats/${chatId}/messages/${messageId}`] = savedMessage;
-            updates[`chatContacts/${senderKey}/${recipientKey}/username`] = activeChatUser;
-            updates[`chatContacts/${senderKey}/${recipientKey}/timestamp`] =
-                firebase.database.ServerValue.TIMESTAMP;
-            updates[`chatContacts/${recipientKey}/${senderKey}/username`] = currentUser;
-            updates[`chatContacts/${recipientKey}/${senderKey}/timestamp`] =
-                firebase.database.ServerValue.TIMESTAMP;
-            updates[`chatInbox/${recipientKey}/${messageId}`] = {
-                chatId,
-                messageId,
-                from: currentUser,
-                preview: text.slice(0, 100),
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            };
-            updates[`notifications/${recipientKey}/${notificationRef.key}`] = {
-                from: currentUser,
-                message: `${currentUser} sent you a private message ✦`,
-                type: 'chat',
-                timestamp: firebase.database.ServerValue.TIMESTAMP,
-                read: false
-            };
             if (!pendingDirectMessages.has(chatId)) pendingDirectMessages.set(chatId, new Map());
             pendingDirectMessages.get(chatId).set(messageId, savedMessage);
-            sentMessageAnimationUntil.set(messageId, Date.now() + 900);
+            sentMessageAnimationUntil.set(messageId, Date.now() + 1800);
+            try {
+                await messageRef.set(savedMessage);
+            } catch (error) {
+                pendingDirectMessages.get(chatId)?.delete(messageId);
+                sentMessageAnimationUntil.delete(messageId);
+                alert(`Secure chat access could not be updated: ${error.message || 'Please reopen this chat.'}`);
+                return;
+            }
+
             input.value = '';
             renderSavedDirectMessage(messageId, savedMessage, chatId, activeChatUser);
             rememberLocalChat(activeChatUser, timestamp);
             stopChatTyping();
             playCuteSound('send');
+            sendNotification(activeChatUser, `${currentUser} sent you a private message ✦`, 'chat');
+
             try {
-                await db.ref().update(updates);
+                const contactUpdates = {};
+                contactUpdates[`chatContacts/${senderKey}/${recipientKey}/username`] = activeChatUser;
+                contactUpdates[`chatContacts/${senderKey}/${recipientKey}/timestamp`] = timestamp;
+                contactUpdates[`chatContacts/${recipientKey}/${senderKey}/username`] = currentUser;
+                contactUpdates[`chatContacts/${recipientKey}/${senderKey}/timestamp`] = timestamp;
+                contactUpdates[`chatInbox/${recipientKey}/${messageId}`] = {
+                    chatId, messageId, from: currentUser, preview: text.slice(0, 100), timestamp
+                };
+                await db.ref().update(contactUpdates);
+                await db.ref(`chatContacts/${recipientKey}/${senderKey}/unread`)
+                    .transaction(value => Number(value || 0) + 1);
             } catch (error) {
-                pendingDirectMessages.get(chatId)?.delete(messageId);
-                sentMessageAnimationUntil.delete(messageId);
-                document.querySelector(
-                    `#chatMessages [data-message-id="${messageId}"]`
-                )?.remove();
-                input.value = text;
-                alert(`Secure chat access could not be updated: ${error.message || 'Please reopen this chat.'}`);
-                return;
+                console.warn('Message was saved, but chat notifications could not fully update:', error);
             }
-            db.ref(`chatContacts/${recipientKey}/${senderKey}/unread`)
-                .transaction(value => Number(value || 0) + 1)
-                .catch(error => console.warn('Unread count could not update:', error));
             triggerBoardlyPush('direct', chatId, messageId);
         }
 
@@ -6025,47 +5963,24 @@
             if (!text) return;
             const timestamp = Date.now();
             const groupMessageRef = db.ref(`groupChats/${activeGroupId}/messages`).push();
-            sentMessageAnimationUntil.set(groupMessageRef.key, Date.now() + 900);
+            sentMessageAnimationUntil.set(groupMessageRef.key, Date.now() + 1800);
+            await groupMessageRef.set({ from: currentUser, text, timestamp });
             const updates = {};
-            updates[`groupChats/${activeGroupId}/messages/${groupMessageRef.key}`] = {
-                from: currentUser,
-                text,
-                timestamp
-            };
             Object.keys(activeGroupData.memberNames || {}).forEach(username => {
-                updates[`userGroups/${username}/${activeGroupId}/timestamp`] =
-                    firebase.database.ServerValue.TIMESTAMP;
-                if (username === currentUser) return;
-                const recipientKey = safeChatKey(username);
-                const notificationKey = db.ref(`notifications/${recipientKey}`).push().key;
-                updates[`notifications/${recipientKey}/${notificationKey}`] = {
-                    from: currentUser,
-                    message: `${currentUser} sent a message in “${activeGroupData.name}” ✦`,
-                    type: 'group-chat',
-                    groupId: activeGroupId,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP,
-                    read: false
-                };
-                updates[`chatInbox/${recipientKey}/${notificationKey}`] = {
-                    type: 'group',
-                    groupId: activeGroupId,
-                    messageId: groupMessageRef.key,
-                    from: currentUser,
-                    preview: text.slice(0, 100),
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                };
+                updates[`userGroups/${username}/${activeGroupId}/timestamp`] = timestamp;
             });
+            await db.ref().update(updates);
+            Object.keys(activeGroupData.memberNames || {})
+                .filter(username => username !== currentUser)
+                .forEach(username => sendNotification(
+                    username,
+                    `${currentUser} sent a message in “${activeGroupData.name}” ✦`,
+                    'group-chat',
+                    { groupId: activeGroupId }
+                ));
+            triggerBoardlyPush('group', activeGroupId, groupMessageRef.key);
             input.value = '';
             playCuteSound('send');
-            try {
-                await db.ref().update(updates);
-            } catch (error) {
-                input.value = text;
-                sentMessageAnimationUntil.delete(groupMessageRef.key);
-                alert(`Group message could not be sent: ${error.message || 'Please try again.'}`);
-                return;
-            }
-            triggerBoardlyPush('group', activeGroupId, groupMessageRef.key);
         }
 
         /* BOARDLY HOME TIMELINE & BOARD DROPS */
@@ -6939,21 +6854,54 @@
                 document.getElementById('chatPage').style.display !== 'flex';
         }
 
+        const BOARDLY_MUSIC_OFF_KEY = 'boardly_music_manual_off';
+        let boardMusicManualOffFallback = false;
+
+        function isBoardMusicManuallyOff() {
+            let savedOff = boardMusicManualOffFallback;
+            try {
+                savedOff = localStorage.getItem(BOARDLY_MUSIC_OFF_KEY) === 'true';
+                const legacyOff = sessionStorage.getItem(BOARDLY_MUSIC_OFF_KEY) === 'true';
+                if (legacyOff && !savedOff) {
+                    localStorage.setItem(BOARDLY_MUSIC_OFF_KEY, 'true');
+                    savedOff = true;
+                }
+                if (legacyOff) sessionStorage.removeItem(BOARDLY_MUSIC_OFF_KEY);
+            } catch (error) {
+                // Keep the preference for this page even if private browsing blocks storage.
+            }
+            boardMusicManualOffFallback = savedOff;
+            return savedOff;
+        }
+
+        function setBoardMusicManuallyOff(isOff) {
+            boardMusicManualOffFallback = isOff;
+            try {
+                sessionStorage.removeItem(BOARDLY_MUSIC_OFF_KEY);
+                if (isOff) localStorage.setItem(BOARDLY_MUSIC_OFF_KEY, 'true');
+                else localStorage.removeItem(BOARDLY_MUSIC_OFF_KEY);
+            } catch (error) {
+                // The in-memory fallback still keeps the current page consistent.
+            }
+        }
+
         function bindMusicUnlock() {
-            if (sessionStorage.getItem('boardly_music_manual_off') === 'true') return;
+            if (isBoardMusicManuallyOff()) return;
             if (musicUnlockBound) return;
             musicUnlockBound = true;
             const unlock = () => {
                 musicUnlockBound = false;
+                document.removeEventListener('pointerdown', unlock);
+                document.removeEventListener('keydown', unlock);
                 tryStartBoardMusic();
             };
-            document.addEventListener('pointerdown', unlock, { once: true });
-            document.addEventListener('keydown', unlock, { once: true });
+            document.addEventListener('pointerdown', unlock);
+            document.addEventListener('keydown', unlock);
         }
 
         function tryStartBoardMusic() {
             if (!boardPageIsVisible()) return;
-            if (sessionStorage.getItem('boardly_music_manual_off') === 'true') {
+            if (isBoardMusicManuallyOff()) {
                 pauseBoardMusic();
                 return;
             }
@@ -6974,7 +6922,7 @@
         }
 
         function scheduleBoardMusicAutoplay() {
-            if (sessionStorage.getItem('boardly_music_manual_off') === 'true') return;
+            if (isBoardMusicManuallyOff()) return;
             boardMusicShouldAutoplay = true;
             setTimeout(tryStartBoardMusic, 420);
         }
@@ -6996,27 +6944,29 @@
         }
 
         function toggleMusic() {
+            const vinylControl = document.getElementById('vinylControl');
+            const uiShowsPlaying = vinylControl?.classList.contains('playing') || false;
             if (activeMusicType === 'youtube' && ytPlayer && isYtReady) {
                 const state = ytPlayer.getPlayerState();
-                if (state === YT.PlayerState.PLAYING) {
-                    sessionStorage.setItem('boardly_music_manual_off', 'true');
+                if (state === YT.PlayerState.PLAYING || uiShowsPlaying) {
+                    setBoardMusicManuallyOff(true);
                     ytPlayer.pauseVideo();
                     boardMusicShouldAutoplay = false;
                     setVinylPlaying(false);
                 } else {
-                    sessionStorage.removeItem('boardly_music_manual_off');
+                    setBoardMusicManuallyOff(false);
                     ytPlayer.playVideo();
                     boardMusicShouldAutoplay = true;
                     setVinylPlaying(true);
                 }
             } else {
                 const audio = document.getElementById('bgMusic');
-                if (audio.paused) {
-                    sessionStorage.removeItem('boardly_music_manual_off');
+                if (audio.paused && !uiShowsPlaying) {
+                    setBoardMusicManuallyOff(false);
                     boardMusicShouldAutoplay = true;
                     audio.play().then(() => setVinylPlaying(true)).catch(() => {});
                 } else {
-                    sessionStorage.setItem('boardly_music_manual_off', 'true');
+                    setBoardMusicManuallyOff(true);
                     audio.pause();
                     boardMusicShouldAutoplay = false;
                     setVinylPlaying(false);
@@ -7162,6 +7112,7 @@
                 document.documentElement.classList.remove('timeline-open');
                 document.body.classList.remove('timeline-open');
                 if (viewingUser) applySavedStyleForUser(viewingUser);
+                if (currentUser) scheduleBoardMusicAutoplay();
             }
         });
     </script>
