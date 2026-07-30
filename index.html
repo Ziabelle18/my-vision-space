@@ -2239,7 +2239,8 @@
         let activeTimelineInteractionMode = '';
         let activeTimelineReplyTarget = null;
         let activeTimelineCommentsRef = null;
-        let activeTimelineCommentsCallback = null;
+        let activeTimelineCommentListeners = null;
+        let activeTimelineCommentRenderFrame = 0;
         const timelineCommentCountCache = new Map();
         const timelineCommentCountUpdatedAt = new Map();
         const timelineCommentCountPromises = new Map();
@@ -7049,7 +7050,7 @@
          * current flat reply format and older nested replies.
          */
         function normalizeTimelineCommentEntries(entries = []) {
-            const normalized = [];
+            const normalizedByPath = new Map();
             entries.forEach(([commentId, rawComment]) => {
                 const comment = { ...(rawComment || {}) };
                 const nestedReplies = comment.replies && typeof comment.replies === 'object'
@@ -7057,7 +7058,7 @@
                     : null;
                 delete comment.replies;
                 comment._databasePath = comment._databasePath || commentId;
-                normalized.push([commentId, comment]);
+                normalizedByPath.set(comment._databasePath, [commentId, comment]);
                 if (!nestedReplies) return;
                 Object.entries(nestedReplies).forEach(([replyId, rawReply]) => {
                     const reply = {
@@ -7066,10 +7067,10 @@
                         replyTo: rawReply?.replyTo || comment.author,
                         _databasePath: `${commentId}/replies/${replyId}`
                     };
-                    normalized.push([replyId, reply]);
+                    normalizedByPath.set(reply._databasePath, [replyId, reply]);
                 });
             });
-            return normalized;
+            return Array.from(normalizedByPath.values());
         }
 
         function renderTimelineCommentEntries(post, comments) {
@@ -7107,11 +7108,17 @@
         }
 
         function detachTimelineCommentsListener() {
-            if (activeTimelineCommentsRef && activeTimelineCommentsCallback) {
-                activeTimelineCommentsRef.off('value', activeTimelineCommentsCallback);
+            if (activeTimelineCommentRenderFrame) {
+                cancelAnimationFrame(activeTimelineCommentRenderFrame);
+                activeTimelineCommentRenderFrame = 0;
+            }
+            if (activeTimelineCommentsRef && activeTimelineCommentListeners) {
+                Object.entries(activeTimelineCommentListeners).forEach(([eventName, callback]) => {
+                    activeTimelineCommentsRef.off(eventName, callback);
+                });
             }
             activeTimelineCommentsRef = null;
-            activeTimelineCommentsCallback = null;
+            activeTimelineCommentListeners = null;
         }
 
         function loadTimelineComments(post = activeTimelineInteractionPost) {
@@ -7119,35 +7126,84 @@
             detachTimelineCommentsListener();
             const list = document.getElementById('timelineInteractionList');
             list.innerHTML = '<div class="chat-empty" style="padding:24px;">Loading comments…</div>';
-            let remoteSnapshotRendered = false;
+            const commentEntries = new Map();
+            let receivedFirebaseChild = false;
             let cachedSnapshotRendered = false;
-            getMediaFromIDBPromise(`timelineComments_${post.postId}`).then(cached => {
-                if (remoteSnapshotRendered || !Array.isArray(cached?.comments)) return;
-                cachedSnapshotRendered = true;
-                renderTimelineCommentEntries(post, cached.comments);
+            let renderQueued = false;
+            const cacheKey = `timelineCommentsV2_${post.postId}`;
+
+            const queueCompleteRender = () => {
+                if (renderQueued) return;
+                renderQueued = true;
+                activeTimelineCommentRenderFrame = requestAnimationFrame(() => {
+                    activeTimelineCommentRenderFrame = 0;
+                    renderQueued = false;
+                    if (activeTimelineInteractionPost?.postId !== post.postId ||
+                        activeTimelineInteractionMode !== 'comments') return;
+                    const comments = Array.from(commentEntries.entries());
+                    renderTimelineCommentEntries(post, comments);
+                    saveMediaToIDB(cacheKey, {
+                        comments,
+                        savedAt: Date.now()
+                    });
+                });
+            };
+
+            getMediaFromIDBPromise(cacheKey).then(async cached => {
+                if (!Array.isArray(cached?.comments)) {
+                    cached = await getMediaFromIDBPromise(`timelineComments_${post.postId}`);
+                }
+                if (receivedFirebaseChild || !Array.isArray(cached?.comments)) return;
+                cached.comments.forEach(([commentId, comment]) => {
+                    if (commentId && comment) commentEntries.set(commentId, comment);
+                });
+                cachedSnapshotRendered = commentEntries.size > 0;
+                if (cachedSnapshotRendered) queueCompleteRender();
             }).catch(() => {});
 
             activeTimelineCommentsRef = db.ref(`timelinePostComments/${post.postId}`);
-            activeTimelineCommentsCallback = snap => {
+            const onChildAddedOrChanged = snap => {
+                receivedFirebaseChild = true;
+                commentEntries.set(snap.key, snap.val());
+                queueCompleteRender();
+            };
+            const onChildRemoved = snap => {
+                receivedFirebaseChild = true;
+                commentEntries.delete(snap.key);
+                queueCompleteRender();
+            };
+            const onReady = snap => {
                 if (activeTimelineInteractionPost?.postId !== post.postId ||
                     activeTimelineInteractionMode !== 'comments') return;
-                remoteSnapshotRendered = true;
-                const comments = [];
-                snap.forEach(child => comments.push([child.key, child.val()]));
-                const completeComments = normalizeTimelineCommentEntries(comments);
-                saveMediaToIDB(`timelineComments_${post.postId}`, {
-                    comments: completeComments,
-                    savedAt: Date.now()
-                });
-                renderTimelineCommentEntries(post, completeComments);
+                /*
+                 * Do not replace commentEntries with this snapshot. Some mobile
+                 * Firebase sessions first surface a partial/offline value. The
+                 * child listeners above deliver every existing child and safely
+                 * merge subsequent changes without hiding siblings.
+                 */
+                if (!snap.exists() && !receivedFirebaseChild && !cachedSnapshotRendered) {
+                    renderTimelineCommentEntries(post, []);
+                } else {
+                    queueCompleteRender();
+                }
             };
-            activeTimelineCommentsRef.on('value', activeTimelineCommentsCallback, () => {
-                if (!remoteSnapshotRendered && !cachedSnapshotRendered &&
+            const onError = () => {
+                if (!receivedFirebaseChild && !cachedSnapshotRendered &&
                     activeTimelineInteractionPost?.postId === post.postId &&
                     activeTimelineInteractionMode === 'comments') {
                     list.innerHTML = '<div class="chat-empty" style="padding:24px;">Comments could not load yet.<br>Please tap Comment to try again. ✦</div>';
                 }
-            });
+            };
+            activeTimelineCommentListeners = {
+                child_added: onChildAddedOrChanged,
+                child_changed: onChildAddedOrChanged,
+                child_removed: onChildRemoved,
+                value: onReady
+            };
+            activeTimelineCommentsRef.on('child_added', onChildAddedOrChanged, onError);
+            activeTimelineCommentsRef.on('child_changed', onChildAddedOrChanged, onError);
+            activeTimelineCommentsRef.on('child_removed', onChildRemoved, onError);
+            activeTimelineCommentsRef.on('value', onReady, onError);
         }
 
         async function postTimelineComment() {
