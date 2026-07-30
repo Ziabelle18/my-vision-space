@@ -18,20 +18,23 @@ self.addEventListener('notificationclick', event => {
   })());
 });
 
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
-
-firebase.initializeApp({
-  apiKey: 'AIzaSyC01CDQx0HtHKmrG2sM0Y5emVOgFJ7aQs0',
-  authDomain: 'my-vision-space-45872.firebaseapp.com',
-  databaseURL: 'https://my-vision-space-45872-default-rtdb.firebaseio.com',
-  projectId: 'my-vision-space-45872',
-  storageBucket: 'my-vision-space-45872.firebasestorage.app',
-  messagingSenderId: '619791058814',
-  appId: '1:619791058814:web:e85be838c86ecf604e552f'
-});
-
 try {
+  /*
+   * Push support must never block a Boardly app update. If a phone briefly
+   * cannot reach Google's messaging scripts, the shell still installs and
+   * replaces the previous cached version; push reconnects on a later update.
+   */
+  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+  firebase.initializeApp({
+    apiKey: 'AIzaSyC01CDQx0HtHKmrG2sM0Y5emVOgFJ7aQs0',
+    authDomain: 'my-vision-space-45872.firebaseapp.com',
+    databaseURL: 'https://my-vision-space-45872-default-rtdb.firebaseio.com',
+    projectId: 'my-vision-space-45872',
+    storageBucket: 'my-vision-space-45872.firebasestorage.app',
+    messagingSenderId: '619791058814',
+    appId: '1:619791058814:web:e85be838c86ecf604e552f'
+  });
   const messaging = firebase.messaging();
   messaging.onBackgroundMessage(payload => {
     const data = payload.data || {};
@@ -54,8 +57,8 @@ try {
   console.warn('Boardly background messaging is not supported here:', error);
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v63-locked-comments-notification-states';
-const BOARDLY_VERSION = 'v63';
+const BOARDLY_CACHE = 'boardly-shell-v64-complete-comments-regression-lock';
+const BOARDLY_VERSION = 'v64';
 const BOARDLY_SHELL = [
   './',
   './index.html',
