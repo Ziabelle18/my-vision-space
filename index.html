@@ -2238,6 +2238,8 @@
         let activeTimelineInteractionPost = null;
         let activeTimelineInteractionMode = '';
         let activeTimelineReplyTarget = null;
+        let activeTimelineCommentsRef = null;
+        let activeTimelineCommentsCallback = null;
         const timelineCommentCountCache = new Map();
         const timelineCommentCountUpdatedAt = new Map();
         const timelineCommentCountPromises = new Map();
@@ -2869,7 +2871,8 @@
             if (targetUser === currentUser) return;
             db.ref(`notifications/${targetUser}`).push({
                 from: currentUser, message: msg, type,
-                timestamp: Date.now(), read: false, ...extra
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                read: false, ...extra
             });
         }
 
@@ -4465,12 +4468,41 @@
         /* NOTIFICATIONS & VISITORS */
         function openNotifModal() {
             document.getElementById('notifModal').style.display = 'flex';
-            markAllNotificationsRead();
+            markNotificationPanelSeen();
         }
         function closeNotifModal() { document.getElementById('notifModal').style.display = 'none'; }
 
+        /*
+         * LOCKED NOTIFICATION BEHAVIOR
+         * Opening the panel clears only the number badge. A notification stays
+         * bold until that exact notification is opened.
+         */
         function notificationCacheKey() {
             return `boardly_notifications_${currentUser || 'guest'}`;
+        }
+
+        function notificationSeenAtKey() {
+            return `boardly_notifications_seen_at_${currentUser || 'guest'}`;
+        }
+
+        function notificationSeenKeyKey() {
+            return `boardly_notifications_seen_key_${currentUser || 'guest'}`;
+        }
+
+        function getNotificationSeenKey() {
+            try {
+                return localStorage.getItem(notificationSeenKeyKey()) || '';
+            } catch (_) {
+                return '';
+            }
+        }
+
+        function getNotificationSeenAt() {
+            try {
+                return Number(localStorage.getItem(notificationSeenAtKey()) || 0);
+            } catch (_) {
+                return 0;
+            }
         }
 
         function updateNotificationBadges(unreadCount = 0) {
@@ -4497,8 +4529,13 @@
             list.innerHTML = '';
             const entries = Object.entries(notificationSnapshotCache)
                 .sort((a, b) => Number(b[1]?.timestamp || 0) - Number(a[1]?.timestamp || 0));
-            const unreadCount = entries.filter(([, item]) => item?.read !== true).length;
-            updateNotificationBadges(unreadCount);
+            const seenAt = getNotificationSeenAt();
+            const seenKey = getNotificationSeenKey();
+            const newCount = entries.filter(([key, item]) =>
+                item?.read !== true &&
+                (seenKey ? key > seenKey : Number(item?.timestamp || 0) > seenAt)
+            ).length;
+            updateNotificationBadges(newCount);
             if (!entries.length) {
                 list.innerHTML = '<div style="font-size:0.8rem; opacity:0.6;">No notifications yet.</div>';
                 return;
@@ -4532,27 +4569,20 @@
             ref.child(notificationKey).update({ read: true }).catch(() => {});
         }
 
-        function markAllNotificationsRead() {
+        function markNotificationPanelSeen() {
             if (!currentUser) return;
-            const unreadKeys = Object.entries(notificationSnapshotCache)
-                .filter(([, notification]) => notification?.read !== true)
-                .map(([key]) => key);
-            if (!unreadKeys.length) {
-                updateNotificationBadges(0);
-                return;
-            }
-            const updates = {};
-            unreadKeys.forEach(key => {
-                notificationSnapshotCache[key] = {
-                    ...notificationSnapshotCache[key],
-                    read: true
-                };
-                updates[`${key}/read`] = true;
-            });
-            renderNotifications(notificationSnapshotCache);
-            persistNotificationCache(notificationSnapshotCache);
-            const ref = notificationsRef || db.ref(`notifications/${currentUser}`);
-            ref.update(updates).catch(() => {});
+            const newestTimestamp = Math.max(
+                Date.now(),
+                ...Object.values(notificationSnapshotCache)
+                    .map(notification => Number(notification?.timestamp || 0))
+            );
+            try {
+                localStorage.setItem(notificationSeenAtKey(), String(newestTimestamp));
+                const sortedKeys = Object.keys(notificationSnapshotCache).sort();
+                const newestKey = sortedKeys[sortedKeys.length - 1] || '';
+                if (newestKey) localStorage.setItem(notificationSeenKeyKey(), newestKey);
+            } catch (_) {}
+            updateNotificationBadges(0);
         }
 
         async function openTimelineNotificationActivity(notification, mode) {
@@ -4671,7 +4701,7 @@
                 renderNotifications(notifications);
                 persistNotificationCache(notifications);
                 if (document.getElementById('notifModal')?.style.display === 'flex') {
-                    markAllNotificationsRead();
+                    markNotificationPanelSeen();
                 }
             });
         }
@@ -6830,7 +6860,9 @@
 
             const request = db.ref(`timelinePostComments/${postId}`).once('value')
                 .then(snap => {
-                    const count = snap.exists() ? snap.numChildren() : 0;
+                    const comments = [];
+                    snap.forEach(child => comments.push([child.key, child.val()]));
+                    const count = normalizeTimelineCommentEntries(comments).length;
                     timelineCommentCountCache.set(postId, count);
                     persistTimelineCommentCount(postId, count);
                     const element = document.getElementById(`timeline-comment-count-${postId}`);
@@ -6853,6 +6885,7 @@
         }
 
         function closeTimelineInteractionModal() {
+            detachTimelineCommentsListener();
             document.getElementById('timelineInteractionModal').style.display = 'none';
             activeTimelineInteractionPost = null;
             activeTimelineInteractionMode = '';
@@ -6897,6 +6930,7 @@
         }
 
         async function openTimelineLikes(post) {
+            detachTimelineCommentsListener();
             activeTimelineInteractionPost = post;
             activeTimelineInteractionMode = 'likes';
             clearTimelineReplyTarget();
@@ -7003,30 +7037,60 @@
                 remove.type = 'button';
                 remove.className = 'timeline-comment-delete';
                 remove.textContent = '×';
-                remove.onclick = () => deleteTimelineComment(post, commentId);
+                remove.onclick = () => deleteTimelineComment(post, commentId, comment);
                 row.appendChild(remove);
             }
             return row;
         }
 
+        /*
+         * LOCKED TIMELINE COMMENT BEHAVIOR
+         * Always render the complete authoritative snapshot. Support both the
+         * current flat reply format and older nested replies.
+         */
+        function normalizeTimelineCommentEntries(entries = []) {
+            const normalized = [];
+            entries.forEach(([commentId, rawComment]) => {
+                const comment = { ...(rawComment || {}) };
+                const nestedReplies = comment.replies && typeof comment.replies === 'object'
+                    ? comment.replies
+                    : null;
+                delete comment.replies;
+                comment._databasePath = comment._databasePath || commentId;
+                normalized.push([commentId, comment]);
+                if (!nestedReplies) return;
+                Object.entries(nestedReplies).forEach(([replyId, rawReply]) => {
+                    const reply = {
+                        ...(rawReply || {}),
+                        parentCommentId: rawReply?.parentCommentId || commentId,
+                        replyTo: rawReply?.replyTo || comment.author,
+                        _databasePath: `${commentId}/replies/${replyId}`
+                    };
+                    normalized.push([replyId, reply]);
+                });
+            });
+            return normalized;
+        }
+
         function renderTimelineCommentEntries(post, comments) {
             if (activeTimelineInteractionPost?.postId !== post.postId ||
                 activeTimelineInteractionMode !== 'comments') return;
+            const completeComments = normalizeTimelineCommentEntries(comments);
             const list = document.getElementById('timelineInteractionList');
-            const loadedCount = comments.length;
+            const loadedCount = completeComments.length;
             timelineCommentCountCache.set(post.postId, loadedCount);
             persistTimelineCommentCount(post.postId, loadedCount);
             const countElement = document.getElementById(`timeline-comment-count-${post.postId}`);
             if (countElement) countElement.textContent = formatTimelineCommentCount(loadedCount);
             list.innerHTML = '';
-            if (!comments.length) {
+            if (!completeComments.length) {
                 list.innerHTML = '<div class="chat-empty" style="padding:24px;">No comments yet.<br>Start the conversation! ✦</div>';
                 return;
             }
-            comments.sort((a, b) => Number(a[1].timestamp || 0) - Number(b[1].timestamp || 0));
-            const topLevel = comments.filter(([, comment]) => !comment.parentCommentId);
+            completeComments.sort((a, b) => Number(a[1].timestamp || 0) - Number(b[1].timestamp || 0));
+            const topLevel = completeComments.filter(([, comment]) => !comment.parentCommentId);
             const repliesByParent = {};
-            comments.filter(([, comment]) => comment.parentCommentId).forEach(item => {
+            completeComments.filter(([, comment]) => comment.parentCommentId).forEach(item => {
                 const parentId = item[1].parentCommentId;
                 (repliesByParent[parentId] ||= []).push(item);
             });
@@ -7042,34 +7106,48 @@
             });
         }
 
-        async function loadTimelineComments(post = activeTimelineInteractionPost) {
+        function detachTimelineCommentsListener() {
+            if (activeTimelineCommentsRef && activeTimelineCommentsCallback) {
+                activeTimelineCommentsRef.off('value', activeTimelineCommentsCallback);
+            }
+            activeTimelineCommentsRef = null;
+            activeTimelineCommentsCallback = null;
+        }
+
+        function loadTimelineComments(post = activeTimelineInteractionPost) {
             if (!post) return;
+            detachTimelineCommentsListener();
             const list = document.getElementById('timelineInteractionList');
             list.innerHTML = '<div class="chat-empty" style="padding:24px;">Loading comments…</div>';
-            const remoteRequest = db.ref(`timelinePostComments/${post.postId}`).once('value')
-                .catch(() => null);
-            const cached = await getMediaFromIDBPromise(`timelineComments_${post.postId}`);
-            if (Array.isArray(cached?.comments)) {
+            let remoteSnapshotRendered = false;
+            let cachedSnapshotRendered = false;
+            getMediaFromIDBPromise(`timelineComments_${post.postId}`).then(cached => {
+                if (remoteSnapshotRendered || !Array.isArray(cached?.comments)) return;
+                cachedSnapshotRendered = true;
                 renderTimelineCommentEntries(post, cached.comments);
-            }
-            const snap = await remoteRequest;
-            if (!snap) {
-                if (!Array.isArray(cached?.comments) &&
+            }).catch(() => {});
+
+            activeTimelineCommentsRef = db.ref(`timelinePostComments/${post.postId}`);
+            activeTimelineCommentsCallback = snap => {
+                if (activeTimelineInteractionPost?.postId !== post.postId ||
+                    activeTimelineInteractionMode !== 'comments') return;
+                remoteSnapshotRendered = true;
+                const comments = [];
+                snap.forEach(child => comments.push([child.key, child.val()]));
+                const completeComments = normalizeTimelineCommentEntries(comments);
+                saveMediaToIDB(`timelineComments_${post.postId}`, {
+                    comments: completeComments,
+                    savedAt: Date.now()
+                });
+                renderTimelineCommentEntries(post, completeComments);
+            };
+            activeTimelineCommentsRef.on('value', activeTimelineCommentsCallback, () => {
+                if (!remoteSnapshotRendered && !cachedSnapshotRendered &&
                     activeTimelineInteractionPost?.postId === post.postId &&
                     activeTimelineInteractionMode === 'comments') {
                     list.innerHTML = '<div class="chat-empty" style="padding:24px;">Comments could not load yet.<br>Please tap Comment to try again. ✦</div>';
                 }
-                return;
-            }
-            if (activeTimelineInteractionPost?.postId !== post.postId ||
-                activeTimelineInteractionMode !== 'comments') return;
-            const comments = [];
-            snap.forEach(child => comments.push([child.key, child.val()]));
-            saveMediaToIDB(`timelineComments_${post.postId}`, {
-                comments,
-                savedAt: Date.now()
             });
-            renderTimelineCommentEntries(post, comments);
         }
 
         async function postTimelineComment() {
@@ -7092,7 +7170,6 @@
             await db.ref(`timelinePostComments/${post.postId}`).push(payload);
             input.value = '';
             clearTimelineReplyTarget();
-            loadTimelineComments(post);
             playCuteSound('comment');
             const notificationExtra = {
                 postId: post.postId,
@@ -7117,10 +7194,10 @@
             }
         }
 
-        async function deleteTimelineComment(post, commentId) {
+        async function deleteTimelineComment(post, commentId, comment = {}) {
             if (!confirm('Delete this comment?')) return;
-            await db.ref(`timelinePostComments/${post.postId}/${commentId}`).remove();
-            loadTimelineComments(post);
+            const databasePath = comment._databasePath || commentId;
+            await db.ref(`timelinePostComments/${post.postId}/${databasePath}`).remove();
         }
 
         async function deleteTimelinePost(post) {
