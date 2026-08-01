@@ -18,47 +18,76 @@ self.addEventListener('notificationclick', event => {
   })());
 });
 
-try {
-  /*
-   * Push support must never block a Boardly app update. If a phone briefly
-   * cannot reach Google's messaging scripts, the shell still installs and
-   * replaces the previous cached version; push reconnects on a later update.
-   */
-  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
-  firebase.initializeApp({
-    apiKey: 'AIzaSyC01CDQx0HtHKmrG2sM0Y5emVOgFJ7aQs0',
-    authDomain: 'my-vision-space-45872.firebaseapp.com',
-    databaseURL: 'https://my-vision-space-45872-default-rtdb.firebaseio.com',
-    projectId: 'my-vision-space-45872',
-    storageBucket: 'my-vision-space-45872.firebasestorage.app',
-    messagingSenderId: '619791058814',
-    appId: '1:619791058814:web:e85be838c86ecf604e552f'
-  });
-  const messaging = firebase.messaging();
-  messaging.onBackgroundMessage(payload => {
-    const data = payload.data || {};
-    const title = data.title || 'New Boardly message ✦';
-    const options = {
-      body: data.body || 'Open Boardly to read your new message.',
-      icon: data.icon || './boardly-192.png',
-      badge: './boardly-192.png',
-      tag: data.tag || 'boardly-chat',
-      renotify: true,
-      silent: false,
-      vibrate: [55, 30, 55],
-      data: {
-        url: data.url || './#chat'
-      }
-    };
-    return self.registration.showNotification(title, options);
-  });
-} catch (error) {
-  console.warn('Boardly background messaging is not supported here:', error);
+/*
+ * LOCKED RELIABLE BACKGROUND PUSH
+ * Handle the browser Push API directly. This keeps notifications independent
+ * from a remote Firebase script when Android/iOS wakes a stopped worker after
+ * hours or days. The page still uses Firebase Messaging only to create tokens.
+ */
+function readBoardlyPushPayload(event) {
+  if (!event.data) return {};
+  try {
+    const payload = event.data.json() || {};
+    const wrapped = payload?.data?.FCM_MSG;
+    if (typeof wrapped === 'string') {
+      try { return JSON.parse(wrapped); } catch (_) {}
+    }
+    return payload;
+  } catch (_) {
+    try {
+      return { data: { body: event.data.text() } };
+    } catch (_) {
+      return {};
+    }
+  }
 }
 
-const BOARDLY_CACHE = 'boardly-shell-v64-complete-comments-regression-lock';
-const BOARDLY_VERSION = 'v64';
+self.addEventListener('push', event => {
+  const payload = readBoardlyPushPayload(event);
+  const data = payload.data || payload.message?.data || {};
+  const notification = payload.notification || payload.message?.notification || {};
+  const title = data.title || notification.title || 'New Boardly message ✦';
+  const targetUrl = data.url || notification.data?.url || payload.fcmOptions?.link || './#chat';
+  const options = {
+    body: data.body || notification.body || 'Open Boardly to read your new message.',
+    icon: data.icon || notification.icon || './boardly-192.png',
+    badge: notification.badge || './boardly-192.png',
+    tag: data.tag || notification.tag || `boardly-chat-${data.messageId || 'new'}`,
+    renotify: true,
+    silent: false,
+    vibrate: [55, 30, 55],
+    data: {
+      url: targetUrl,
+      type: data.type || 'direct',
+      conversationId: data.conversationId || '',
+      messageId: data.messageId || ''
+    }
+  };
+  event.waitUntil((async () => {
+    const openClients = await self.clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    });
+    const visibleClients = openClients.filter(client => client.visibilityState === 'visible');
+    if (visibleClients.length) {
+      visibleClients.forEach(client => client.postMessage({
+        type: 'BOARDLY_FOREGROUND_PUSH',
+        data: {
+          ...data,
+          title,
+          body: options.body,
+          url: targetUrl,
+          tag: options.tag
+        }
+      }));
+      return;
+    }
+    await self.registration.showNotification(title, options);
+  })());
+});
+
+const BOARDLY_CACHE = 'boardly-shell-v65-reliable-closed-app-push';
+const BOARDLY_VERSION = 'v65';
 const BOARDLY_SHELL = [
   './',
   './index.html',
