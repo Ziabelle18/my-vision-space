@@ -5156,6 +5156,27 @@
             }
         }
 
+        async function persistBoardlyPushToken(token) {
+            if (!token || !auth.currentUser || !currentUser) return null;
+            const uid = auth.currentUser.uid;
+            const deviceKey = await boardlyTokenKey(token);
+            const previousUid = localStorage.getItem('boardly_push_uid') || '';
+            const previousDeviceKey = localStorage.getItem('boardly_push_device_key') || '';
+            await db.ref(`pushTokens/${uid}/${deviceKey}`).set({
+                token,
+                username: currentUser,
+                updatedAt: firebase.database.ServerValue.TIMESTAMP,
+                userAgent: navigator.userAgent.slice(0, 180)
+            });
+            if (previousUid === uid && previousDeviceKey && previousDeviceKey !== deviceKey) {
+                db.ref(`pushTokens/${uid}/${previousDeviceKey}`).remove().catch(() => {});
+            }
+            localStorage.setItem('boardly_push_device_key', deviceKey);
+            localStorage.setItem('boardly_push_uid', uid);
+            localStorage.setItem('boardly_push_refreshed_at', String(Date.now()));
+            return deviceKey;
+        }
+
         async function enablePushNotifications() {
             if (!auth.currentUser || !currentUser) {
                 alert('Please log in first.');
@@ -5193,15 +5214,7 @@
                     serviceWorkerRegistration: registration
                 });
                 if (!token) throw new Error('No notification token was created.');
-                const deviceKey = await boardlyTokenKey(token);
-                await db.ref(`pushTokens/${auth.currentUser.uid}/${deviceKey}`).set({
-                    token,
-                    username: currentUser,
-                    updatedAt: firebase.database.ServerValue.TIMESTAMP,
-                    userAgent: navigator.userAgent.slice(0, 180)
-                });
-                localStorage.setItem('boardly_push_device_key', deviceKey);
-                localStorage.setItem('boardly_push_uid', auth.currentUser.uid);
+                await persistBoardlyPushToken(token);
                 updateChatAlertButton();
                 alert('Boardly chat notifications are now on! ✦');
             } catch (error) {
@@ -5224,15 +5237,7 @@
                     serviceWorkerRegistration: registration
                 });
                 if (!token) return;
-                const deviceKey = await boardlyTokenKey(token);
-                await db.ref(`pushTokens/${auth.currentUser.uid}/${deviceKey}`).set({
-                    token,
-                    username: currentUser,
-                    updatedAt: firebase.database.ServerValue.TIMESTAMP,
-                    userAgent: navigator.userAgent.slice(0, 180)
-                });
-                localStorage.setItem('boardly_push_device_key', deviceKey);
-                localStorage.setItem('boardly_push_uid', auth.currentUser.uid);
+                await persistBoardlyPushToken(token);
                 updateChatAlertButton();
             } catch (error) {
                 console.warn('Boardly could not refresh its push token:', error);
@@ -5251,27 +5256,45 @@
             } finally {
                 localStorage.removeItem('boardly_push_device_key');
                 localStorage.removeItem('boardly_push_uid');
+                localStorage.removeItem('boardly_push_refreshed_at');
             }
         }
 
-        async function triggerBoardlyPush(type, conversationId, messageId) {
-            if (!auth.currentUser || !isBoardlyPushConfigured()) return;
+        function refreshBoardlyPushTokenIfStale() {
+            const refreshedAt = Number(localStorage.getItem('boardly_push_refreshed_at') || 0);
+            if (Date.now() - refreshedAt < 6 * 60 * 60 * 1000) return;
+            refreshBoardlyPushToken();
+        }
+
+        async function triggerBoardlyPush(type, conversationId, messageId, attempt = 0) {
+            if (!auth.currentUser || !isBoardlyPushConfigured()) return null;
             try {
-                const idToken = await auth.currentUser.getIdToken();
+                const idToken = await auth.currentUser.getIdToken(attempt > 0);
                 const response = await fetch(BOARDLY_PUSH_ENDPOINT, {
                     method: 'POST',
+                    keepalive: true,
                     headers: {
                         'Authorization': `Bearer ${idToken}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ type, conversationId, messageId })
                 });
+                const result = await response.json().catch(() => ({}));
                 if (!response.ok) {
-                    const result = await response.json().catch(() => ({}));
                     throw new Error(result.error || `Push request failed (${response.status}).`);
                 }
+                if (result.processing && attempt < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 900));
+                    return triggerBoardlyPush(type, conversationId, messageId, attempt + 1);
+                }
+                return result;
             } catch (error) {
+                if (attempt < 1 && navigator.onLine) {
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    return triggerBoardlyPush(type, conversationId, messageId, attempt + 1);
+                }
                 console.warn('The message was sent, but its push alert could not be delivered:', error);
+                return null;
             }
         }
 
@@ -5987,6 +6010,7 @@
                 alert(`Secure chat access could not be updated: ${error.message || 'Please reopen this chat.'}`);
                 return;
             }
+            const pushDispatch = triggerBoardlyPush('direct', chatId, messageId);
 
             input.value = '';
             renderSavedDirectMessage(messageId, savedMessage, chatId, activeChatUser);
@@ -6010,7 +6034,7 @@
             } catch (error) {
                 console.warn('Message was saved, but chat notifications could not fully update:', error);
             }
-            triggerBoardlyPush('direct', chatId, messageId);
+            void pushDispatch;
         }
 
         function openCreateGroupModal() {
@@ -6153,12 +6177,14 @@
             const text = input.value.trim();
             if (!text) return;
             const timestamp = Date.now();
-            const groupMessageRef = db.ref(`groupChats/${activeGroupId}/messages`).push();
+            const groupId = activeGroupId;
+            const groupMessageRef = db.ref(`groupChats/${groupId}/messages`).push();
             sentMessageAnimationUntil.set(groupMessageRef.key, Date.now() + 1800);
             await groupMessageRef.set({ from: currentUser, text, timestamp });
+            const pushDispatch = triggerBoardlyPush('group', groupId, groupMessageRef.key);
             const updates = {};
             Object.keys(activeGroupData.memberNames || {}).forEach(username => {
-                updates[`userGroups/${username}/${activeGroupId}/timestamp`] = timestamp;
+                updates[`userGroups/${username}/${groupId}/timestamp`] = timestamp;
             });
             await db.ref().update(updates);
             Object.keys(activeGroupData.memberNames || {})
@@ -6167,9 +6193,9 @@
                     username,
                     `${currentUser} sent a message in “${activeGroupData.name}” ✦`,
                     'group-chat',
-                    { groupId: activeGroupId }
+                    { groupId }
                 ));
-            triggerBoardlyPush('group', activeGroupId, groupMessageRef.key);
+            void pushDispatch;
             input.value = '';
             playCuteSound('send');
         }
@@ -7483,12 +7509,31 @@
                     }
                     if (event.data?.type === 'OPEN_BOARDLY_CHAT' && event.data.url) {
                         openBoardlyPushDestination(event.data.url);
+                        return;
+                    }
+                    if (event.data?.type === 'BOARDLY_FOREGROUND_PUSH') {
+                        const data = event.data.data || {};
+                        handleIncomingChatFeedback({
+                            messageId: data.messageId || '',
+                            conversationId: data.conversationId || '',
+                            type: data.type || 'direct',
+                            title: data.title || 'New Boardly message ✦',
+                            body: data.body || 'Open Boardly to read your new message.',
+                            tag: data.tag || 'boardly-chat',
+                            url: data.url || './#chat'
+                        });
                     }
                 });
                 document.addEventListener('visibilitychange', () => {
-                    if (document.visibilityState === 'visible') requestUpdate();
+                    if (document.visibilityState === 'visible') {
+                        requestUpdate();
+                        refreshBoardlyPushTokenIfStale();
+                    }
                 });
-                window.addEventListener('focus', requestUpdate);
+                window.addEventListener('focus', () => {
+                    requestUpdate();
+                    refreshBoardlyPushTokenIfStale();
+                });
                 window.addEventListener('pageshow', event => {
                     if (event.persisted) requestUpdate();
                 });
